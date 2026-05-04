@@ -52,20 +52,3 @@ Detrás de **Boreal Data** se encuentran:
 1.  **Versión 2.0**: Implementación de detección de *deepfakes* en video y audio.
 2.  **API Pública**: Permitir que otros desarrolladores integren el motor de análisis de Boreal Data en sus propias plataformas.
 3.  **Comunidad**: Crear un sistema de reportes comunitarios para alimentar la base de datos de fuentes de forma descentralizada.
-
----
-
-## ⚙️ Instalación (Preview)
-```bash
-# Clonar el repositorio
-git clone [https://github.com/boreal-data/aletheia.git](https://github.com/boreal-data/aletheia.git)
-
-# Instalar dependencias del Front-end
-cd frontend
-npm install
-npx expo start
-
-# Configurar el Back-end (Python 3.10+)
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
