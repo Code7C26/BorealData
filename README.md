@@ -1,54 +1,109 @@
-# Boreal Data | aletheIA 🛡️
+<div align="center">
 
-**aletheIA** es un ecosistema inteligente de detección de desinformación (*fake news*) diseñado para operar en tiempo real a través de múltiples plataformas: Web, Aplicación Móvil y Extensión de Navegador. 
+# aletheIA
+### Detector inteligente de fake news
 
-Desarrollado por el equipo de **Boreal Data**, el sistema no solo analiza texto, sino que evalúa el contexto, la reputación de la fuente y la integridad lógica de la información para proporcionar un **Score de Veracidad** confiable.
+*Boreal Data — 2026*
 
----
-
-## 🚀 Funcionalidades Principales
-
-*   **Análisis Multimodal**: Capacidad de procesar información a partir de URLs directas, capturas de pantalla y el contenido dinámico de la ventana activa.
-*   **Detección en Tiempo Real**: Gracias a la integración vía API, el usuario recibe una etiqueta de veracidad y una explicación detallada en segundos.
-*   **Verificación de Fuentes**: Consulta una base de datos propia de reputación mediática (basada en MediaBias) para alertar sobre fuentes con historial de desinformación.
-*   **Sincronización Total**: Historial de análisis y preferencias compartidas entre la web, el móvil y la extensión mediante autenticación centralizada.
+</div>
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Descripción del problema
 
-El proyecto utiliza una arquitectura moderna de **código compartido** y **servicios desacoplados**:
+Vivimos en una era donde la información circula más rápido que la capacidad de verificarla.
+Las fake news se propagan en redes sociales, portales de noticias y grupos de mensajería
+generando confusión, polarización y decisiones basadas en datos falsos. La mayoría de las
+personas no tiene ni el tiempo ni las herramientas para verificar cada noticia que consume.
 
-### **Front-end**
-*   **Core**: Expo (React Native) con TypeScript.
-*   **Plataformas**: 
-    *   **Web**: Exportación estática desplegada en **Vercel**.
-    *   **Móvil**: Desarrollo con **Expo Go** y compilación con **EAS Build**.
-    *   **Extensión**: Arquitectura **Manifest V3** con un wrapper JS para inyección de lógica en el navegador.
-
-### **Back-end & IA**
-*   **API**: **FastAPI** (Python) por su alto rendimiento asíncrono.
-*   **Extracción de datos**: Sistema híbrido con **BeautifulSoup** y **Playwright** para superar muros de JavaScript.
-*   **Cerebro IA**: Integración con modelos de lenguaje de gran escala (**Claude / GPT / Gemini**) optimizados mediante ingeniería de prompts.
-
-### **Infraestructura**
-*   **Base de Datos**: PostgreSQL gestionado en **Supabase**.
-*   **Autenticación**: Supabase Auth con manejo de tokens **JWT**.
+Este problema afecta especialmente a jóvenes y adultos que consumen contenido digital de
+forma masiva y cotidiana, sin contar con un mecanismo rápido y accesible para distinguir
+información verdadera de desinformación.
 
 ---
 
-## 👥 Colaboradores
+## Propuesta de solución
 
-Detrás de **Boreal Data** se encuentran:
+**aletheIA** es un sistema multiplataforma que analiza noticias y publicaciones web en
+tiempo real y devuelve un porcentaje de veracidad junto con una explicación clara y
+fundamentada. El usuario puede enviar un link desde la web o el celular, o simplemente
+activar la extensión de Chrome mientras navega para analizar la página que está viendo
+en ese momento.
 
-*   **Renzo Lanata** – *Lead Front-end Developer*: Responsable de la arquitectura multiplataforma en Expo, diseño de UI/UX y la integración de la extensión de navegador.
-*   **Ciro Di Marsico** – *Lead Back-end Developer*: Responsable de la lógica de análisis en FastAPI, la orquestación del Motor IA y el sistema de scraping.
+El análisis combina extracción automática del contenido (scraping) con un modelo de
+inteligencia artificial (Gemini API) que evalúa el texto, identifica señales de alarma
+y clasifica la información en una escala de 0 a 100%.
 
 ---
 
-## 📈 Proyección y Futuro
+## Público objetivo
 
-**aletheIA** nace como un proyecto final de secundaria, pero con una visión de escalabilidad hacia una formalización como **PYME** tecnológica:
-1.  **Versión 2.0**: Implementación de detección de *deepfakes* en video y audio.
-2.  **API Pública**: Permitir que otros desarrolladores integren el motor de análisis de Boreal Data en sus propias plataformas.
-3.  **Comunidad**: Crear un sistema de reportes comunitarios para alimentar la base de datos de fuentes de forma descentralizada.
+- **Usuarios generales** que consumen noticias en internet y quieren verificar información
+  antes de compartirla.
+- **Estudiantes y docentes** que necesitan validar fuentes para trabajos académicos.
+- **Periodistas y comunicadores** que requieren una primera validación rápida de contenido.
+
+aletheIA les mejora la vida dándoles una herramienta accesible, rápida y sin fricción
+que se integra directamente en su navegador sin interrumpir su flujo de navegación.
+
+---
+
+## Stack tecnológico
+
+### Software
+
+| Capa | Tecnología | Descripción |
+|---|---|---|
+| Web | Next.js + TypeScript | Frontend web con SSR |
+| Extensión | Manifest V3 + React | Extensión para Chrome |
+| Mobile | Expo (React Native) | App iOS y Android |
+| Hosting | Firebase Hosting | Deploy web con CDN global |
+| Backend | Node.js + Express | API REST en Cloud Run |
+| Scraping | Cheerio + Puppeteer | Extracción de contenido web |
+| IA | Gemini API | Análisis de veracidad |
+| Base de datos | Cloud SQL (PostgreSQL) | Historial de análisis |
+| Autenticación | Firebase Auth + JWT | Login con Google |
+| Infraestructura | Google Cloud Platform | Plataforma cloud unificada |
+
+---
+
+## Estructura del repositorio
+
+```
+aletheIA/
+│
+├── apps/
+│   ├── web/          → Frontend Next.js (TypeScript)
+│   ├── extension/    → Extensión Chrome (Manifest V3 + React)
+│   └── mobile/       → App móvil (Expo)
+│
+├── backend/          → API REST (Node.js + Express + Cloud Run)
+│
+├── docs/             → Documentación técnica y decisiones de arquitectura
+│
+├── design/           → Wireframes, mockups y guía de estilos
+│
+├── assets/           → Imágenes, íconos y recursos gráficos del proyecto
+│
+└── README.md
+```
+
+---
+
+## Integrantes y roles
+
+| Nombre | Rol | Responsabilidades |
+|---|---|---|
+| **Ciro Di Marsico** | Backend Lead / Scrum Master | API REST, scraping, integración con Gemini API, base de datos, infraestructura GCP |
+| **Renzo Lanata** | Frontend Lead | Web (Next.js), extensión Chrome, app móvil (Expo), diseño de interfaz |
+
+---
+
+## Empresa
+
+<div align="center">
+
+**Boreal Data**
+*Tecnología con propósito*
+
+</div>
