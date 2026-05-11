@@ -1,11 +1,14 @@
-<div align="center">
-<img src="./assets/logo aletheIA.png" />
-# aletheIA
-### Detector inteligente de fake news
+<p align="center">
+  <img 
+    src="/assets/logoAletheia.png" 
+    width="300px"
+  />
+</p>
+<h1 align="center">aletheIA</h1>
 
-*Boreal Data — 2026*
+<h3 align="center">Detector inteligente de fake news</h3>
 
-</div>
+<p align="center"><i>Boreal Data — 2026</i></p>
 
 ---
 
