@@ -1,5 +1,5 @@
 <div align="center">
-
+<img src="./assets/logo aletheIA.png" />
 # aletheIA
 ### Detector inteligente de fake news
 
