@@ -107,6 +107,5 @@ aletheIA/
 <div align="center">
 
 **Boreal Data**
-*Tecnología con propósito y fin*
 
 </div>
