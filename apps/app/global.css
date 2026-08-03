@@ -1,0 +1,78 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-navy: var(--navy);
+  --color-navy-light: var(--navy-light);
+  --color-blue: var(--blue);
+  --color-blue-light: var(--blue-light);
+  --color-ice: var(--ice);
+
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-lora);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:root {
+  color-scheme: dark;
+
+  --navy: #0b1929;
+  --navy-light: #10233a;
+  --blue: #1a6db5;
+  --blue-light: #60b8f0;
+  --ice: #e8f4ff;
+
+  --background: #0b1929;
+  --foreground: #e8f4ff;
+  --card: #10233a;
+  --card-foreground: #e8f4ff;
+  --popover: #10233a;
+  --popover-foreground: #e8f4ff;
+  --primary: #1a6db5;
+  --primary-foreground: #e8f4ff;
+  --secondary: #10233a;
+  --secondary-foreground: #e8f4ff;
+  --muted: #16304d;
+  --muted-foreground: #8fb4d9;
+  --accent: #60b8f0;
+  --accent-foreground: #0b1929;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #1d3a5c;
+  --input: #1d3a5c;
+  --ring: #60b8f0;
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
