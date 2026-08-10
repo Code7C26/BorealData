@@ -1,20 +1,18 @@
 import express from "express";
-import scrapeTestRouter from "./routes/scrapeTest";
+import analyzeRouter from "./routes/analyze.js";
+import "dotenv/config";
 
 const app = express();
 app.use(express.json());
 
-app.use("/scrape-test", scrapeTestRouter);
+app.use(analyzeRouter);
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.get("/", (_req, res) => {
   res.json({ status: "ok", service: "aletheIA-backend" });
 });
 
-// Acá después van a colgar las rutas:
-// app.use("/analyze", analyzeRouter);
-// app.use("/history", historyRouter);
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
