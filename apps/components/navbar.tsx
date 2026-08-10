@@ -1,11 +1,25 @@
-import { Logo } from './logo'
+
 
 export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-navy/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <a href="#" aria-label="Boreal Data — inicio">
-          <Logo />
+         <div className="flex items-center gap-3">
+  <img 
+    src="/logoAletheia.png" 
+    alt="AletheIA" 
+    className="h-10 object-contain" 
+  />
+  <div className="flex flex-col leading-tight">
+    <span className="text-white font-bold text-sm tracking-widest uppercase">
+      Boreal Data
+    </span>
+    <span className="text-blue-400 text-xs tracking-wider">
+      by AletheIA
+    </span>
+  </div>
+</div>
         </a>
 
         <div className="hidden items-center gap-8 md:flex">
