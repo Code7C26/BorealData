@@ -1,5 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AnalysisResult, GeminiOptions, VeracityLabel } from "./types.js";
+import type {
+  AnalysisResult,
+  AnalysisSource,
+  GeminiOptions,
+  SourceStance,
+  VeracityLabel,
+} from "./types.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_MAX_INPUT_CHARS = 12000;
@@ -12,6 +18,8 @@ const VALID_LABELS: VeracityLabel[] = [
   "falso",
   "no_verificable",
 ];
+
+const VALID_STANCES: SourceStance[] = ["respalda", "contradice", "neutral_relacionada"];
 
 let client: GoogleGenAI | null = null;
 
@@ -32,6 +40,21 @@ function getClient(): GoogleGenAI {
   return client;
 }
 
+/** Arma un AnalysisResult de error, con todos los campos "vacíos" del contrato completos. */
+function errorResult(error: string): AnalysisResult {
+  return {
+    score: 0,
+    label: "no_verificable",
+    summary: "",
+    explanation: "",
+    claimVsEvidence: "",
+    sources: [],
+    toneFlags: [],
+    success: false,
+    error,
+  };
+}
+
 function buildPrompt(title: string, text: string): string {
   return `Sos un analista experto en verificación de noticias (fact-checking) y detección de desinformación.
 
@@ -45,21 +68,36 @@ Usá la búsqueda web para:
 - Verificar nombres, fechas, cifras y citas cuando sea razonable dudar de ellos.
 - Contrastar con cobertura de medios reconocidos cuando el tema lo amerite.
 
-Analizá estas dos dimensiones:
+Analizá estas dimensiones:
 
 1. VERACIDAD DEL CONTENIDO: ¿las afirmaciones son verificables y consistentes con fuentes actuales (no solo con tu conocimiento previo)? ¿hay contradicciones internas, afirmaciones extraordinarias sin evidencia, o datos falsos/engañosos confirmados por la búsqueda?
 
 2. TONO Y ESTILO DE REDACCIÓN (señal adicional, no determinante por sí sola): lenguaje sensacionalista, uso excesivo de MAYÚSCULAS, exclamaciones múltiples, títulos tipo clickbait, apelación emocional desproporcionada, ausencia de fuentes citadas, generalizaciones sin sustento.
+
+3. AFIRMACIÓN VS. EVIDENCIA: identificá la afirmación central del artículo y compará explícitamente qué dice el artículo contra qué dice la evidencia que encontraste (búsqueda web o el propio texto si es autoconsistente).
+
+4. FUENTES: por cada fuente relevante que hayas consultado en la búsqueda web, indicá su título, y si RESPALDA, CONTRADICE, o es solo NEUTRAL/RELACIONADA respecto de la afirmación central del artículo (no confirma ni desmiente directamente, pero da contexto). Si el veredicto se basó en el análisis del propio texto sin necesitar búsqueda externa (por ejemplo, una contradicción lógica interna evidente, o un tema trivial y autoevidente), indicá igual una entrada explicando eso en vez de dejar la lista vacía.
 
 Cuando termines de razonar y buscar, devolvé tu respuesta final como un objeto JSON en un bloque de código, y nada más después de ese bloque. Formato exacto:
 \`\`\`json
 {
   "score": <número entero de 0 a 100, donde 100 es totalmente veraz y 0 es totalmente falso>,
   "label": "<una de: verdadero | mayormente_verdadero | mixto | mayormente_falso | falso | no_verificable>",
+  "summary": "<2 a 3 oraciones resumiendo de qué trata la noticia, en español, tono neutral, mostrando que se leyó el contenido real>",
   "explanation": "<2 a 4 oraciones explicando el porqué del score, mencionando si se verificó con búsqueda web, en español, tono neutral>",
+  "claimVsEvidence": "<1 a 3 oraciones comparando explícitamente la afirmación central del artículo contra lo que muestra la evidencia encontrada>",
+  "sources": [
+    {
+      "title": "<título de la fuente o página consultada>",
+      "stance": "<una de: respalda | contradice | neutral_relacionada>",
+      "note": "<1 oración explicando qué aporta esta fuente al veredicto; si no hubo búsqueda externa, explicá que el veredicto salió del análisis del propio texto>"
+    }
+  ],
   "toneFlags": ["<lista corta de señales de tono detectadas, vacía si no hay ninguna>"]
 }
 \`\`\`
+
+No incluyas URLs dentro de "sources": el sistema las agrega automáticamente a partir de tu búsqueda real. Solo completá "title", "stance" y "note".
 
 Usá "no_verificable" solo si el texto no tiene contenido suficiente para evaluar, o si la búsqueda no arroja información suficiente para confirmar ni desmentir los hechos centrales.
 
@@ -68,6 +106,77 @@ ${title || "(sin título)"}
 
 Cuerpo del artículo:
 ${text}`;
+}
+
+/**
+ * Fuente cruda tal como la devuelve Gemini en su JSON (sin URL: el modelo no la escribe,
+ * para evitar que la alucine). La URL real se agrega después, cruzando con groundingChunks.
+ */
+interface RawSource {
+  title: unknown;
+  stance: unknown;
+  note: unknown;
+}
+
+/**
+ * Convierte los groundingChunks crudos de la respuesta de Gemini (fuentes reales que
+ * Google Search devolvió) a una lista simple de { title, url }, ignorando chunks sin uri.
+ */
+function extractGroundingLinks(response: {
+  candidates?: Array<{
+    groundingMetadata?: {
+      groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>;
+    };
+  }>;
+}): Array<{ title: string; url: string }> {
+  const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  return chunks
+    .map((chunk) => ({
+      title: chunk.web?.title ?? "",
+      url: chunk.web?.uri ?? "",
+    }))
+    .filter((s) => s.url.length > 0);
+}
+
+/**
+ * Cruza las fuentes que Gemini describió (title/stance/note, sin URL) con los links
+ * reales de groundingChunks, matcheando por título. Si no hay match (o no hubo búsqueda),
+ * la fuente queda con url: null en vez de inventar un link.
+ */
+function attachRealUrls(
+  rawSources: RawSource[],
+  groundingLinks: Array<{ title: string; url: string }>
+): AnalysisSource[] {
+  const usedUrls = new Set<string>();
+
+  return rawSources
+    .filter(
+      (s): s is { title: string; stance: string; note: string } =>
+        typeof s.title === "string" &&
+        typeof s.stance === "string" &&
+        VALID_STANCES.includes(s.stance as SourceStance) &&
+        typeof s.note === "string"
+    )
+    .map((s) => {
+      // Match simple por similitud de título (case-insensitive, substring en cualquier sentido).
+      const match = groundingLinks.find((link) => {
+        if (usedUrls.has(link.url)) return false;
+        const a = s.title.toLowerCase().trim();
+        const b = link.title.toLowerCase().trim();
+        return a.length > 0 && b.length > 0 && (a.includes(b) || b.includes(a));
+      });
+
+      if (match) {
+        usedUrls.add(match.url);
+      }
+
+      return {
+        title: s.title,
+        url: match?.url ?? null,
+        stance: s.stance as SourceStance,
+        note: s.note,
+      };
+    });
 }
 
 /**
@@ -87,6 +196,10 @@ export async function callGemini(
   try {
     const ai = getClient();
 
+    // Nota: responseMimeType: "application/json" es incompatible con tools
+    // (la API de Gemini devuelve 400 si se combinan, y además si se combinaran
+    // groundingChunks/groundingSupports vienen vacíos igual). Por eso el JSON se
+    // pide por prompt, envuelto en un bloque ```json, y se extrae en parseGeminiResponse.
     const response = await ai.models.generateContent({
       model,
       contents: buildPrompt(title, truncatedText),
@@ -97,26 +210,15 @@ export async function callGemini(
 
     const raw = response.text;
     if (!raw) {
-      return {
-        score: 0,
-        label: "no_verificable",
-        explanation: "",
-        toneFlags: [],
-        success: false,
-        error: "Gemini no devolvió texto en la respuesta.",
-      };
+      return errorResult("Gemini no devolvió texto en la respuesta.");
     }
 
-    return parseGeminiResponse(raw);
+    const groundingLinks = extractGroundingLinks(response);
+    return parseGeminiResponse(raw, groundingLinks);
   } catch (err) {
-    return {
-      score: 0,
-      label: "no_verificable",
-      explanation: "",
-      toneFlags: [],
-      success: false,
-      error: err instanceof Error ? err.message : "Error desconocido llamando a Gemini.",
-    };
+    return errorResult(
+      err instanceof Error ? err.message : "Error desconocido llamando a Gemini."
+    );
   }
 }
 
@@ -144,8 +246,14 @@ function extractJsonBlock(raw: string): string {
 /**
  * Parsea y valida la respuesta cruda de Gemini contra el contrato AnalysisResult.
  * Separado de callGemini para poder testearlo con strings fijos sin pegarle a la API real.
+ *
+ * groundingLinks es opcional para poder testear con fixtures simples (sin grounding real);
+ * en producción siempre viene de extractGroundingLinks().
  */
-export function parseGeminiResponse(raw: string): AnalysisResult {
+export function parseGeminiResponse(
+  raw: string,
+  groundingLinks: Array<{ title: string; url: string }> = []
+): AnalysisResult {
   const jsonSnippet = extractJsonBlock(raw);
 
   let parsed: unknown;
@@ -153,25 +261,11 @@ export function parseGeminiResponse(raw: string): AnalysisResult {
   try {
     parsed = JSON.parse(jsonSnippet);
   } catch {
-    return {
-      score: 0,
-      label: "no_verificable",
-      explanation: "",
-      toneFlags: [],
-      success: false,
-      error: "La respuesta de Gemini no es JSON válido.",
-    };
+    return errorResult("La respuesta de Gemini no es JSON válido.");
   }
 
   if (typeof parsed !== "object" || parsed === null) {
-    return {
-      score: 0,
-      label: "no_verificable",
-      explanation: "",
-      toneFlags: [],
-      success: false,
-      error: "La respuesta de Gemini no tiene forma de objeto.",
-    };
+    return errorResult("La respuesta de Gemini no tiene forma de objeto.");
   }
 
   const obj = parsed as Record<string, unknown>;
@@ -182,26 +276,28 @@ export function parseGeminiResponse(raw: string): AnalysisResult {
     typeof obj.label === "string" && VALID_LABELS.includes(obj.label as VeracityLabel)
       ? (obj.label as VeracityLabel)
       : null;
+  const summary = typeof obj.summary === "string" ? obj.summary : null;
   const explanation = typeof obj.explanation === "string" ? obj.explanation : null;
+  const claimVsEvidence = typeof obj.claimVsEvidence === "string" ? obj.claimVsEvidence : null;
   const toneFlags = Array.isArray(obj.toneFlags)
     ? obj.toneFlags.filter((f): f is string => typeof f === "string")
     : [];
+  const rawSources = Array.isArray(obj.sources) ? (obj.sources as RawSource[]) : [];
+  const sources = attachRealUrls(rawSources, groundingLinks);
 
-  if (score === null || label === null || explanation === null) {
-    return {
-      score: 0,
-      label: "no_verificable",
-      explanation: "",
-      toneFlags: [],
-      success: false,
-      error: "La respuesta de Gemini no tiene los campos esperados (score, label, explanation).",
-    };
+  if (score === null || label === null || summary === null || explanation === null || claimVsEvidence === null) {
+    return errorResult(
+      "La respuesta de Gemini no tiene los campos esperados (score, label, summary, explanation, claimVsEvidence)."
+    );
   }
 
   return {
     score,
     label,
+    summary,
     explanation,
+    claimVsEvidence,
+    sources,
     toneFlags,
     success: true,
   };
