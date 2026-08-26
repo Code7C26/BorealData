@@ -2,18 +2,26 @@ import { Router, type Request, type Response } from "express";
 import { scrapeUrl } from "../scraper/scrapeUrl.js";
 import { analyzeContent } from "../gemini/analyzeContent.js";
 import { saveAnalysis } from "../db/analysesRepository.js";
+import { upsertUser } from "../db/usersRepository.js";
+import { attachUserIfPresent } from "../auth/verifyAuth.js";
 
 const router = Router();
 
 /**
  * POST /analyze
  * Body: { "url": "https://..." }
+ * Header opcional: Authorization: Bearer <Firebase ID token>
  *
- * Flujo: scrapeUrl() -> analyzeContent() -> guarda en Cloud SQL -> responde con el
- * resultado combinado. Solo se guardan los análisis exitosos (200); si el guardado
- * falla no se rompe la respuesta (ver saveAnalysis). Todavía sin verificación JWT.
+ * Flujo: attachUserIfPresent (auth opcional) -> scrapeUrl() -> analyzeContent() ->
+ * si hay usuario autenticado, upsertUser() para resolver su id interno -> guarda en
+ * Cloud SQL -> responde con el resultado combinado. Solo se guardan los análisis
+ * exitosos (200); si el guardado falla no se rompe la respuesta (ver saveAnalysis).
+ *
+ * La autenticación es opcional a propósito: /analyze sigue funcionando sin login (ej.
+ * desde la extensión), pero si viene un token válido el análisis queda asociado al
+ * usuario (user_id). Para exigir login en una ruta, usar requireAuth en su lugar.
  */
-router.post("/analyze", async (req: Request, res: Response) => {
+router.post("/analyze", attachUserIfPresent, async (req: Request, res: Response) => {
   const { url } = req.body ?? {};
 
   if (!url || typeof url !== "string") {
@@ -44,7 +52,8 @@ router.post("/analyze", async (req: Request, res: Response) => {
       });
     }
 
-    await saveAnalysis(scraped, analysis);
+    const userId = req.user ? await upsertUser(req.user.uid, req.user.email) : null;
+    await saveAnalysis(scraped, analysis, userId);
 
     return res.status(200).json({
       url: scraped.url,
