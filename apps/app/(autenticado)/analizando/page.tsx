@@ -2,8 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import {
   FileSearch,
   ShieldCheck,
@@ -37,13 +35,9 @@ const ETAPAS = [
 
 const DURACION_POR_ETAPA_MS = 1800;
 
-function AnalizandoContent() {
+function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [etapaActual, setEtapaActual] = useState(0);
-
-  const tipo = searchParams.get("tipo") ?? "url";
-  const valor = searchParams.get("valor") ?? "";
 
   useEffect(() => {
     if (etapaActual >= ETAPAS.length) {
@@ -68,24 +62,7 @@ function AnalizandoContent() {
   );
 
   return (
-    <main className="min-h-screen bg-navy flex flex-col items-center justify-center px-4 py-12">
-
-      {/* Logo */}
-      <Link href="/" className="flex items-center gap-3 mb-10">
-        <Image
-          src="/logoAletheia.png"
-          alt="AletheIA"
-          width={40}
-          height={40}
-          className="object-contain"
-        />
-        <div className="flex flex-col leading-tight">
-          <span className="text-white font-bold text-sm tracking-widest uppercase">
-            Boreal Data
-          </span>
-          <span className="text-blue-400 text-xs tracking-wider">AletheIA</span>
-        </div>
-      </Link>
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
 
       {/* Card */}
       <div className="w-full max-w-lg bg-[#0D2037] border border-[#1A3A5C] rounded-2xl p-8">
@@ -171,14 +148,25 @@ function AnalizandoContent() {
       <p className="text-[#4A7A9B] text-xs mt-8">
         © 2026 Boreal Data — AletheIA
       </p>
-    </main>
+    </div>
   );
+}
+
+function AnalizandoWrapper() {
+  const searchParams = useSearchParams();
+  const tipo = searchParams.get("tipo") ?? "url";
+  const valor = searchParams.get("valor") ?? "";
+
+  // key = searchParams.toString() fuerza un remount completo cada vez que
+  // cambia la URL, así el estado de las etapas siempre arranca de cero
+  // (Next.js reutiliza el componente si solo cambian los query params).
+  return <AnalizandoContent key={searchParams.toString()} tipo={tipo} valor={valor} />;
 }
 
 export default function AnalizandoPage() {
   return (
     <Suspense fallback={null}>
-      <AnalizandoContent />
+      <AnalizandoWrapper />
     </Suspense>
   );
 }
