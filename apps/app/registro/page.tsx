@@ -3,9 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, UserPlus, User, Mail, Lock } from "lucide-react";
+import { guardarUsuarioMock } from "@/lib/mock-usuario";
 
 export default function RegistroPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -49,7 +52,11 @@ export default function RegistroPage() {
     }
 
     setError("");
-    // lógica de registro va acá
+
+    // TODO: lógica de registro real (Firebase Auth + JWT) va acá.
+    // Por ahora simulamos una cuenta creada y logueamos directo.
+    guardarUsuarioMock({ nombre, email });
+    router.push("/dashboard");
   };
 
   return (

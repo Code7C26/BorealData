@@ -3,9 +3,16 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Shield } from "lucide-react";
+import {
+  obtenerUsuarioMock,
+  guardarUsuarioMock,
+  nombreDesdeEmail,
+} from "@/lib/mock-usuario";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +26,17 @@ export default function LoginPage() {
       return;
     }
     setError("");
-    // lógica de auth va acá
+
+    // TODO: lógica de auth real va acá. Por ahora simulamos login exitoso.
+    // Si ya existe un usuario mock guardado (por ejemplo, se registró antes
+    // en este navegador), lo respetamos. Si no, derivamos un nombre a
+    // partir del email para no mostrar siempre el mismo usuario fijo.
+    const existente = obtenerUsuarioMock();
+    if (!existente) {
+      guardarUsuarioMock({ nombre: nombreDesdeEmail(email), email });
+    }
+
+    router.push("/dashboard");
   };
 
   return (
@@ -160,3 +177,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

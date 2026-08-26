@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -222,7 +221,7 @@ function BotonesAccion({ tipo, valor }: { tipo: string; valor: string }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <Link
-        href="/"
+        href="/dashboard"
         className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue py-3 text-sm font-semibold text-ice shadow-lg shadow-blue/20 transition-all hover:bg-blue-light hover:text-navy"
       >
         <RotateCcw className="h-4 w-4" aria-hidden="true" />
@@ -240,33 +239,6 @@ function BotonesAccion({ tipo, valor }: { tipo: string; valor: string }) {
         Compartir resultado
       </button>
     </div>
-  );
-}
-
-function EncabezadoApp() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-navy/80 backdrop-blur-md">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-3">
-          <Image
-            src="/logoAletheia.png"
-            alt="AletheIA"
-            width={32}
-            height={32}
-            className="object-contain"
-          />
-          <span className="text-white font-bold text-sm tracking-widest uppercase">
-            AletheIA
-          </span>
-        </Link>
-        <Link
-          href="/"
-          className="text-sm font-medium text-muted-foreground transition-colors hover:text-ice"
-        >
-          Volver al inicio
-        </Link>
-      </nav>
-    </header>
   );
 }
 
@@ -481,19 +453,17 @@ function VistaError({ tipo, valor }: { tipo: string; valor: string }) {
   );
 }
 
-function ResultadoContent() {
-  const searchParams = useSearchParams();
-  const estadoParam = searchParams.get("estado") ?? "confiable";
-  const tipo = searchParams.get("tipo") ?? "url";
-  const valor = searchParams.get("valor") ?? "";
-
-  const estadoValido = ESTADOS_DISPONIBLES.some((e) => e.value === estadoParam)
-    ? estadoParam
-    : "confiable";
-
+function ResultadoContent({
+  estadoValido,
+  tipo,
+  valor,
+}: {
+  estadoValido: string;
+  tipo: string;
+  valor: string;
+}) {
   return (
-    <main className="min-h-screen bg-navy">
-      <EncabezadoApp />
+    <div className="min-h-screen">
       <DevStateSwitcher estadoActual={estadoValido} />
 
       {estadoValido === "insuficiente" ? (
@@ -507,14 +477,36 @@ function ResultadoContent() {
           valor={valor}
         />
       )}
-    </main>
+    </div>
+  );
+}
+
+function ResultadoWrapper() {
+  const searchParams = useSearchParams();
+  const estadoParam = searchParams.get("estado") ?? "confiable";
+  const tipo = searchParams.get("tipo") ?? "url";
+  const valor = searchParams.get("valor") ?? "";
+
+  const estadoValido = ESTADOS_DISPONIBLES.some((e) => e.value === estadoParam)
+    ? estadoParam
+    : "confiable";
+
+  // key = searchParams.toString() fuerza un remount completo cada vez que
+  // cambia el estado/tipo/valor, evitando que quede contenido viejo pegado.
+  return (
+    <ResultadoContent
+      key={searchParams.toString()}
+      estadoValido={estadoValido}
+      tipo={tipo}
+      valor={valor}
+    />
   );
 }
 
 export default function ResultadoPage() {
   return (
     <Suspense fallback={null}>
-      <ResultadoContent />
+      <ResultadoWrapper />
     </Suspense>
   );
 }

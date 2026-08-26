@@ -1,4 +1,4 @@
-
+import Link from 'next/link'
 
 export function Navbar() {
   return (
@@ -37,9 +37,12 @@ export function Navbar() {
           </a>
         </div>
 
-        <button className="rounded-lg bg-blue px-5 py-2 text-sm font-semibold text-ice shadow-lg shadow-blue/20 transition-all hover:bg-blue-light hover:text-navy hover:shadow-blue-light/30">
+        <Link
+          href="/login"
+          className="rounded-lg bg-blue px-5 py-2 text-sm font-semibold text-ice shadow-lg shadow-blue/20 transition-all hover:bg-blue-light hover:text-navy hover:shadow-blue-light/30"
+        >
           Iniciar sesión
-        </button>
+        </Link>
       </nav>
     </header>
   )
