@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS users (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   firebase_uid text NOT NULL UNIQUE,
   email        text,
+  full_name    text, -- nombre y apellido juntos, un solo campo (31-ago-2026). Nullable:
+                      -- se completa recién cuando el usuario pasa por POST /me (después
+                      -- del registro/login), no en el upsert automático de /analyze o
+                      -- /history, que solo conocen uid/email.
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
@@ -41,3 +45,9 @@ CREATE TABLE IF NOT EXISTS users (
 -- volvés a correr, va a tirar error de "constraint already exists" — ignorable.)
 ALTER TABLE analyses
   ADD CONSTRAINT analyses_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id);
+
+-- Columna `full_name` (31-ago-2026): si ya tenías `users` creada de antes (como en el
+-- Postgres local de Ciro), correr esto una vez para agregarla. `ADD COLUMN IF NOT EXISTS`
+-- sí existe en Postgres (a diferencia de ADD CONSTRAINT), así que es seguro re-correrlo.
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS full_name text;
