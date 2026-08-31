@@ -79,8 +79,22 @@ try {
     Write-Host "  $(Get-ErrorBody $_)" -ForegroundColor Red
 }
 
-Write-Host "`n5) POST /analyze con este mismo token, para generar un analisis real (puede tardar por el grounding de Gemini)..." -ForegroundColor Cyan
+Write-Host "`n5) POST /analyze SIN token (esperado: 401, ahora que /analyze exige login)..." -ForegroundColor Cyan
 $analyzeBody = @{ url = "https://es.wikipedia.org/wiki/Argentina" } | ConvertTo-Json
+try {
+    Invoke-RestMethod -Uri "$BaseUrl/analyze" -Method Post -Body $analyzeBody -ContentType "application/json"
+    Write-Host "  -> Respondio 200. Esto esta mal, deberia ser 401." -ForegroundColor Red
+} catch {
+    $status = $_.Exception.Response.StatusCode.value__
+    if ($status -eq 401) {
+        Write-Host "  -> Status 401. Correcto." -ForegroundColor Green
+    } else {
+        Write-Host "  -> Status $status (se esperaba 401)" -ForegroundColor Red
+        Write-Host "  $(Get-ErrorBody $_)" -ForegroundColor Red
+    }
+}
+
+Write-Host "`n6) POST /analyze CON token, para generar un analisis real (puede tardar por el grounding de Gemini)..." -ForegroundColor Cyan
 $analyzeOk = $false
 try {
     $analyzeResult = Invoke-RestMethod -Uri "$BaseUrl/analyze" -Method Post -Body $analyzeBody -ContentType "application/json" -Headers $headers
@@ -92,7 +106,7 @@ try {
 }
 
 if ($analyzeOk) {
-    Write-Host "`n6) GET /history de nuevo: deberia aparecer el analisis recien creado..." -ForegroundColor Cyan
+    Write-Host "`n7) GET /history de nuevo: deberia aparecer el analisis recien creado..." -ForegroundColor Cyan
     try {
         $history2 = Invoke-RestMethod -Uri "$BaseUrl/history" -Method Get -Headers $headers
         Write-Host "  -> Status 200. Cantidad de analisis: $($history2.analyses.Count)" -ForegroundColor Green
