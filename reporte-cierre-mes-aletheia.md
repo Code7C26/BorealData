@@ -20,10 +20,10 @@
 |---|---|
 | Scraper | Extracción de contenido con Cheerio + fallback automático a Puppeteer en sitios con JS |
 | IA (Gemini) | Análisis de veracidad con grounding (Google Search) — score, etiqueta, resumen, comparación afirmación vs. evidencia y fuentes reales |
-| Backend | `POST /analyze` — scraping + IA + guardado en base, probado end-to-end |
+| Backend | `POST /analyze` — scraping + IA + guardado en base, ahora con **login obligatorio**, probado end-to-end |
 | Backend | `GET /history` — historial paginado del usuario, probado end-to-end |
 | Backend | `GET /me` / `POST /me` — perfil de usuario (nombre y apellido) |
-| Autenticación | Firebase Auth integrado (Google + Email/Password), login opcional en `/analyze` y obligatorio en `/history` |
+| Autenticación | Firebase Auth integrado (Google + Email/Password), login **obligatorio** en `/analyze` y `/history` |
 | Base de datos | Postgres local funcionando end-to-end (tablas `analyses` y `users` con relación) |
 | Frontend Web | Base del proyecto Next.js armada |
 

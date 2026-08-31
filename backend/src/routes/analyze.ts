@@ -3,25 +3,32 @@ import { scrapeUrl } from "../scraper/scrapeUrl.js";
 import { analyzeContent } from "../gemini/analyzeContent.js";
 import { saveAnalysis } from "../db/analysesRepository.js";
 import { upsertUser } from "../db/usersRepository.js";
-import { attachUserIfPresent } from "../auth/verifyAuth.js";
+import { requireAuth } from "../auth/verifyAuth.js";
 
 const router = Router();
 
 /**
  * POST /analyze
  * Body: { "url": "https://..." }
- * Header opcional: Authorization: Bearer <Firebase ID token>
+ * Header obligatorio: Authorization: Bearer <Firebase ID token>
  *
- * Flujo: attachUserIfPresent (auth opcional) -> scrapeUrl() -> analyzeContent() ->
- * si hay usuario autenticado, upsertUser() para resolver su id interno -> guarda en
- * Cloud SQL -> responde con el resultado combinado. Solo se guardan los análisis
- * exitosos (200); si el guardado falla no se rompe la respuesta (ver saveAnalysis).
+ * Flujo: requireAuth (login obligatorio, corta con 401 si falta o el token es
+ * inválido/expiró) -> scrapeUrl() -> analyzeContent() -> upsertUser() para resolver el
+ * id interno del usuario -> guarda en Postgres -> responde con el resultado combinado.
+ * Solo se guardan los análisis exitosos (200); si el guardado falla no se rompe la
+ * respuesta (ver saveAnalysis).
  *
- * La autenticación es opcional a propósito: /analyze sigue funcionando sin login (ej.
- * desde la extensión), pero si viene un token válido el análisis queda asociado al
- * usuario (user_id). Para exigir login en una ruta, usar requireAuth en su lugar.
+ * Cambio de diseño (31-ago-2026): antes la auth era opcional acá (attachUserIfPresent),
+ * pensado para que la extensión pudiera analizar sin login. Se decidió requerir login
+ * para las dos superficies (web y extensión) — entre otras cosas, cada análisis gasta
+ * una llamada real a Gemini con grounding (costo real), y exigir cuenta ayuda a
+ * controlar el abuso. La extensión ahora tiene que resolver su propio flujo de login
+ * (ver "Ruta /analyze — Detalle Técnico" en el contexto del proyecto) antes de poder
+ * llamar a este endpoint. Este chequeo del lado del servidor es el que realmente
+ * importa: cualquier gate solo del lado del cliente (frontend/extensión) es únicamente
+ * UX, no seguridad — se puede saltear pegándole directo al backend.
  */
-router.post("/analyze", attachUserIfPresent, async (req: Request, res: Response) => {
+router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
   const { url } = req.body ?? {};
 
   if (!url || typeof url !== "string") {
@@ -52,7 +59,8 @@ router.post("/analyze", attachUserIfPresent, async (req: Request, res: Response)
       });
     }
 
-    const userId = req.user ? await upsertUser(req.user.uid, req.user.email) : null;
+    // req.user siempre existe acá: requireAuth ya cortó la request con 401 si no.
+    const userId = await upsertUser(req.user!.uid, req.user!.email);
     await saveAnalysis(scraped, analysis, userId);
 
     return res.status(200).json({

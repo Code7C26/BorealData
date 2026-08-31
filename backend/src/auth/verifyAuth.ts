@@ -14,10 +14,11 @@ function extractBearerToken(req: Request): string | null {
  * y, si es válido, adjunta `req.user`. NO bloquea la request si no hay token o si es
  * inválido — deja pasar como anónimo (`req.user` queda `undefined`).
  *
- * Decisión de diseño: /analyze sigue funcionando sin login (ej. desde la extensión, o
- * un usuario que todavía no inició sesión en la web), pero si viene un token válido el
- * análisis queda asociado a su user_id. Para una ruta que SÍ debe exigir login (ej. el
- * futuro GET /history), usar `requireAuth` en vez de este middleware.
+ * Sin uso actualmente (31-ago-2026): /analyze usaba este middleware para que la
+ * extensión pudiera analizar sin login, pero se decidió requerir login en todas las
+ * rutas (ver "Ruta /analyze — Detalle Técnico" en el contexto del proyecto) y ahora usa
+ * `requireAuth`. Se deja este middleware definido por si en el futuro aparece alguna
+ * ruta que sí necesite auth opcional.
  */
 export async function attachUserIfPresent(req: Request, _res: Response, next: NextFunction) {
   const token = extractBearerToken(req);
@@ -38,8 +39,8 @@ export async function attachUserIfPresent(req: Request, _res: Response, next: Ne
 
 /**
  * Exige un ID token de Firebase válido. Responde 401 si falta el header Authorization
- * o si el token es inválido/expiró. Pensado para rutas que necesitan un usuario
- * logueado sí o sí (ej. el futuro GET /history).
+ * o si el token es inválido/expiró. Usado en /analyze, /history y /me — todas las rutas
+ * del backend requieren login (31-ago-2026).
  */
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = extractBearerToken(req);
