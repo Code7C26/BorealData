@@ -111,29 +111,29 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
     : Math.min(95, Math.round((etapaActual / ETAPAS.length) * 100));
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <div className="relative isolate min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 py-12">
+      {/* El ambiente de fondo lo aporta el layout (sidebar.tsx) */}
 
       {/* Card */}
-      <div className="w-full max-w-lg bg-[#0D2037] border border-[#1A3A5C] rounded-2xl p-8">
-
+      <div className="auth-card max-w-lg animate-fade-up">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <span className="relative flex h-2 w-2">
-              <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-400" />
+              <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-light opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-light" />
             </span>
-            <span className="text-blue-400 text-xs tracking-widest uppercase">
+            <span className="text-blue-light text-xs tracking-widest uppercase">
               Analizando
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="font-serif text-2xl font-bold text-ice">
             Estamos verificando tu noticia
           </h1>
           {valor && (
-            <p className="text-[#4A7A9B] text-sm mt-1 truncate">
+            <p className="text-muted-foreground text-sm mt-1 truncate">
               {tipo === "url" ? "Fuente: " : "Texto: "}
-              <span className="text-[#7EB8DC]">{valor}</span>
+              <span className="text-ice/80">{valor}</span>
             </p>
           )}
         </div>
@@ -154,10 +154,10 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
                 <div
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     completada
-                      ? "border-[#1A6DB5] bg-[#1A6DB5] text-white"
+                      ? "border-blue bg-blue text-ice"
                       : activa
-                      ? "border-[#60B8F0] text-[#60B8F0] motion-safe:animate-pulse"
-                      : "border-[#1A3A5C] text-[#4A7A9B]"
+                      ? "border-blue-light text-blue-light motion-safe:animate-pulse"
+                      : "border-border text-muted-foreground"
                   }`}
                 >
                   {completada ? (
@@ -169,12 +169,12 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
                 <div className="pt-1">
                   <p
                     className={`text-sm font-semibold transition-colors ${
-                      completada || activa ? "text-white" : "text-[#4A7A9B]"
+                      completada || activa ? "text-ice" : "text-muted-foreground"
                     }`}
                   >
                     {etapa.titulo}
                   </p>
-                  <p className="text-[#4A7A9B] text-xs mt-0.5">
+                  <p className="text-muted-foreground text-xs mt-0.5">
                     {etapa.descripcion}
                   </p>
                 </div>
@@ -185,17 +185,17 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
 
         {/* Barra de progreso */}
         <div className="mt-8">
-          <div className="h-1.5 w-full rounded-full bg-[#0B1929] overflow-hidden">
+          <div className="h-1.5 w-full rounded-full bg-navy overflow-hidden">
             <div
-              className="h-full rounded-full bg-[#1A6DB5] transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-blue transition-all duration-500 ease-out"
               style={{ width: `${progreso}%` }}
             />
           </div>
-          <p className="text-[#4A7A9B] text-xs mt-2 text-right">
+          <p className="text-muted-foreground text-xs mt-2 text-right">
             {progreso}%
           </p>
           {esperandoRespuesta && (
-            <p className="text-[#4A7A9B] text-xs mt-2 text-center italic motion-safe:animate-pulse">
+            <p className="text-muted-foreground text-xs mt-2 text-center italic motion-safe:animate-pulse">
               Los artículos extensos pueden tardar un poco más — seguimos trabajando…
             </p>
           )}
@@ -203,7 +203,7 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
       </div>
 
       {/* Footer */}
-      <p className="text-[#4A7A9B] text-xs mt-8">
+      <p className="relative text-muted-foreground text-xs mt-8">
         © 2026 Boreal Data — AletheIA
       </p>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -16,6 +16,7 @@ import {
   SearchX,
   AlertOctagon,
   Quote,
+  ArrowLeft,
 } from "lucide-react";
 import { mapLabelToVeredicto, type AnalyzeResponse, type Veredicto } from "@/lib/api";
 import { leerResultado, type ResultadoGuardado } from "@/lib/resultado-storage";
@@ -57,12 +58,21 @@ const ICONO_VEREDICTO: Record<Veredicto, typeof CheckCircle2> = {
   no_verificable: HelpCircle,
 };
 
-function BotonesAccion() {
+function BotonesAccion({ desdeHistorial }: { desdeHistorial?: boolean }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
+      {desdeHistorial && (
+        <Link
+          href="/historial"
+          className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold text-ice transition-all hover:border-blue-light/50 sm:order-first sm:flex-none"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Volver al historial
+        </Link>
+      )}
       <Link
         href="/dashboard"
-        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue py-3 text-sm font-semibold text-ice shadow-lg shadow-blue/20 transition-all hover:bg-blue-light hover:text-navy"
+        className="btn-primary flex-1"
       >
         <RotateCcw className="h-4 w-4" aria-hidden="true" />
         Analizar otra noticia
@@ -85,9 +95,11 @@ function BotonesAccion() {
 function VistaVeredicto({
   resultado,
   fecha,
+  desdeHistorial,
 }: {
   resultado: AnalyzeResponse;
   fecha?: string;
+  desdeHistorial?: boolean;
 }) {
   const veredicto = mapLabelToVeredicto(resultado.label);
   const estilo = ESTILO_VEREDICTO[veredicto];
@@ -101,9 +113,9 @@ function VistaVeredicto({
     : null;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-12">
+    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-12 animate-fade-up">
       {/* Encabezado de la noticia */}
-      <div className="rounded-2xl border border-border bg-card p-8">
+      <div className="rounded-2xl border border-border bg-card p-8 transition-shadow hover:shadow-lg hover:shadow-navy/40">
         <h1 className="font-serif text-2xl font-bold leading-snug text-ice sm:text-3xl">
           {resultado.title || resultado.url}
         </h1>
@@ -138,7 +150,7 @@ function VistaVeredicto({
               <span>Nivel de confiabilidad</span>
               <span className="font-semibold">{resultado.score}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-[#0B1929] overflow-hidden">
+            <div className="h-2 w-full rounded-full bg-navy overflow-hidden">
               <div
                 className={`h-full rounded-full ${estilo.barra}`}
                 style={{ width: `${resultado.score}%` }}
@@ -249,12 +261,12 @@ function VistaVeredicto({
         </div>
       )}
 
-      <BotonesAccion />
+      <BotonesAccion desdeHistorial={desdeHistorial} />
     </div>
   );
 }
 
-function VistaInsuficiente() {
+function VistaInsuficiente({ desdeHistorial }: { desdeHistorial?: boolean }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-center px-6 py-20 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-card">
@@ -270,13 +282,13 @@ function VistaInsuficiente() {
         fuente original no está disponible.
       </p>
       <div className="mt-8 w-full">
-        <BotonesAccion />
+        <BotonesAccion desdeHistorial={desdeHistorial} />
       </div>
     </div>
   );
 }
 
-function VistaError() {
+function VistaError({ desdeHistorial }: { desdeHistorial?: boolean }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-center px-6 py-20 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/40 bg-red-900/20">
@@ -291,13 +303,13 @@ function VistaError() {
         intentarlo de nuevo en unos segundos.
       </p>
       <div className="mt-8 w-full">
-        <BotonesAccion />
+        <BotonesAccion desdeHistorial={desdeHistorial} />
       </div>
     </div>
   );
 }
 
-export default function ResultadoPage() {
+function ResultadoContent({ desdeHistorial }: { desdeHistorial: boolean }) {
   const router = useRouter();
   const [resultado, setResultado] = useState<ResultadoGuardado | null>();
 
@@ -318,12 +330,40 @@ export default function ResultadoPage() {
   return (
     <div className="min-h-screen">
       {resultado.status === "insuficiente" ? (
-        <VistaInsuficiente />
+        <VistaInsuficiente desdeHistorial={desdeHistorial} />
       ) : resultado.status === "error" || !resultado.data ? (
-        <VistaError />
+        <VistaError desdeHistorial={desdeHistorial} />
       ) : (
-        <VistaVeredicto resultado={resultado.data} fecha={resultado.fecha} />
+        <VistaVeredicto
+          resultado={resultado.data}
+          fecha={resultado.fecha}
+          desdeHistorial={desdeHistorial}
+        />
       )}
     </div>
+  );
+}
+
+function ResultadoWrapper() {
+  const searchParams = useSearchParams();
+
+  // key = searchParams.toString() fuerza un remount cada vez que cambia el
+  // identificador en la URL (ver sidebar/historial), aunque la ruta en sí
+  // sea siempre "/resultado" — sin esto, abrir un segundo análisis reciente
+  // mientras ya estás en /resultado no releía sessionStorage (Next no
+  // remonta si el pathname no cambia).
+  return (
+    <ResultadoContent
+      key={searchParams.toString()}
+      desdeHistorial={searchParams.get("from") === "historial"}
+    />
+  );
+}
+
+export default function ResultadoPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResultadoWrapper />
+    </Suspense>
   );
 }
