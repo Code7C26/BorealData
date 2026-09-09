@@ -1,0 +1,114 @@
+:root {
+  --bg: #0b1929;
+  --blue-primary: #1a6db5;
+  --accent: #60b8f0;
+  --text-title: #e8f4ff;
+  --text-secondary: #7eb8dc;
+  --text-muted: #4a7a9b;
+  --border: #1a3a5c;
+}
+
+.app {
+  width: 360px;
+  padding: 16px;
+  background: var(--bg);
+  color: var(--text-title);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.app-header {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.brand-ia {
+  color: var(--accent);
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.input {
+  width: 100%;
+  background: #0f2338;
+  color: var(--text-title);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.analyze-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--blue-primary);
+  color: var(--text-title);
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.analyze-btn:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.analyze-btn:not(:disabled):hover {
+  background: var(--accent);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.hint.tab-hint {
+  margin: -6px 0 10px;
+}
+
+.hint.kbd-hint {
+  margin: -6px 0 12px;
+}
+
+.result-error {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #e08585;
+}

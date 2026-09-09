@@ -1,5 +1,6 @@
-import { AlertTriangle, CheckCircle2, ExternalLink, RotateCcw, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, FileText, RotateCcw, XCircle } from 'lucide-react';
 import type { AnalysisResult, Verdict } from './types';
+import type { ExtractionInfo } from './App';
 import './ResultView.css';
 
 const VERDICT_CONFIG: Record<
@@ -26,15 +27,31 @@ const VERDICT_CONFIG: Record<
 interface ResultViewProps {
   result: AnalysisResult;
   analyzedLabel?: string;
+  extractionInfo?: ExtractionInfo;
   onReset: () => void;
+  onViewFull: () => void;
 }
 
-function ResultView({ result, analyzedLabel, onReset }: ResultViewProps) {
+function ResultView({
+  result,
+  analyzedLabel,
+  extractionInfo,
+  onReset,
+  onViewFull,
+}: ResultViewProps) {
   const { label, icon: Icon, className } = VERDICT_CONFIG[result.verdict];
 
   return (
-    <div className="result">
+    <div className="result result-enter">
       {analyzedLabel && <p className="analyzed-label">Análisis de: {analyzedLabel}</p>}
+      {extractionInfo && (
+        <p className="extraction-note">
+          <FileText size={12} />
+          {extractionInfo === 'unavailable'
+            ? 'Solo se pudo usar la URL: no se leyó el contenido de la página.'
+            : `Se incluyó el texto completo de la página (${extractionInfo.chars.toLocaleString('es-AR')} caracteres).`}
+        </p>
+      )}
       <div className={`verdict-badge ${className}`}>
         <Icon size={18} />
         <span>{label}</span>
@@ -42,7 +59,10 @@ function ResultView({ result, analyzedLabel, onReset }: ResultViewProps) {
 
       <div className="score-row">
         <div className="score-bar">
-          <div className="score-fill" style={{ width: `${result.score}%` }} />
+          <div
+            className={`score-fill ${className}`}
+            style={{ width: `${result.score}%` }}
+          />
         </div>
         <span className="score-label">{result.score}% de confianza</span>
       </div>
@@ -77,6 +97,11 @@ function ResultView({ result, analyzedLabel, onReset }: ResultViewProps) {
           </ul>
         </div>
       )}
+
+      <button className="view-full-btn" onClick={onViewFull}>
+        <ExternalLink size={14} />
+        Ver análisis completo
+      </button>
 
       <button className="reset-btn" onClick={onReset}>
         <RotateCcw size={14} />

@@ -1,7 +1,11 @@
 export default defineContentScript({
   // Tiene que matchear WXT_WEB_ORIGIN en apps/extension/.env — WXT resuelve
   // el manifest antes de bundlear, así que va literal (ver wxt.config.ts).
-  matches: ['http://localhost:3000/*'],
+  // Sin puerto: los match patterns de Chrome no lo soportan en el host (el
+  // puerto se ignora en el matching igual, pero incluirlo explícito hace que
+  // la API de registro dinámico de content scripts — la que usa WXT para el
+  // hot-reload en dev — tire InvalidMatchPattern).
+  matches: ['http://localhost/*'],
   main() {
     // La web (apps/lib/extension-bridge.ts) hace postMessage con la sesión
     // de Firebase cada vez que cambia (login, logout, refresh de token).

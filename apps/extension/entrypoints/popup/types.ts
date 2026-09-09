@@ -1,3 +1,13 @@
+export interface AuthUser {
+  name?: string;
+  email?: string;
+}
+
+export interface AuthState {
+  token: string;
+  user?: AuthUser;
+}
+
 export type Verdict = 'confiable' | 'dudoso' | 'falso';
 
 export interface AnalysisSource {

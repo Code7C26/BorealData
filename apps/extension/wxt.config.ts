@@ -26,4 +26,15 @@ export default defineConfig({
     // endpoint de refresh de Firebase quedaría sujeto a CORS del browser.
     host_permissions: [`${API_URL}/*`, 'https://securetoken.googleapis.com/*'],
   },
+  dev: {
+    server: {
+      // Por defecto WXT usa el primer puerto libre entre 3000 y 3010,
+      // pisando el 3000 de la web (Next.js) — en Windows "localhost"
+      // resuelve a la loopback IPv6 (::1), que WXT sí llega a bindear
+      // aunque Next.js ya tenga tomado el 3000 en IPv4/IPv6 wildcard,
+      // y el browser termina cayendo en el dev server de la extensión
+      // en vez de en la web. Puerto fijo, fuera del rango 3000-3010.
+      port: 3300,
+    },
+  },
 });
