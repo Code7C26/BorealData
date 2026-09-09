@@ -6,10 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import {
-  obtenerUsuarioMock,
-  guardarUsuarioMock,
-  nombreDesdeEmail,
-} from "@/lib/mock-usuario";
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { mensajeErrorFirebase } from "@/lib/firebase-errors";
+import { AuthRedirect } from "@/components/auth-redirect";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,29 +22,34 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Por favor completá todos los campos.");
       return;
     }
     setError("");
+    setEnviando(true);
 
-    // TODO: lógica de auth real va acá. Por ahora simulamos login exitoso.
-    // Si ya existe un usuario mock guardado (por ejemplo, se registró antes
-    // en este navegador), lo respetamos. Si no, derivamos un nombre a
-    // partir del email para no mostrar siempre el mismo usuario fijo.
-    const existente = obtenerUsuarioMock();
-    if (!existente) {
-      guardarUsuarioMock({ nombre: nombreDesdeEmail(email), email });
+    try {
+      await setPersistence(
+        auth,
+        remember ? browserLocalPersistence : browserSessionPersistence
+      );
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(mensajeErrorFirebase(err, "No pudimos iniciar sesión. Intentá de nuevo."));
+    } finally {
+      setEnviando(false);
     }
-
-    router.push("/dashboard");
   };
 
   return (
     <main className="min-h-screen bg-navy flex flex-col items-center justify-center px-4">
+      <AuthRedirect to="/dashboard" />
 
       {/* Logo */}
       <Link href="/" className="flex items-center gap-3 mb-10">
@@ -151,9 +160,10 @@ export default function LoginPage() {
           {/* Botón */}
           <button
             type="submit"
-            className="w-full bg-[#1A6DB5] hover:bg-[#1557A0] text-white font-medium py-3 rounded-lg text-sm transition-colors mt-2"
+            disabled={enviando}
+            className="w-full bg-[#1A6DB5] hover:bg-[#1557A0] disabled:opacity-60 text-white font-medium py-3 rounded-lg text-sm transition-colors mt-2"
           >
-            Iniciar sesión
+            {enviando ? "Iniciando sesión…" : "Iniciar sesión"}
           </button>
 
         </form>

@@ -55,4 +55,13 @@ export interface GeminiOptions {
   model?: string;
   /** Máximo de caracteres del texto que se manda en el prompt (recorta artículos muy largos). */
   maxInputChars?: number;
+  /**
+   * Timeout de la llamada HTTP a Gemini, en ms. El SDK no tiene timeout por
+   * default: sin esto, una llamada que Google nunca responde (o responde muy
+   * tarde con `googleSearch` + un prompt largo) deja la request de /analyze
+   * colgada para siempre. Artículos largos con búsqueda real pueden tardar
+   * bastante (probado: consistentemente por encima de 90s). Default: 180000
+   * (3 min).
+   */
+  timeoutMs?: number;
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -15,22 +15,8 @@ import {
   RotateCcw,
   Search,
 } from "lucide-react";
-import {
-  HistorialStateSwitcher,
-  VISTAS_DISPONIBLES,
-} from "@/components/historial-state-switcher";
-
-type Veredicto = "confiable" | "dudosa" | "desinformacion" | "no_verificable";
-
-type ItemHistorial = {
-  id: string;
-  titulo: string;
-  fecha: string;
-  fuente: string;
-  veredicto: Veredicto;
-  confianza: number;
-  resumen: string;
-};
+import { apiFetch, mapLabelToVeredicto, type HistoryItem, type Veredicto } from "@/lib/api";
+import { guardarResultadoDesdeHistorial } from "@/lib/resultado-storage";
 
 const ESTILO_VEREDICTO: Record<
   Veredicto,
@@ -66,78 +52,37 @@ const ESTILO_VEREDICTO: Record<
   },
 };
 
-// Mock — reemplazar por el historial real del backend cuando esté disponible.
-const HISTORIAL_MOCK: ItemHistorial[] = [
-  {
-    id: "1",
-    titulo: "El Banco Central anuncia una reducción en la tasa de interés de referencia",
-    fecha: "10 ago 2026",
-    fuente: "diarioeconomico-ejemplo.com",
-    veredicto: "confiable",
-    confianza: 92,
-    resumen:
-      "El artículo cita textualmente el comunicado oficial y coincide con tres fuentes independientes.",
-  },
-  {
-    id: "2",
-    titulo: "Un suplemento alimenticio viral promete triplicar la energía en 24 horas",
-    fecha: "9 ago 2026",
-    fuente: "blog-bienestar-ejemplo.com",
-    veredicto: "dudosa",
-    confianza: 54,
-    resumen:
-      "Mezcla testimonios reales con cifras de efectividad que no están respaldadas por estudios citables.",
-  },
-  {
-    id: "3",
-    titulo: "Circula una imagen que asegura que una vacuna fue retirada del mercado mundial",
-    fecha: "8 ago 2026",
-    fuente: "cadena-mensajes-ejemplo.com",
-    veredicto: "desinformacion",
-    confianza: 8,
-    resumen:
-      "La imagen fue editada a partir de un comunicado real de 2019 sobre un lote específico, no un retiro mundial.",
-  },
-  {
-    id: "4",
-    titulo: "Un usuario asegura haber presenciado un fenómeno inusual en un barrio de la ciudad",
-    fecha: "7 ago 2026",
-    fuente: "red-social-ejemplo.com",
-    veredicto: "no_verificable",
-    confianza: 31,
-    resumen:
-      "No existen fuentes independientes ni registros oficiales que confirmen o desmientan el hecho relatado.",
-  },
-  {
-    id: "5",
-    titulo: "Nueva normativa vial entrará en vigencia el próximo mes según fuentes oficiales",
-    fecha: "5 ago 2026",
-    fuente: "gobierno-ejemplo.gob",
-    veredicto: "confiable",
-    confianza: 88,
-    resumen:
-      "El boletín oficial confirma la fecha y el contenido exacto de la normativa mencionada.",
-  },
-  {
-    id: "6",
-    titulo: "Video muestra supuesto avistamiento que se viralizó en redes esta semana",
-    fecha: "3 ago 2026",
-    fuente: "clips-virales-ejemplo.com",
-    veredicto: "dudosa",
-    confianza: 46,
-    resumen:
-      "El video original no incluye la ubicación ni fecha verificable, y fue reeditado varias veces.",
-  },
-];
+function hostnameDe(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
 
-function TarjetaHistorial({ item }: { item: ItemHistorial }) {
-  const estilo = ESTILO_VEREDICTO[item.veredicto];
+function formatearFecha(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-AR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function TarjetaHistorial({ item }: { item: HistoryItem }) {
+  const router = useRouter();
+  const veredicto = mapLabelToVeredicto(item.label);
+  const estilo = ESTILO_VEREDICTO[veredicto];
   const Icon = estilo.icon;
 
+  const abrir = () => {
+    guardarResultadoDesdeHistorial(item);
+    router.push("/resultado");
+  };
+
   return (
-    <Link
-      href={`/resultado?estado=${item.veredicto}`}
-      className="flex flex-col rounded-2xl border border-border bg-card p-6 transition-colors hover:border-blue-light/50"
+    <button
+      onClick={abrir}
+      className="flex flex-col rounded-2xl border border-border bg-card p-6 text-left transition-colors hover:border-blue-light/50"
     >
       <div className="flex items-center justify-between gap-3">
         <span
@@ -147,39 +92,29 @@ function TarjetaHistorial({ item }: { item: ItemHistorial }) {
           {estilo.label}
         </span>
         <span className="text-xs font-semibold text-muted-foreground">
-          {item.confianza}%
+          {item.score}%
         </span>
       </div>
 
       <h3 className="mt-4 line-clamp-2 font-serif text-base font-bold leading-snug text-ice">
-        {item.titulo}
+        {item.title ?? item.url}
       </h3>
 
       <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-        {item.resumen}
+        {item.summary ?? ""}
       </p>
 
       <div className="mt-4 flex items-center gap-4 border-t border-border/60 pt-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-          {item.fecha}
+          {formatearFecha(item.createdAt)}
         </span>
         <span className="flex min-w-0 items-center gap-1.5">
           <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">{item.fuente}</span>
+          <span className="truncate">{hostnameDe(item.url)}</span>
         </span>
       </div>
-    </Link>
-  );
-}
-
-function VistaConContenido() {
-  return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {HISTORIAL_MOCK.map((item) => (
-        <TarjetaHistorial key={item.id} item={item} />
-      ))}
-    </div>
+    </button>
   );
 }
 
@@ -227,7 +162,7 @@ function VistaCargando() {
   );
 }
 
-function VistaErrorHistorial() {
+function VistaErrorHistorial({ onReintentar }: { onReintentar: () => void }) {
   return (
     <div className="flex flex-col items-center px-6 py-20 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/40 bg-red-900/20">
@@ -240,18 +175,37 @@ function VistaErrorHistorial() {
         Hubo un problema de conexión con el servidor. Probá de nuevo en unos
         segundos.
       </p>
-      <Link
-        href="/historial"
+      <button
+        onClick={onReintentar}
         className="mt-8 flex items-center gap-2 rounded-lg bg-blue px-5 py-3 text-sm font-semibold text-ice shadow-lg shadow-blue/20 transition-all hover:bg-blue-light hover:text-navy"
       >
         <RotateCcw className="h-4 w-4" aria-hidden="true" />
         Reintentar
-      </Link>
+      </button>
     </div>
   );
 }
 
-function HistorialInner({ vista }: { vista: string }) {
+type Estado = "cargando" | "error" | "listo";
+
+export default function HistorialPage() {
+  const [estado, setEstado] = useState<Estado>("cargando");
+  const [analyses, setAnalyses] = useState<HistoryItem[]>([]);
+
+  const cargar = () => {
+    setEstado("cargando");
+    apiFetch<{ analyses: HistoryItem[] }>("/history")
+      .then((res) => {
+        setAnalyses(res.analyses);
+        setEstado("listo");
+      })
+      .catch(() => setEstado("error"));
+  };
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="mb-8">
@@ -264,39 +218,19 @@ function HistorialInner({ vista }: { vista: string }) {
         </p>
       </div>
 
-      {vista === "vacio" ? (
-        <VistaVacia />
-      ) : vista === "cargando" ? (
+      {estado === "cargando" ? (
         <VistaCargando />
-      ) : vista === "error" ? (
-        <VistaErrorHistorial />
+      ) : estado === "error" ? (
+        <VistaErrorHistorial onReintentar={cargar} />
+      ) : analyses.length === 0 ? (
+        <VistaVacia />
       ) : (
-        <VistaConContenido />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {analyses.map((item) => (
+            <TarjetaHistorial key={item.id} item={item} />
+          ))}
+        </div>
       )}
     </div>
-  );
-}
-
-function HistorialWrapper() {
-  const searchParams = useSearchParams();
-  const vistaParam = searchParams.get("vista") ?? "contenido";
-  const vistaValida = VISTAS_DISPONIBLES.some((v) => v.value === vistaParam)
-    ? vistaParam
-    : "contenido";
-
-  return (
-    <>
-      <HistorialStateSwitcher vistaActual={vistaValida} />
-      {/* key fuerza remount al cambiar de vista, mismo fix que /analizando y /resultado */}
-      <HistorialInner key={vistaValida} vista={vistaValida} />
-    </>
-  );
-}
-
-export default function HistorialPage() {
-  return (
-    <Suspense fallback={null}>
-      <HistorialWrapper />
-    </Suspense>
   );
 }

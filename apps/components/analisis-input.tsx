@@ -10,7 +10,7 @@ export function AnalisisInput() {
   const [value, setValue] = useState('')
 
   const handleAnalyze = () => {
-    if (!value.trim()) return
+    if (mode !== 'url' || !value.trim()) return
     router.push(`/analizando?tipo=${mode}&valor=${encodeURIComponent(value.trim())}`)
   }
 
@@ -60,20 +60,26 @@ export function AnalisisInput() {
             aria-label="URL de la noticia"
           />
         ) : (
-          <textarea
-            rows={4}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="Pegá aquí el texto de la noticia que querés verificar..."
-            className="w-full resize-none rounded-lg border border-border bg-navy px-4 py-3 text-ice placeholder:text-muted-foreground/70 focus:border-blue-light focus:outline-none focus:ring-2 focus:ring-blue-light/40"
-            aria-label="Texto de la noticia"
-          />
+          <>
+            <p className="mb-2 text-sm text-amber-300/90">
+              Disponible próximamente — por ahora AletheIA solo analiza URLs.
+            </p>
+            <textarea
+              rows={4}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="Pegá aquí el texto de la noticia que querés verificar..."
+              disabled
+              className="w-full resize-none cursor-not-allowed rounded-lg border border-border bg-navy px-4 py-3 text-ice/60 placeholder:text-muted-foreground/70 focus:outline-none"
+              aria-label="Texto de la noticia"
+            />
+          </>
         )}
       </div>
 
       <button
         onClick={handleAnalyze}
-        disabled={!value.trim()}
+        disabled={mode !== 'url' || !value.trim()}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue py-3.5 text-base font-semibold text-ice shadow-lg shadow-blue/30 transition-all hover:bg-blue-light hover:text-navy hover:shadow-blue-light/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue disabled:hover:text-ice disabled:hover:shadow-blue/30"
       >
         <Search className="h-5 w-5" aria-hidden="true" />

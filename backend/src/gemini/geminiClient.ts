@@ -9,6 +9,7 @@ import type {
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_MAX_INPUT_CHARS = 12000;
+const DEFAULT_TIMEOUT_MS = 180_000;
 
 const VALID_LABELS: VeracityLabel[] = [
   "verdadero",
@@ -190,6 +191,7 @@ export async function callGemini(
 ): Promise<AnalysisResult> {
   const model = options.model ?? DEFAULT_MODEL;
   const maxInputChars = options.maxInputChars ?? DEFAULT_MAX_INPUT_CHARS;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const truncatedText =
     text.length > maxInputChars ? text.slice(0, maxInputChars) : text;
 
@@ -200,11 +202,16 @@ export async function callGemini(
     // (la API de Gemini devuelve 400 si se combinan, y además si se combinaran
     // groundingChunks/groundingSupports vienen vacíos igual). Por eso el JSON se
     // pide por prompt, envuelto en un bloque ```json, y se extrae en parseGeminiResponse.
+    //
+    // httpOptions.timeout: el SDK no tiene timeout por default — sin esto, una
+    // request que Google nunca responde (visto en la práctica con artículos
+    // largos + googleSearch) deja /analyze colgado para siempre.
     const response = await ai.models.generateContent({
       model,
       contents: buildPrompt(title, truncatedText),
       config: {
         tools: [{ googleSearch: {} }],
+        httpOptions: { timeout: timeoutMs },
       },
     });
 
