@@ -3,50 +3,62 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, Check } from "lucide-react";
 import {
-  obtenerUsuarioMock,
-  guardarUsuarioMock,
-  USUARIO_POR_DEFECTO,
-  iniciales,
-  type UsuarioMock,
-} from "@/lib/mock-usuario";
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
+  updateProfile,
+} from "firebase/auth";
+import { useAuth } from "@/lib/auth-context";
+import { apiFetch } from "@/lib/api";
+import { mensajeErrorFirebase } from "@/lib/firebase-errors";
+import { iniciales } from "@/lib/usuario";
 import { CerrarSesionBoton } from "@/components/cerrar-sesion-boton";
 
 export default function PerfilPage() {
-  const [usuario, setUsuario] = useState<UsuarioMock>(USUARIO_POR_DEFECTO);
+  const { user, profile, refreshProfile } = useAuth();
   const [nombre, setNombre] = useState("");
-  const [email, setEmail] = useState("");
   const [guardado, setGuardado] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorInfo, setErrorInfo] = useState("");
+
+  const email = user?.email ?? "";
+  const nombreMostrado = profile?.fullName || user?.displayName || email;
 
   useEffect(() => {
-    const actual = obtenerUsuarioMock() ?? USUARIO_POR_DEFECTO;
-    setUsuario(actual);
-    setNombre(actual.nombre);
-    setEmail(actual.email);
-  }, []);
+    setNombre(profile?.fullName || user?.displayName || "");
+  }, [profile, user]);
 
-  const handleGuardarInfo = (e: React.FormEvent) => {
+  const handleGuardarInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    const actualizado: UsuarioMock = {
-      nombre: nombre.trim() || usuario.nombre,
-      email: email.trim() || usuario.email,
-    };
-    // TODO: actualizar usuario real en backend va acá.
-    guardarUsuarioMock(actualizado);
-    setUsuario(actualizado);
-    setGuardado(true);
-    setTimeout(() => setGuardado(false), 2500);
+    const nombreLimpio = nombre.trim();
+    if (!nombreLimpio) return;
+
+    setErrorInfo("");
+    setGuardando(true);
+    try {
+      await apiFetch("/me", { method: "POST", body: { fullName: nombreLimpio } });
+      if (user) await updateProfile(user, { displayName: nombreLimpio });
+      await refreshProfile();
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2500);
+    } catch (err) {
+      setErrorInfo(mensajeErrorFirebase(err, "No pudimos guardar los cambios. Intentá de nuevo."));
+    } finally {
+      setGuardando(false);
+    }
   };
 
-  // --- Cambiar contraseña (mock, sin backend) ---
+  // --- Cambiar contraseña ---
   const [showActual, setShowActual] = useState(false);
   const [showNueva, setShowNueva] = useState(false);
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirmar, setPassConfirmar] = useState("");
   const [errorPass, setErrorPass] = useState("");
+  const [cambiandoPass, setCambiandoPass] = useState(false);
   const [passActualizada, setPassActualizada] = useState(false);
 
-  const handleCambiarPassword = (e: React.FormEvent) => {
+  const handleCambiarPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passActual || !passNueva || !passConfirmar) {
       setErrorPass("Completá todos los campos.");
@@ -60,13 +72,27 @@ export default function PerfilPage() {
       setErrorPass("Las contraseñas nuevas no coinciden.");
       return;
     }
+    if (!user || !user.email) {
+      setErrorPass("No pudimos identificar tu cuenta. Volvé a iniciar sesión.");
+      return;
+    }
+
     setErrorPass("");
-    // TODO: cambio de contraseña real (Firebase Auth) va acá.
-    setPassActual("");
-    setPassNueva("");
-    setPassConfirmar("");
-    setPassActualizada(true);
-    setTimeout(() => setPassActualizada(false), 2500);
+    setCambiandoPass(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, passActual);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, passNueva);
+      setPassActual("");
+      setPassNueva("");
+      setPassConfirmar("");
+      setPassActualizada(true);
+      setTimeout(() => setPassActualizada(false), 2500);
+    } catch (err) {
+      setErrorPass(mensajeErrorFirebase(err, "No pudimos actualizar la contraseña. Intentá de nuevo."));
+    } finally {
+      setCambiandoPass(false);
+    }
   };
 
   return (
@@ -81,14 +107,14 @@ export default function PerfilPage() {
       {/* Avatar + resumen */}
       <div className="mt-8 flex items-center gap-4 rounded-2xl border border-border bg-card p-6">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#1A6DB5] text-lg font-semibold text-white">
-          {iniciales(usuario.nombre)}
+          {iniciales(nombreMostrado)}
         </div>
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold text-ice">
-            {usuario.nombre}
+            {nombreMostrado}
           </p>
           <p className="truncate text-sm text-muted-foreground">
-            {usuario.email}
+            {email}
           </p>
         </div>
       </div>
@@ -98,6 +124,13 @@ export default function PerfilPage() {
         <h2 className="font-serif text-lg font-bold text-ice">
           Información personal
         </h2>
+
+        {errorInfo && (
+          <div className="bg-red-900/30 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-lg mt-4">
+            {errorInfo}
+          </div>
+        )}
+
         <form onSubmit={handleGuardarInfo} className="mt-5 flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
             <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
@@ -117,16 +150,20 @@ export default function PerfilPage() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-[#0B1929] border border-[#1A3A5C] rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#1A6DB5] transition-colors"
+              disabled
+              className="bg-[#0B1929] border border-[#1A3A5C] rounded-lg px-4 py-3 text-sm text-white/60 outline-none cursor-not-allowed"
             />
+            <p className="text-xs text-[#4A7A9B]">
+              El email de tu cuenta no se puede cambiar desde acá.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              className="rounded-lg bg-[#1A6DB5] hover:bg-[#1557A0] text-white font-medium px-5 py-2.5 text-sm transition-colors"
+              disabled={guardando}
+              className="rounded-lg bg-[#1A6DB5] hover:bg-[#1557A0] disabled:opacity-60 text-white font-medium px-5 py-2.5 text-sm transition-colors"
             >
-              Guardar cambios
+              {guardando ? "Guardando…" : "Guardar cambios"}
             </button>
             {guardado && (
               <span className="flex items-center gap-1.5 text-sm text-emerald-400">
@@ -214,9 +251,10 @@ export default function PerfilPage() {
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              className="rounded-lg bg-[#1A6DB5] hover:bg-[#1557A0] text-white font-medium px-5 py-2.5 text-sm transition-colors"
+              disabled={cambiandoPass}
+              className="rounded-lg bg-[#1A6DB5] hover:bg-[#1557A0] disabled:opacity-60 text-white font-medium px-5 py-2.5 text-sm transition-colors"
             >
-              Actualizar contraseña
+              {cambiandoPass ? "Actualizando…" : "Actualizar contraseña"}
             </button>
             {passActualizada && (
               <span className="flex items-center gap-1.5 text-sm text-emerald-400">

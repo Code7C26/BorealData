@@ -5,7 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, UserPlus, User, Mail, Lock } from "lucide-react";
-import { guardarUsuarioMock } from "@/lib/mock-usuario";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { apiFetch } from "@/lib/api";
+import { mensajeErrorFirebase } from "@/lib/firebase-errors";
+import { AuthRedirect } from "@/components/auth-redirect";
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -19,11 +23,12 @@ export default function RegistroPage() {
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
 
   const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
   const emailValido = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!nombre || !email || !password || !confirmPassword) {
@@ -52,15 +57,23 @@ export default function RegistroPage() {
     }
 
     setError("");
+    setEnviando(true);
 
-    // TODO: lógica de registro real (Firebase Auth + JWT) va acá.
-    // Por ahora simulamos una cuenta creada y logueamos directo.
-    guardarUsuarioMock({ nombre, email });
-    router.push("/dashboard");
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(credential.user, { displayName: nombre.trim() });
+      await apiFetch("/me", { method: "POST", body: { fullName: nombre.trim() } });
+      router.push("/dashboard");
+    } catch (err) {
+      setError(mensajeErrorFirebase(err, "No pudimos crear la cuenta. Intentá de nuevo."));
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-navy flex flex-col items-center justify-center px-4 py-12">
+      <AuthRedirect to="/dashboard" />
 
       {/* Logo */}
       <Link href="/" className="flex items-center gap-3 mb-10">
@@ -234,9 +247,10 @@ export default function RegistroPage() {
           {/* Botón */}
           <button
             type="submit"
-            className="w-full bg-[#1A6DB5] hover:bg-[#1557A0] text-white font-medium py-3 rounded-lg text-sm transition-colors mt-2"
+            disabled={enviando}
+            className="w-full bg-[#1A6DB5] hover:bg-[#1557A0] disabled:opacity-60 text-white font-medium py-3 rounded-lg text-sm transition-colors mt-2"
           >
-            Crear cuenta
+            {enviando ? "Creando cuenta…" : "Crear cuenta"}
           </button>
 
         </form>
