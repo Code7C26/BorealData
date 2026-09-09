@@ -1,0 +1,6 @@
+/node_modules
+.env
+gcp-key.json
+ 
+claude.md
+ 

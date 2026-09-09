@@ -2,17 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
-import { cerrarSesionMock } from "@/lib/mock-usuario";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export function CerrarSesionBoton() {
   const router = useRouter();
 
-  const handleClick = () => {
+  const handleClick = async () => {
     const confirmado = window.confirm("¿Seguro que querés cerrar sesión?");
     if (!confirmado) return;
 
-    // TODO: cerrar sesión real (Firebase Auth) va acá.
-    cerrarSesionMock();
+    await signOut(auth);
     router.push("/");
   };
 

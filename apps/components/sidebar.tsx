@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Plus,
   History,
@@ -14,44 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import {
-  obtenerUsuarioMock,
-  USUARIO_POR_DEFECTO,
-  iniciales,
-  type UsuarioMock,
-} from "@/lib/mock-usuario";
-
-type Veredicto = "confiable" | "dudosa" | "desinformacion" | "no_verificable";
-
-type AnalisisReciente = {
-  id: string;
-  titulo: string;
-  veredicto: Veredicto;
-};
-
-// Mock — reemplazar por datos reales del backend cuando esté disponible.
-const ANALISIS_RECIENTES: AnalisisReciente[] = [
-  {
-    id: "1",
-    titulo: "Banco Central anuncia baja de tasas de interés",
-    veredicto: "confiable",
-  },
-  {
-    id: "2",
-    titulo: "Suplemento viral promete triplicar la energía",
-    veredicto: "dudosa",
-  },
-  {
-    id: "3",
-    titulo: "Imagen sobre retiro mundial de una vacuna",
-    veredicto: "desinformacion",
-  },
-  {
-    id: "4",
-    titulo: "Fenómeno inusual reportado en un barrio",
-    veredicto: "no_verificable",
-  },
-];
+import { useAuth } from "@/lib/auth-context";
+import { iniciales } from "@/lib/usuario";
+import { apiFetch, mapLabelToVeredicto, type HistoryItem, type Veredicto } from "@/lib/api";
+import { guardarResultadoDesdeHistorial } from "@/lib/resultado-storage";
 
 const PUNTO_VEREDICTO: Record<Veredicto, string> = {
   confiable: "bg-emerald-400",
@@ -71,14 +37,25 @@ const COLAPSO_STORAGE_KEY = "aletheia_sidebar_colapsada";
 
 function ContenidoSidebar({
   colapsada,
-  usuario,
+  nombre,
+  email,
+  recientes,
   onNavigate,
 }: {
   colapsada: boolean;
-  usuario: UsuarioMock;
+  nombre: string;
+  email: string;
+  recientes: HistoryItem[];
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const abrirReciente = (item: HistoryItem) => {
+    guardarResultadoDesdeHistorial(item);
+    onNavigate?.();
+    router.push("/resultado");
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -116,15 +93,15 @@ function ContenidoSidebar({
           }`}
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1A6DB5] text-xs font-semibold text-white">
-            {iniciales(usuario.nombre)}
+            {iniciales(nombre)}
           </div>
           {!colapsada && (
             <div className="flex min-w-0 flex-col leading-tight">
               <span className="truncate text-sm font-medium text-white">
-                {usuario.nombre}
+                {nombre}
               </span>
               <span className="truncate text-xs text-[#4A7A9B]">
-                {usuario.email}
+                {email}
               </span>
             </div>
           )}
@@ -151,19 +128,27 @@ function ContenidoSidebar({
             Recientes
           </p>
           <div className="mt-2 flex-1 space-y-1 overflow-y-auto">
-            {ANALISIS_RECIENTES.map((analisis) => (
-              <Link
-                key={analisis.id}
-                href={`/resultado?estado=${analisis.veredicto}`}
-                onClick={onNavigate}
-                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-[#7EB8DC] transition-colors hover:bg-[#0D2037] hover:text-white"
-              >
-                <span
-                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${PUNTO_VEREDICTO[analisis.veredicto]}`}
-                />
-                <span className="truncate">{analisis.titulo}</span>
-              </Link>
-            ))}
+            {recientes.length === 0 ? (
+              <p className="px-1 py-2 text-sm text-[#4A7A9B]">
+                Todavía no tenés análisis recientes.
+              </p>
+            ) : (
+              recientes.map((item) => {
+                const veredicto = mapLabelToVeredicto(item.label);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => abrirReciente(item)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-[#7EB8DC] transition-colors hover:bg-[#0D2037] hover:text-white"
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${PUNTO_VEREDICTO[veredicto]}`}
+                    />
+                    <span className="truncate">{item.title ?? item.url}</span>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
       )}
@@ -204,15 +189,24 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
   const [mobileAbierto, setMobileAbierto] = useState(false);
   const [colapsada, setColapsada] = useState(false);
   const [listo, setListo] = useState(false);
-  const [usuario, setUsuario] = useState<UsuarioMock>(USUARIO_POR_DEFECTO);
+  const [recientes, setRecientes] = useState<HistoryItem[]>([]);
   const pathname = usePathname();
+  const { user, profile } = useAuth();
 
-  // Carga preferencia de colapso + usuario mock una vez montado (localStorage es client-only)
+  const nombre = profile?.fullName || user?.displayName || user?.email?.split("@")[0] || "Usuario";
+  const email = user?.email ?? "";
+
+  // Carga preferencia de colapso una vez montado (localStorage es client-only)
   useEffect(() => {
     const guardada = window.localStorage.getItem(COLAPSO_STORAGE_KEY);
     if (guardada === "true") setColapsada(true);
-    setUsuario(obtenerUsuarioMock() ?? USUARIO_POR_DEFECTO);
     setListo(true);
+  }, []);
+
+  useEffect(() => {
+    apiFetch<{ analyses: HistoryItem[] }>("/history?limit=4")
+      .then((res) => setRecientes(res.analyses))
+      .catch(() => setRecientes([]));
   }, []);
 
   useEffect(() => {
@@ -264,7 +258,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
           colapsada ? "lg:w-[76px]" : "lg:w-72"
         }`}
       >
-        <ContenidoSidebar colapsada={colapsada} usuario={usuario} />
+        <ContenidoSidebar colapsada={colapsada} nombre={nombre} email={email} recientes={recientes} />
 
         {/* Toggle colapsar/expandir */}
         <button
@@ -294,7 +288,9 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
             </button>
             <ContenidoSidebar
               colapsada={false}
-              usuario={usuario}
+              nombre={nombre}
+              email={email}
+              recientes={recientes}
               onNavigate={() => setMobileAbierto(false)}
             />
           </aside>

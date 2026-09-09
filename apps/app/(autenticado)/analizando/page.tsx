@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileSearch,
@@ -9,6 +9,8 @@ import {
   Sparkles,
   Check,
 } from "lucide-react";
+import { apiFetch, ApiError, type AnalyzeResponse } from "@/lib/api";
+import { guardarResultado, type ResultadoGuardado } from "@/lib/resultado-storage";
 
 const ETAPAS = [
   {
@@ -38,28 +40,75 @@ const DURACION_POR_ETAPA_MS = 1800;
 function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
   const router = useRouter();
   const [etapaActual, setEtapaActual] = useState(0);
+  const [respuestaLista, setRespuestaLista] = useState(false);
+  const resultadoRef = useRef<ResultadoGuardado | null>(null);
+  const iniciadoRef = useRef(false);
 
+  // Dispara el análisis real una única vez (el ref evita el doble fetch que
+  // provoca React Strict Mode en dev al montar el efecto dos veces — acá
+  // importa de verdad porque cada llamada gasta una consulta real a Gemini).
   useEffect(() => {
-    if (etapaActual >= ETAPAS.length) {
-      const timeout = setTimeout(() => {
-        router.push(
-          `/resultado?tipo=${tipo}&valor=${encodeURIComponent(valor)}`
-        );
-      }, 500);
-      return () => clearTimeout(timeout);
+    if (iniciadoRef.current) return;
+    iniciadoRef.current = true;
+
+    if (tipo !== "url" || !valor) {
+      resultadoRef.current = { status: "error", tipo, valor };
+      setRespuestaLista(true);
+      return;
     }
 
+    apiFetch<AnalyzeResponse>("/analyze", { method: "POST", body: { url: valor } })
+      .then((data) => {
+        resultadoRef.current = {
+          status: "ok",
+          tipo,
+          valor,
+          data,
+          fecha: new Date().toISOString(),
+        };
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          router.replace("/login");
+          return;
+        }
+        const status = err instanceof ApiError && err.status === 422 ? "insuficiente" : "error";
+        resultadoRef.current = {
+          status,
+          tipo,
+          valor,
+          mensaje: err instanceof Error ? err.message : undefined,
+        };
+      })
+      .finally(() => setRespuestaLista(true));
+  }, [tipo, valor, router]);
+
+  // Animación de etapas — puramente visual, se detiene en la última.
+  useEffect(() => {
+    if (etapaActual >= ETAPAS.length) return;
     const timeout = setTimeout(() => {
       setEtapaActual((prev) => prev + 1);
     }, DURACION_POR_ETAPA_MS);
-
     return () => clearTimeout(timeout);
-  }, [etapaActual, router, tipo, valor]);
+  }, [etapaActual]);
 
-  const progreso = Math.min(
-    100,
-    Math.round((etapaActual / ETAPAS.length) * 100)
-  );
+  // Recién navega cuando terminó la animación Y ya llegó la respuesta real.
+  useEffect(() => {
+    if (etapaActual < ETAPAS.length || !respuestaLista || !resultadoRef.current) return;
+    guardarResultado(resultadoRef.current);
+    const timeout = setTimeout(() => router.push("/resultado"), 400);
+    return () => clearTimeout(timeout);
+  }, [etapaActual, respuestaLista, router]);
+
+  // Artículos largos con búsqueda real pueden tardar bastante más que la
+  // animación de 4 etapas (hasta 90s, ver timeout de Gemini en el backend).
+  // Por eso el progreso nunca llega a "100%" hasta que la respuesta real
+  // está lista — mostrar 100% antes de tiempo hace que la pantalla parezca
+  // trabada cuando en realidad sigue esperando al backend.
+  const esperandoRespuesta = etapaActual >= ETAPAS.length && !respuestaLista;
+  const progreso = respuestaLista
+    ? 100
+    : Math.min(95, Math.round((etapaActual / ETAPAS.length) * 100));
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
@@ -92,9 +141,13 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
         {/* Etapas */}
         <div className="flex flex-col gap-5">
           {ETAPAS.map((etapa, index) => {
+            const esUltima = index === ETAPAS.length - 1;
             const Icon = etapa.icon;
-            const completada = index < etapaActual;
-            const activa = index === etapaActual;
+            // La última etapa se queda "activa" (no completada) mientras
+            // seguimos esperando la respuesta real, en vez de mostrar un
+            // check prematuro.
+            const completada = esUltima ? respuestaLista : index < etapaActual;
+            const activa = esUltima ? esperandoRespuesta || index === etapaActual : index === etapaActual;
 
             return (
               <div key={etapa.titulo} className="flex items-start gap-4">
@@ -141,6 +194,11 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
           <p className="text-[#4A7A9B] text-xs mt-2 text-right">
             {progreso}%
           </p>
+          {esperandoRespuesta && (
+            <p className="text-[#4A7A9B] text-xs mt-2 text-center italic motion-safe:animate-pulse">
+              Los artículos extensos pueden tardar un poco más — seguimos trabajando…
+            </p>
+          )}
         </div>
       </div>
 

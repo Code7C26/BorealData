@@ -24,3 +24,25 @@ export interface AnalysisResult {
   signals: string[];
   sources: AnalysisSource[];
 }
+
+/** Mismos labels que backend/src/gemini/types.ts (VeracityLabel). */
+export type BackendVeracityLabel =
+  | 'verdadero'
+  | 'mayormente_verdadero'
+  | 'mixto'
+  | 'mayormente_falso'
+  | 'falso'
+  | 'no_verificable';
+
+/** Respuesta 200 real de POST /analyze (backend/src/routes/analyze.ts). */
+export interface BackendAnalyzeResponse {
+  url: string;
+  title: string;
+  score: number;
+  label: BackendVeracityLabel;
+  summary: string;
+  explanation: string;
+  claimVsEvidence: string;
+  sources: { title: string; url: string | null; stance: string; note: string }[];
+  toneFlags: string[];
+}

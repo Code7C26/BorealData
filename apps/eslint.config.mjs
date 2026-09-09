@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // apps/extension es un proyecto WXT aparte, con su propio lint/tsconfig.
+    "extension/**",
   ]),
 ]);
 

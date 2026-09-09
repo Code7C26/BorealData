@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { AnalisisInput } from "@/components/analisis-input";
 import { BarChart3, ShieldCheck, Link2, Lightbulb } from "lucide-react";
-import {
-  obtenerUsuarioMock,
-  USUARIO_POR_DEFECTO,
-  type UsuarioMock,
-} from "@/lib/mock-usuario";
+import { useAuth } from "@/lib/auth-context";
 
 // Mock — reemplazar por datos reales del backend cuando esté disponible.
 const ESTADISTICAS = [
@@ -20,13 +15,10 @@ const TIP_DEL_DIA =
   "Antes de compartir una noticia, fijate si otros medios independientes están reportando lo mismo. Si solo una fuente lo dice, tomalo con cautela.";
 
 export default function DashboardPage() {
-  const [usuario, setUsuario] = useState<UsuarioMock>(USUARIO_POR_DEFECTO);
+  const { user, profile } = useAuth();
 
-  useEffect(() => {
-    setUsuario(obtenerUsuarioMock() ?? USUARIO_POR_DEFECTO);
-  }, []);
-
-  const primerNombre = usuario.nombre.split(" ")[0];
+  const nombre = profile?.fullName || user?.displayName || user?.email?.split("@")[0] || "";
+  const primerNombre = nombre.split(" ")[0];
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
