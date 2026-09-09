@@ -30,11 +30,11 @@ function ToggleSwitch({
         aria-label={label}
         onClick={() => onChange(!checked)}
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-          checked ? "bg-[#1A6DB5]" : "bg-[#1A3A5C]"
+          checked ? "bg-blue" : "bg-border"
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-ice transition-transform ${
             checked ? "translate-x-5" : "translate-x-0"
           }`}
         />
@@ -51,7 +51,7 @@ export default function ConfiguracionPage() {
   const [compartirAnonimo, setCompartirAnonimo] = useState(false);
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-6 py-12 animate-fade-up">
       <h1 className="font-serif text-2xl font-bold text-ice sm:text-3xl">
         Configuración
       </h1>

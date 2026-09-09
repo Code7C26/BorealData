@@ -15,17 +15,27 @@ export function AnalisisInput() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-navy/60">
-      <div className="flex gap-2 rounded-lg bg-navy p-1">
+    <div
+      className="mx-auto max-w-2xl rounded-2xl border border-border/80 bg-card p-6"
+      style={{
+        boxShadow:
+          '0 30px 80px -25px rgba(2, 8, 15, 0.75), 0 0 100px -30px rgba(26, 109, 181, 0.6)',
+      }}
+    >
+      <div className="relative flex rounded-lg bg-navy p-1">
+        <div
+          aria-hidden="true"
+          className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md bg-gradient-to-r from-blue-light to-blue shadow-lg shadow-blue/30 transition-transform duration-300 ease-out ${
+            mode === 'texto' ? 'translate-x-full' : 'translate-x-0'
+          }`}
+        />
         <button
           onClick={() => {
             setMode('url')
             setValue('')
           }}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition-all ${
-            mode === 'url'
-              ? 'bg-blue text-ice shadow'
-              : 'text-muted-foreground hover:text-ice'
+          className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition-colors duration-300 ${
+            mode === 'url' ? 'text-ice' : 'text-muted-foreground hover:text-ice'
           }`}
           aria-pressed={mode === 'url'}
         >
@@ -37,10 +47,8 @@ export function AnalisisInput() {
             setMode('texto')
             setValue('')
           }}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition-all ${
-            mode === 'texto'
-              ? 'bg-blue text-ice shadow'
-              : 'text-muted-foreground hover:text-ice'
+          className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition-colors duration-300 ${
+            mode === 'texto' ? 'text-ice' : 'text-muted-foreground hover:text-ice'
           }`}
           aria-pressed={mode === 'texto'}
         >
@@ -80,7 +88,7 @@ export function AnalisisInput() {
       <button
         onClick={handleAnalyze}
         disabled={mode !== 'url' || !value.trim()}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue py-3.5 text-base font-semibold text-ice shadow-lg shadow-blue/30 transition-all hover:bg-blue-light hover:text-navy hover:shadow-blue-light/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue disabled:hover:text-ice disabled:hover:shadow-blue/30"
+        className="btn-primary mt-4 w-full py-3.5 text-base"
       >
         <Search className="h-5 w-5" aria-hidden="true" />
         Analizar con AletheIA

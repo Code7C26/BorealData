@@ -96,7 +96,7 @@ export default function PerfilPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-6 py-12 animate-fade-up">
       <h1 className="font-serif text-2xl font-bold text-ice sm:text-3xl">
         Mi perfil
       </h1>
@@ -106,7 +106,7 @@ export default function PerfilPage() {
 
       {/* Avatar + resumen */}
       <div className="mt-8 flex items-center gap-4 rounded-2xl border border-border bg-card p-6">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#1A6DB5] text-lg font-semibold text-white">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue text-lg font-semibold text-ice">
           {iniciales(nombreMostrado)}
         </div>
         <div className="min-w-0">
@@ -125,35 +125,27 @@ export default function PerfilPage() {
           Información personal
         </h2>
 
-        {errorInfo && (
-          <div className="bg-red-900/30 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-lg mt-4">
-            {errorInfo}
-          </div>
-        )}
+        {errorInfo && <div className="alert-error mt-4">{errorInfo}</div>}
 
         <form onSubmit={handleGuardarInfo} className="mt-5 flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Nombre
-            </label>
+            <label className="field-label">Nombre</label>
             <input
               type="text"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="bg-[#0B1929] border border-[#1A3A5C] rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#1A6DB5] transition-colors"
+              className="field-input"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Email
-            </label>
+            <label className="field-label">Email</label>
             <input
               type="email"
               value={email}
               disabled
-              className="bg-[#0B1929] border border-[#1A3A5C] rounded-lg px-4 py-3 text-sm text-white/60 outline-none cursor-not-allowed"
+              className="field-input text-ice/60"
             />
-            <p className="text-xs text-[#4A7A9B]">
+            <p className="text-xs text-muted-foreground">
               El email de tu cuenta no se puede cambiar desde acá.
             </p>
           </div>
@@ -161,7 +153,7 @@ export default function PerfilPage() {
             <button
               type="submit"
               disabled={guardando}
-              className="rounded-lg bg-[#1A6DB5] hover:bg-[#1557A0] disabled:opacity-60 text-white font-medium px-5 py-2.5 text-sm transition-colors"
+              className="btn-primary px-5 py-2.5"
             >
               {guardando ? "Guardando…" : "Guardar cambios"}
             </button>
@@ -181,32 +173,26 @@ export default function PerfilPage() {
           Cambiar contraseña
         </h2>
 
-        {errorPass && (
-          <div className="bg-red-900/30 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-lg mt-4">
-            {errorPass}
-          </div>
-        )}
+        {errorPass && <div className="alert-error mt-4">{errorPass}</div>}
 
         <form
           onSubmit={handleCambiarPassword}
           className="mt-5 flex flex-col gap-5"
         >
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Contraseña actual
-            </label>
+            <label className="field-label">Contraseña actual</label>
             <div className="relative">
               <input
                 type={showActual ? "text" : "password"}
                 value={passActual}
                 onChange={(e) => setPassActual(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-[#0B1929] border border-[#1A3A5C] rounded-lg px-4 py-3 text-sm text-white placeholder-[#4A7A9B] outline-none focus:border-[#1A6DB5] transition-colors pr-12"
+                className="field-input pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowActual(!showActual)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4A7A9B] hover:text-white transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-ice transition-colors"
               >
                 {showActual ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -214,21 +200,19 @@ export default function PerfilPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Nueva contraseña
-            </label>
+            <label className="field-label">Nueva contraseña</label>
             <div className="relative">
               <input
                 type={showNueva ? "text" : "password"}
                 value={passNueva}
                 onChange={(e) => setPassNueva(e.target.value)}
                 placeholder="Mínimo 8 caracteres"
-                className="w-full bg-[#0B1929] border border-[#1A3A5C] rounded-lg px-4 py-3 text-sm text-white placeholder-[#4A7A9B] outline-none focus:border-[#1A6DB5] transition-colors pr-12"
+                className="field-input pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowNueva(!showNueva)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4A7A9B] hover:text-white transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-ice transition-colors"
               >
                 {showNueva ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -236,15 +220,13 @@ export default function PerfilPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Confirmar nueva contraseña
-            </label>
+            <label className="field-label">Confirmar nueva contraseña</label>
             <input
               type={showNueva ? "text" : "password"}
               value={passConfirmar}
               onChange={(e) => setPassConfirmar(e.target.value)}
               placeholder="Repetí la nueva contraseña"
-              className="w-full bg-[#0B1929] border border-[#1A3A5C] rounded-lg px-4 py-3 text-sm text-white placeholder-[#4A7A9B] outline-none focus:border-[#1A6DB5] transition-colors"
+              className="field-input"
             />
           </div>
 
@@ -252,7 +234,7 @@ export default function PerfilPage() {
             <button
               type="submit"
               disabled={cambiandoPass}
-              className="rounded-lg bg-[#1A6DB5] hover:bg-[#1557A0] disabled:opacity-60 text-white font-medium px-5 py-2.5 text-sm transition-colors"
+              className="btn-primary px-5 py-2.5"
             >
               {cambiandoPass ? "Actualizando…" : "Actualizar contraseña"}
             </button>
