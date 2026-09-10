@@ -54,7 +54,9 @@ function ContenidoSidebar({
   const abrirReciente = (item: HistoryItem) => {
     guardarResultadoDesdeHistorial(item);
     onNavigate?.();
-    router.push("/resultado");
+    // El query param único fuerza la navegación aunque ya estés en /resultado
+    // viendo otro análisis (misma ruta = Next no re-navega ni re-renderiza).
+    router.push(`/resultado?t=${Date.now()}`);
   };
 
   return (
@@ -203,11 +205,15 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     setListo(true);
   }, []);
 
+  // Se re-pide en cada navegación (no solo al montar): el sidebar es parte del
+  // layout persistente de (autenticado), así que nunca se remonta entre
+  // /dashboard -> /analizando -> /resultado — sin esto, un análisis recién
+  // hecho no aparecería acá hasta un refresh completo de la página.
   useEffect(() => {
     apiFetch<{ analyses: HistoryItem[] }>("/history?limit=4")
       .then((res) => setRecientes(res.analyses))
       .catch(() => setRecientes([]));
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     setMobileAbierto(false);

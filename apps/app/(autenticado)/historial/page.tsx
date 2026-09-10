@@ -76,7 +76,9 @@ function TarjetaHistorial({ item }: { item: HistoryItem }) {
 
   const abrir = () => {
     guardarResultadoDesdeHistorial(item);
-    router.push("/resultado");
+    // El query param único fuerza la navegación aunque ya estés en /resultado
+    // viendo otro análisis (misma ruta = Next no re-navega ni re-renderiza).
+    router.push(`/resultado?t=${Date.now()}`);
   };
 
   return (

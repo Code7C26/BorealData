@@ -23,6 +23,8 @@ export interface AnalysisSource {
 
 /** Respuesta 200 de POST /analyze (backend/src/routes/analyze.ts). */
 export interface AnalyzeResponse {
+  /** null si el guardado en DB falló (best-effort) — sin id no hay link público para compartir. */
+  id: string | null;
   url: string;
   title: string;
   scrapeMethod: string;

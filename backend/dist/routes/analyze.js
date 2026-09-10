@@ -55,8 +55,11 @@ router.post("/analyze", verifyAuth_js_1.requireAuth, async (req, res) => {
         }
         // req.user siempre existe acá: requireAuth ya cortó la request con 401 si no.
         const userId = await (0, usersRepository_js_1.upsertUser)(req.user.uid, req.user.email);
-        await (0, analysesRepository_js_1.saveAnalysis)(scraped, analysis, userId);
+        // id null si el guardado falla (best-effort, ver saveAnalysis) — el front
+        // oculta el botón de "Compartir resultado" cuando no hay id.
+        const id = await (0, analysesRepository_js_1.saveAnalysis)(scraped, analysis, userId);
         return res.status(200).json({
+            id,
             url: scraped.url,
             title: scraped.title,
             scrapeMethod: scraped.method,

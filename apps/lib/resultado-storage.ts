@@ -36,6 +36,23 @@ export function leerResultado(): ResultadoGuardado | null {
   }
 }
 
+/** Adapta un HistoryItem (de /history o del link público /resultado/:id) al shape que ya sabe renderizar VistaVeredicto. */
+export function historyItemToAnalyzeResponse(item: HistoryItem): AnalyzeResponse {
+  return {
+    id: item.id,
+    url: item.url,
+    title: item.title ?? item.url,
+    scrapeMethod: item.scrapeMethod ?? "",
+    score: item.score,
+    label: item.label,
+    summary: item.summary ?? "",
+    explanation: item.explanation ?? "",
+    claimVsEvidence: item.claimVsEvidence ?? "",
+    sources: item.sources,
+    toneFlags: item.toneFlags,
+  };
+}
+
 /** Reabre un análisis ya guardado (de /historial o del sidebar) en /resultado, sin re-consultar el backend. */
 export function guardarResultadoDesdeHistorial(item: HistoryItem) {
   guardarResultado({
@@ -43,17 +60,6 @@ export function guardarResultadoDesdeHistorial(item: HistoryItem) {
     tipo: "url",
     valor: item.url,
     fecha: item.createdAt,
-    data: {
-      url: item.url,
-      title: item.title ?? item.url,
-      scrapeMethod: item.scrapeMethod ?? "",
-      score: item.score,
-      label: item.label,
-      summary: item.summary ?? "",
-      explanation: item.explanation ?? "",
-      claimVsEvidence: item.claimVsEvidence ?? "",
-      sources: item.sources,
-      toneFlags: item.toneFlags,
-    },
+    data: historyItemToAnalyzeResponse(item),
   });
 }
