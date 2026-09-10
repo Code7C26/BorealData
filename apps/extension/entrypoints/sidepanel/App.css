@@ -1,0 +1,408 @@
+:root {
+  --bg: #0b1929;
+  --bg-elevated: #10233a;
+  --blue-primary: #1a6db5;
+  --blue-deep: #124d80;
+  --accent: #60b8f0;
+  --accent-soft: #8fd4ff;
+  --text-title: #e8f4ff;
+  --text-secondary: #7eb8dc;
+  --text-muted: #4a7a9b;
+  --border: #1d3a5c;
+}
+
+.app {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+  /* min-height:100% dependía de que TODA la cadena html/body/#root tuviera
+     una altura definida — cualquier eslabón que se rompa (p. ej. un wrapper
+     de React sin height) deja a .app con altura "auto" del contenido y el
+     resto del panel se ve vacío. 100vh no depende de esa cadena. */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px 28px;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 480px 320px at 15% -10%, rgba(26, 109, 181, 0.24), transparent 60%),
+    radial-gradient(ellipse 420px 340px at 100% 10%, rgba(96, 184, 240, 0.13), transparent 55%),
+    radial-gradient(ellipse 460px 360px at 0% 100%, rgba(26, 109, 181, 0.16), transparent 55%);
+  background-repeat: no-repeat;
+  color: var(--text-title);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+/* El ambiente se anima siempre, como en la web (ver global.css) — no es un
+   descuido de accesibilidad, es una decisión de producto. */
+.glow-blob {
+  position: absolute;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.blob-a {
+  top: -70px;
+  left: -50px;
+  width: 220px;
+  height: 220px;
+  background: rgba(26, 109, 181, 0.55);
+  animation: float-a 9s ease-in-out infinite;
+}
+
+.blob-b {
+  top: 40%;
+  right: -70px;
+  width: 220px;
+  height: 220px;
+  background: rgba(96, 184, 240, 0.3);
+  animation: float-b 11s ease-in-out infinite;
+  animation-delay: -4s;
+}
+
+.blob-c {
+  bottom: -60px;
+  left: -40px;
+  width: 240px;
+  height: 240px;
+  background: rgba(26, 109, 181, 0.4);
+  animation: float-a 13s ease-in-out infinite;
+  animation-delay: -7s;
+}
+
+@keyframes float-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.15);
+  }
+  66% {
+    transform: translate(-20px, 16px) scale(0.95);
+  }
+}
+
+@keyframes float-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-24px, 16px) scale(1.1);
+  }
+  66% {
+    transform: translate(16px, -14px) scale(0.9);
+  }
+}
+
+.app-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(96, 184, 240, 0.45));
+}
+
+.app-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app-header {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--accent);
+}
+
+.login-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dev-login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dev-login-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}
+
+.brand-ia {
+  background: linear-gradient(100deg, var(--accent) 0%, var(--accent-soft) 45%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.eyebrow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  border: 1px solid rgba(96, 184, 240, 0.4);
+  background: rgba(26, 109, 181, 0.12);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 18px -6px rgba(96, 184, 240, 0.5);
+}
+
+.subtitle {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow:
+    0 20px 50px -24px rgba(2, 8, 15, 0.7),
+    0 0 40px -22px rgba(26, 109, 181, 0.45);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.85;
+}
+
+.input {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text-title);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(96, 184, 240, 0.15);
+}
+
+.analyze-btn {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--blue-primary) 55%, var(--blue-deep) 100%);
+  color: var(--text-title);
+  border: none;
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+  box-shadow:
+    0 8px 22px -8px rgba(26, 109, 181, 0.65),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.analyze-btn:disabled {
+  background: var(--text-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.analyze-btn:not(:disabled):hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 28px -8px rgba(96, 184, 240, 0.55),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.hint.tab-hint {
+  margin: -6px 0 10px;
+}
+
+.hint.kbd-hint {
+  margin: -6px 0 12px;
+}
+
+.result-error {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #e08585;
+}
+
+.steps-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 4px 0 2px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26, 109, 181, 0.18);
+  border: 1px solid rgba(96, 184, 240, 0.35);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.step-text {
+  margin: 0;
+  padding-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.step-text b {
+  color: var(--text-title);
+}
+
+.tip-card {
+  margin-top: auto;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.tip-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26, 109, 181, 0.2);
+  color: var(--accent);
+}
+
+.tip-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+
+.tip-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+}

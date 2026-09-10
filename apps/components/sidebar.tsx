@@ -35,6 +35,9 @@ const NAV_INFERIOR = [
 
 const COLAPSO_STORAGE_KEY = "aletheia_sidebar_colapsada";
 
+/** Cuántos análisis se muestran en "Recientes". El listado completo vive en /historial. */
+const CANTIDAD_RECIENTES = 4;
+
 function ContenidoSidebar({
   colapsada,
   nombre,
@@ -205,11 +208,16 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     setListo(true);
   }, []);
 
+  // Se recarga en cada navegación y no solo al montar: el layout de
+  // (autenticado) mantiene este Sidebar montado toda la sesión, así que con
+  // [] la lista quedaba congelada desde que se abría la app y los análisis
+  // nuevos nunca aparecían (el historial sí los mostraba porque hace su
+  // propio fetch al entrar).
   useEffect(() => {
-    apiFetch<{ analyses: HistoryItem[] }>("/history?limit=4")
+    apiFetch<{ analyses: HistoryItem[] }>(`/history?limit=${CANTIDAD_RECIENTES}`)
       .then((res) => setRecientes(res.analyses))
       .catch(() => setRecientes([]));
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     setMobileAbierto(false);
@@ -229,25 +237,23 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="relative isolate min-h-screen overflow-hidden bg-navy">
+    <div className="relative isolate min-h-screen bg-navy">
       {/* Ambiente visual de toda el área interna. Vive en el contenedor raíz
           (y no en cada página) para que el fondo sea consistente y para que el
           resplandor también pase por detrás del sidebar esmerilado.
           `isolate` es necesario: sin eso, el bg-navy opaco de este mismo
-          contenedor se pinta por encima de las capas con z-index negativo. */}
-      <div aria-hidden="true" className="grid-overlay pointer-events-none absolute inset-0 -z-20" />
-      <div
-        aria-hidden="true"
-        className="glow-blob animate-float -top-24 left-[10%] h-96 w-96 -z-10 bg-blue/45 sm:h-[30rem] sm:w-[30rem]"
-      />
-      <div
-        aria-hidden="true"
-        className="glow-blob animate-float-delayed top-1/3 right-[-2%] h-80 w-80 -z-10 bg-blue-light/30 sm:h-96 sm:w-96"
-      />
-      <div
-        aria-hidden="true"
-        className="glow-blob animate-pulse-slow bottom-[-6rem] left-[28%] h-72 w-72 -z-10 bg-blue/30"
-      />
+          contenedor se pinta por encima de las capas con z-index negativo.
+          El overflow-hidden que recorta estas capas vive en su propio wrapper
+          (no en este div raíz): puesto acá arriba rompía `position: sticky`
+          en cualquier descendiente (ej. el botón "Volver al historial" de
+          /resultado) porque deja de existir un ancestro con overflow:visible
+          hasta el viewport — el navegador ya no tiene dónde "pegar" el sticky. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
+        <div className="grid-overlay absolute inset-0" />
+        <div className="glow-blob animate-float -top-24 left-[10%] h-96 w-96 bg-blue/45 sm:h-[30rem] sm:w-[30rem]" />
+        <div className="glow-blob animate-float-delayed top-1/3 right-[-2%] h-80 w-80 bg-blue-light/30 sm:h-96 sm:w-96" />
+        <div className="glow-blob animate-pulse-slow bottom-[-6rem] left-[28%] h-72 w-72 bg-blue/30" />
+      </div>
 
       {/* Barra superior mobile */}
       <div className="relative flex items-center justify-between border-b border-border bg-navy/70 backdrop-blur-xl px-4 py-3 lg:hidden">

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   RotateCcw,
   Share2,
+  Check,
   SearchX,
   AlertOctagon,
   Quote,
@@ -58,18 +59,50 @@ const ICONO_VEREDICTO: Record<Veredicto, typeof CheckCircle2> = {
   no_verificable: HelpCircle,
 };
 
-function BotonesAccion({ desdeHistorial }: { desdeHistorial?: boolean }) {
+/** Cuánto se muestra el estado "¡Copiado!" antes de volver al botón normal. */
+const DURACION_FEEDBACK_COPIADO_MS = 2000;
+
+function BotonCompartir() {
+  const [copiado, setCopiado] = useState(false);
+
+  const compartir = async () => {
+    if (typeof window === "undefined") return;
+    try {
+      await navigator.clipboard?.writeText(window.location.href);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), DURACION_FEEDBACK_COPIADO_MS);
+    } catch {
+      // navigator.clipboard puede no existir (contexto no seguro) o el permiso
+      // puede estar denegado — no rompemos la UI, solo no mostramos el check.
+    }
+  };
+
+  return (
+    <button
+      onClick={compartir}
+      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card py-3 text-sm font-semibold text-ice transition-all hover:border-blue-light/50"
+    >
+      {copiado ? (
+        <>
+          <Check className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+          ¡Enlace copiado!
+        </>
+      ) : (
+        <>
+          <Share2 className="h-4 w-4" aria-hidden="true" />
+          Compartir resultado
+        </>
+      )}
+    </button>
+  );
+}
+
+function BotonesAccion({ ocultarCompartir }: { ocultarCompartir?: boolean }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
-      {desdeHistorial && (
-        <Link
-          href="/historial"
-          className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold text-ice transition-all hover:border-blue-light/50 sm:order-first sm:flex-none"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Volver al historial
-        </Link>
-      )}
+      {/* "Volver al historial" vive solo arriba (BotonVolverHistorialSticky):
+          tenerlo repetido acá abajo quedaba redundante una vez que ese botón
+          es fijo y siempre visible. */}
       <Link
         href="/dashboard"
         className="btn-primary flex-1"
@@ -77,17 +110,37 @@ function BotonesAccion({ desdeHistorial }: { desdeHistorial?: boolean }) {
         <RotateCcw className="h-4 w-4" aria-hidden="true" />
         Analizar otra noticia
       </Link>
-      <button
-        onClick={() => {
-          if (typeof window !== "undefined") {
-            navigator.clipboard?.writeText(window.location.href);
-          }
-        }}
-        className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card py-3 text-sm font-semibold text-ice transition-all hover:border-blue-light/50"
+      {/* En la vista de error no se ofrece "compartir": no tiene sentido difundir
+          un análisis que no se pudo completar (ver bug reportado por Renzo). */}
+      {!ocultarCompartir && <BotonCompartir />}
+    </div>
+  );
+}
+
+/**
+ * Botón fijo para volver al historial cuando se llegó a /resultado desde ahí.
+ * Vive FUERA de la columna centrada (`max-w-4xl`) de cada vista — no es hijo
+ * de ese contenedor, sino un hermano suyo dentro de <main> — para que en
+ * pantallas anchas caiga en el margen vacío entre el sidebar y la columna de
+ * contenido en vez de quedar pegado al mismo borde izquierdo que las tarjetas
+ * (que es donde estaba antes: al hacer scroll, el botón fijo terminaba tapando
+ * el título/ícono de lo que fuera que hubiera debajo). `<main>` ya tiene el
+ * padding-left que esquiva el sidebar (`lg:pl-72` / colapsado `lg:pl-[76px]`),
+ * así que alcanza con NO centrar este botón para que caiga en ese margen —
+ * sin necesidad de saber el ancho exacto del sidebar ni si está colapsado.
+ * `sticky` (no `fixed`) para que seguir sin problema esa posición horizontal
+ * de flujo normal en vez de tener que fijarla a mano.
+ */
+function BotonVolverHistorialSticky() {
+  return (
+    <div className="px-6 pt-6">
+      <Link
+        href="/historial"
+        className="sticky top-4 z-10 inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-card/90 px-4 py-2 text-sm font-semibold text-ice shadow-lg shadow-navy/40 backdrop-blur-md transition-all hover:border-blue-light/50"
       >
-        <Share2 className="h-4 w-4" aria-hidden="true" />
-        Compartir resultado
-      </button>
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Volver al historial
+      </Link>
     </div>
   );
 }
@@ -95,11 +148,9 @@ function BotonesAccion({ desdeHistorial }: { desdeHistorial?: boolean }) {
 function VistaVeredicto({
   resultado,
   fecha,
-  desdeHistorial,
 }: {
   resultado: AnalyzeResponse;
   fecha?: string;
-  desdeHistorial?: boolean;
 }) {
   const veredicto = mapLabelToVeredicto(resultado.label);
   const estilo = ESTILO_VEREDICTO[veredicto];
@@ -261,12 +312,12 @@ function VistaVeredicto({
         </div>
       )}
 
-      <BotonesAccion desdeHistorial={desdeHistorial} />
+      <BotonesAccion />
     </div>
   );
 }
 
-function VistaInsuficiente({ desdeHistorial }: { desdeHistorial?: boolean }) {
+function VistaInsuficiente() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-center px-6 py-20 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-card">
@@ -282,13 +333,13 @@ function VistaInsuficiente({ desdeHistorial }: { desdeHistorial?: boolean }) {
         fuente original no está disponible.
       </p>
       <div className="mt-8 w-full">
-        <BotonesAccion desdeHistorial={desdeHistorial} />
+        <BotonesAccion />
       </div>
     </div>
   );
 }
 
-function VistaError({ desdeHistorial }: { desdeHistorial?: boolean }) {
+function VistaError() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-center px-6 py-20 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/40 bg-red-900/20">
@@ -303,7 +354,8 @@ function VistaError({ desdeHistorial }: { desdeHistorial?: boolean }) {
         intentarlo de nuevo en unos segundos.
       </p>
       <div className="mt-8 w-full">
-        <BotonesAccion desdeHistorial={desdeHistorial} />
+        {/* Sin "compartir": un error de análisis no es algo que tenga sentido difundir. */}
+        <BotonesAccion ocultarCompartir />
       </div>
     </div>
   );
@@ -329,16 +381,13 @@ function ResultadoContent({ desdeHistorial }: { desdeHistorial: boolean }) {
 
   return (
     <div className="min-h-screen">
+      {desdeHistorial && <BotonVolverHistorialSticky />}
       {resultado.status === "insuficiente" ? (
-        <VistaInsuficiente desdeHistorial={desdeHistorial} />
+        <VistaInsuficiente />
       ) : resultado.status === "error" || !resultado.data ? (
-        <VistaError desdeHistorial={desdeHistorial} />
+        <VistaError />
       ) : (
-        <VistaVeredicto
-          resultado={resultado.data}
-          fecha={resultado.fecha}
-          desdeHistorial={desdeHistorial}
-        />
+        <VistaVeredicto resultado={resultado.data} fecha={resultado.fecha} />
       )}
     </div>
   );

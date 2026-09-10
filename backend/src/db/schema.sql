@@ -51,3 +51,23 @@ ALTER TABLE analyses
 -- sí existe en Postgres (a diferencia de ADD CONSTRAINT), así que es seguro re-correrlo.
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS full_name text;
+
+-- ── Caché de análisis por URL (10-sep-2026) ─────────────────────────────────
+-- POST /analyze busca por `url` exacta antes de scrapear/llamar a Gemini (ver
+-- analysesRepository.ts::getLatestAnalysisByUrl y routes/analyze.ts). Índice no-único:
+-- se sigue guardando una fila por cada usuario que pide una URL ya analizada (para que
+-- le aparezca en su propio /history), pero sin repetir el scrape ni el llamado a Gemini.
+CREATE INDEX IF NOT EXISTS analyses_url_idx ON analyses (url);
+
+-- Limpieza única (10-sep-2026): antes del caché de arriba, cada re-análisis de una URL ya
+-- vista insertaba una fila nueva — quien probó la app varias veces con la misma noticia
+-- terminó con esa noticia repetida en su /historial y en "Recientes" del sidebar. Este
+-- DELETE deja una sola fila por (usuario, URL) —la más reciente de cada grupo—, igual que
+-- de ahora en más hace getAnalysisForUserByUrl() en cada request nueva. Correr una sola
+-- vez; si se re-corre no hace nada (ya no quedan duplicados que borrar).
+DELETE FROM analyses a
+USING analyses b
+WHERE a.url = b.url
+  AND a.user_id IS NOT DISTINCT FROM b.user_id
+  AND (a.created_at < b.created_at
+       OR (a.created_at = b.created_at AND a.id < b.id));
