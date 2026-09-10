@@ -76,15 +76,15 @@ function TarjetaHistorial({ item }: { item: HistoryItem }) {
 
   const abrir = () => {
     guardarResultadoDesdeHistorial(item);
-    // El query param único fuerza la navegación aunque ya estés en /resultado
-    // viendo otro análisis (misma ruta = Next no re-navega ni re-renderiza).
-    router.push(`/resultado?t=${Date.now()}`);
+    // El id fuerza el remount de /resultado (ver comentario en esa página) y
+    // "from=historial" habilita el botón de volver acá.
+    router.push(`/resultado?item=${item.id}&from=historial`);
   };
 
   return (
     <button
       onClick={abrir}
-      className="flex flex-col rounded-2xl border border-border bg-card p-6 text-left transition-colors hover:border-blue-light/50"
+      className="group flex flex-col rounded-2xl border border-border bg-card p-6 text-left transition-all hover:-translate-y-1 hover:border-blue-light/50 hover:shadow-xl hover:shadow-blue/10"
     >
       <div className="flex items-center justify-between gap-3">
         <span
@@ -135,7 +135,7 @@ function VistaVacia() {
       </p>
       <Link
         href="/dashboard"
-        className="mt-8 flex items-center gap-2 rounded-lg bg-blue px-5 py-3 text-sm font-semibold text-ice shadow-lg shadow-blue/20 transition-all hover:bg-blue-light hover:text-navy"
+        className="btn-primary mt-8"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
         Analizar tu primera noticia
@@ -152,12 +152,12 @@ function VistaCargando() {
           key={i}
           className="flex flex-col rounded-2xl border border-border bg-card p-6"
         >
-          <div className="h-5 w-24 animate-pulse rounded-full bg-[#1A3A5C]" />
-          <div className="mt-4 h-4 w-full animate-pulse rounded bg-[#1A3A5C]" />
-          <div className="mt-2 h-4 w-3/4 animate-pulse rounded bg-[#1A3A5C]" />
-          <div className="mt-3 h-3 w-full animate-pulse rounded bg-[#1A3A5C]/70" />
-          <div className="mt-1 h-3 w-2/3 animate-pulse rounded bg-[#1A3A5C]/70" />
-          <div className="mt-4 h-3 w-1/2 animate-pulse rounded bg-[#1A3A5C]/50" />
+          <div className="h-5 w-24 animate-pulse rounded-full bg-border" />
+          <div className="mt-4 h-4 w-full animate-pulse rounded bg-border" />
+          <div className="mt-2 h-4 w-3/4 animate-pulse rounded bg-border" />
+          <div className="mt-3 h-3 w-full animate-pulse rounded bg-border/70" />
+          <div className="mt-1 h-3 w-2/3 animate-pulse rounded bg-border/70" />
+          <div className="mt-4 h-3 w-1/2 animate-pulse rounded bg-border/50" />
         </div>
       ))}
     </div>
@@ -179,7 +179,7 @@ function VistaErrorHistorial({ onReintentar }: { onReintentar: () => void }) {
       </p>
       <button
         onClick={onReintentar}
-        className="mt-8 flex items-center gap-2 rounded-lg bg-blue px-5 py-3 text-sm font-semibold text-ice shadow-lg shadow-blue/20 transition-all hover:bg-blue-light hover:text-navy"
+        className="btn-primary mt-8"
       >
         <RotateCcw className="h-4 w-4" aria-hidden="true" />
         Reintentar
@@ -209,7 +209,7 @@ export default function HistorialPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-6 py-12 animate-fade-up">
       <div className="mb-8">
         <h1 className="font-serif text-2xl font-bold text-ice sm:text-3xl">
           Historial de análisis

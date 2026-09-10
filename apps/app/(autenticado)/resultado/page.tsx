@@ -2,9 +2,38 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SearchX, AlertOctagon } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, SearchX, AlertOctagon } from "lucide-react";
 import { BotonesAccion, VistaVeredicto } from "@/components/resultado-veredicto";
 import { leerResultado, type ResultadoGuardado } from "@/lib/resultado-storage";
+
+/**
+ * Botón fijo para volver al historial cuando se llegó a /resultado desde ahí.
+ * Vive FUERA de la columna centrada (`max-w-4xl`) de cada vista — no es hijo
+ * de ese contenedor, sino un hermano suyo dentro de <main> — para que en
+ * pantallas anchas caiga en el margen vacío entre el sidebar y la columna de
+ * contenido en vez de quedar pegado al mismo borde izquierdo que las tarjetas
+ * (que es donde estaba antes: al hacer scroll, el botón fijo terminaba tapando
+ * el título/ícono de lo que fuera que hubiera debajo). `<main>` ya tiene el
+ * padding-left que esquiva el sidebar (`lg:pl-72` / colapsado `lg:pl-[76px]`),
+ * así que alcanza con NO centrar este botón para que caiga en ese margen —
+ * sin necesidad de saber el ancho exacto del sidebar ni si está colapsado.
+ * `sticky` (no `fixed`) para que siga sin problema esa posición horizontal
+ * de flujo normal en vez de tener que fijarla a mano.
+ */
+function BotonVolverHistorialSticky() {
+  return (
+    <div className="px-6 pt-6">
+      <Link
+        href="/historial"
+        className="sticky top-4 z-10 inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-card/90 px-4 py-2 text-sm font-semibold text-ice shadow-lg shadow-navy/40 backdrop-blur-md transition-all hover:border-blue-light/50"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Volver al historial
+      </Link>
+    </div>
+  );
+}
 
 function VistaInsuficiente() {
   return (
@@ -43,15 +72,15 @@ function VistaError() {
         intentarlo de nuevo en unos segundos.
       </p>
       <div className="mt-8 w-full">
+        {/* Sin id no hay nada que compartir — BotonesAccion ya oculta el botón solo. */}
         <BotonesAccion />
       </div>
     </div>
   );
 }
 
-function ResultadoContent() {
+function ResultadoContent({ desdeHistorial }: { desdeHistorial: boolean }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [resultado, setResultado] = useState<ResultadoGuardado | null>();
 
   useEffect(() => {
@@ -64,17 +93,13 @@ function ResultadoContent() {
       return;
     }
     setResultado(guardado);
-    // searchParams entra a propósito: /resultado se puede pedir varias veces
-    // seguidas (ej. dos "recientes" del sidebar, uno detrás del otro) sin
-    // cambiar de ruta — Next no re-navega ni re-corre este efecto si la URL
-    // no cambia, así que quien navega hasta acá agrega un query param
-    // distinto cada vez (ver sidebar.tsx / historial/page.tsx) para forzarlo.
-  }, [router, searchParams]);
+  }, [router]);
 
   if (!resultado) return null;
 
   return (
     <div className="min-h-screen">
+      {desdeHistorial && <BotonVolverHistorialSticky />}
       {resultado.status === "insuficiente" ? (
         <VistaInsuficiente />
       ) : resultado.status === "error" || !resultado.data ? (
@@ -86,10 +111,27 @@ function ResultadoContent() {
   );
 }
 
+function ResultadoWrapper() {
+  const searchParams = useSearchParams();
+
+  // key = searchParams.toString() fuerza un remount cada vez que cambia el
+  // identificador en la URL (ver sidebar.tsx / historial/page.tsx: agregan
+  // ?item=<id>, y desde el historial también &from=historial), aunque la
+  // ruta en sí sea siempre "/resultado" — sin esto, abrir un segundo análisis
+  // reciente mientras ya estás parado en /resultado no releía sessionStorage
+  // (Next no remonta si el pathname no cambia).
+  return (
+    <ResultadoContent
+      key={searchParams.toString()}
+      desdeHistorial={searchParams.get("from") === "historial"}
+    />
+  );
+}
+
 export default function ResultadoPage() {
   return (
     <Suspense fallback={null}>
-      <ResultadoContent />
+      <ResultadoWrapper />
     </Suspense>
   );
 }

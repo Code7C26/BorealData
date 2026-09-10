@@ -72,11 +72,21 @@ export default function RegistroPage() {
   };
 
   return (
-    <main className="min-h-screen bg-navy flex flex-col items-center justify-center px-4 py-12">
+    <main className="relative isolate min-h-screen overflow-hidden bg-navy flex flex-col items-center justify-center px-4 py-12">
       <AuthRedirect to="/dashboard" />
 
+      <div aria-hidden="true" className="grid-overlay pointer-events-none absolute inset-0 -z-20" />
+      <div
+        aria-hidden="true"
+        className="glow-blob animate-float -top-24 left-[4%] h-96 w-96 -z-10 bg-blue/55"
+      />
+      <div
+        aria-hidden="true"
+        className="glow-blob animate-float-delayed bottom-[-4rem] right-[4%] h-80 w-80 -z-10 bg-blue-light/40"
+      />
+
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-3 mb-10">
+      <Link href="/" className="relative flex items-center gap-3 mb-10">
         <Image
           src="/logoAletheia.png"
           alt="AletheIA"
@@ -85,101 +95,87 @@ export default function RegistroPage() {
           className="object-contain"
         />
         <div className="flex flex-col leading-tight">
-          <span className="text-white font-bold text-sm tracking-widest uppercase">
+          <span className="text-ice font-bold text-sm tracking-widest uppercase">
             Boreal Data
           </span>
-          <span className="text-blue-400 text-xs tracking-wider">AletheIA</span>
+          <span className="text-blue-light text-xs tracking-wider">AletheIA</span>
         </div>
       </Link>
 
       {/* Card */}
-      <div className="w-full max-w-md bg-[#0D2037] border border-[#1A3A5C] rounded-2xl p-8">
-
+      <div className="auth-card animate-fade-up">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <UserPlus size={16} className="text-blue-400" />
-            <span className="text-blue-400 text-xs tracking-widest uppercase">
-              Crear cuenta
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-white">Registrate</h1>
-          <p className="text-[#4A7A9B] text-sm mt-1">
+          <span className="eyebrow-badge mb-3">
+            <UserPlus size={14} aria-hidden="true" />
+            Crear cuenta
+          </span>
+          <h1 className="font-serif text-2xl font-bold text-ice">Registrate</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             Guardá tu historial de análisis y accedé desde cualquier dispositivo.
           </p>
         </div>
 
         {/* Error */}
-        {error && (
-          <div className="bg-red-900/30 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-lg mb-6">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert-error mb-6">{error}</div>}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-
           {/* Nombre */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Nombre
-            </label>
+            <label className="field-label">Nombre</label>
             <div className="relative">
               <User
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4A7A9B]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Tu nombre completo"
-                className="w-full bg-[#0B1929] border border-[#1A3A5C] rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-[#4A7A9B] outline-none focus:border-[#1A6DB5] transition-colors"
+                className="field-input pl-11"
               />
             </div>
           </div>
 
           {/* Email */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Email
-            </label>
+            <label className="field-label">Email</label>
             <div className="relative">
               <Mail
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4A7A9B]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
-                className="w-full bg-[#0B1929] border border-[#1A3A5C] rounded-lg pl-11 pr-4 py-3 text-sm text-white placeholder-[#4A7A9B] outline-none focus:border-[#1A6DB5] transition-colors"
+                className="field-input pl-11"
               />
             </div>
           </div>
 
           {/* Contraseña */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Contraseña
-            </label>
+            <label className="field-label">Contraseña</label>
             <div className="relative">
               <Lock
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4A7A9B]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mínimo 8 caracteres"
-                className="w-full bg-[#0B1929] border border-[#1A3A5C] rounded-lg pl-11 pr-12 py-3 text-sm text-white placeholder-[#4A7A9B] outline-none focus:border-[#1A6DB5] transition-colors"
+                className="field-input pl-11 pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4A7A9B] hover:text-white transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-ice transition-colors"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -188,25 +184,23 @@ export default function RegistroPage() {
 
           {/* Confirmar contraseña */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[#7EB8DC] text-xs font-medium tracking-wide uppercase">
-              Confirmar contraseña
-            </label>
+            <label className="field-label">Confirmar contraseña</label>
             <div className="relative">
               <Lock
                 size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4A7A9B]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repetí tu contraseña"
-                className="w-full bg-[#0B1929] border border-[#1A3A5C] rounded-lg pl-11 pr-12 py-3 text-sm text-white placeholder-[#4A7A9B] outline-none focus:border-[#1A6DB5] transition-colors"
+                className="field-input pl-11 pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4A7A9B] hover:text-white transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-ice transition-colors"
               >
                 {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -220,23 +214,23 @@ export default function RegistroPage() {
               id="terminos"
               checked={aceptaTerminos}
               onChange={(e) => setAceptaTerminos(e.target.checked)}
-              className="w-4 h-4 mt-0.5 accent-[#1A6DB5] cursor-pointer"
+              className="w-4 h-4 mt-0.5 accent-blue cursor-pointer"
             />
             <label
               htmlFor="terminos"
-              className="text-[#7EB8DC] text-sm cursor-pointer leading-snug"
+              className="text-muted-foreground text-sm cursor-pointer leading-snug"
             >
               Acepto los{" "}
               <Link
                 href="/terminos"
-                className="text-[#60B8F0] hover:text-white transition-colors"
+                className="text-blue-light hover:text-ice transition-colors"
               >
                 Términos y Condiciones
               </Link>{" "}
               y la{" "}
               <Link
                 href="/privacidad"
-                className="text-[#60B8F0] hover:text-white transition-colors"
+                className="text-blue-light hover:text-ice transition-colors"
               >
                 Política de Privacidad
               </Link>
@@ -248,19 +242,18 @@ export default function RegistroPage() {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full bg-[#1A6DB5] hover:bg-[#1557A0] disabled:opacity-60 text-white font-medium py-3 rounded-lg text-sm transition-colors mt-2"
+            className="btn-primary mt-2 w-full py-3"
           >
             {enviando ? "Creando cuenta…" : "Crear cuenta"}
           </button>
-
         </form>
 
         {/* Footer de la card */}
-        <p className="text-center text-[#4A7A9B] text-sm mt-6">
+        <p className="text-center text-muted-foreground text-sm mt-6">
           ¿Ya tenés cuenta?{" "}
           <Link
             href="/login"
-            className="text-[#60B8F0] hover:text-white transition-colors"
+            className="text-blue-light hover:text-ice transition-colors"
           >
             Iniciá sesión
           </Link>
@@ -268,7 +261,7 @@ export default function RegistroPage() {
       </div>
 
       {/* Footer */}
-      <p className="text-[#4A7A9B] text-xs mt-8">
+      <p className="relative text-muted-foreground text-xs mt-8">
         © 2026 Boreal Data — AletheIA
       </p>
     </main>

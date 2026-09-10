@@ -30,10 +30,14 @@ export function HowItWorks() {
           </p>
         </div>
 
-        <div className="mt-16 grid grid-cols-1 gap-10 md:grid-cols-3">
+        <div className="relative mt-16 grid grid-cols-1 gap-10 md:grid-cols-3">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-8 left-[16.5%] right-[16.5%] hidden h-px bg-gradient-to-r from-transparent via-blue-light/50 to-transparent md:block"
+          />
           {steps.map((step) => (
             <div key={step.number} className="relative text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-blue bg-navy-light font-serif text-2xl font-bold text-blue-light">
+              <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-blue bg-navy-light font-serif text-2xl font-bold text-blue-light shadow-[0_0_30px_-8px_rgba(96,184,240,0.6)]">
                 {step.number}
               </div>
               <h3 className="mt-6 font-serif text-xl font-bold text-ice">

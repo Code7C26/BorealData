@@ -33,7 +33,7 @@ function ResultView({ result, analyzedLabel, onReset }: ResultViewProps) {
   const { label, icon: Icon, className } = VERDICT_CONFIG[result.verdict];
 
   return (
-    <div className="result">
+    <div className="result result-enter">
       {analyzedLabel && <p className="analyzed-label">Análisis de: {analyzedLabel}</p>}
       <div className={`verdict-badge ${className}`}>
         <Icon size={18} />
@@ -42,7 +42,10 @@ function ResultView({ result, analyzedLabel, onReset }: ResultViewProps) {
 
       <div className="score-row">
         <div className="score-bar">
-          <div className="score-fill" style={{ width: `${result.score}%` }} />
+          <div
+            className={`score-fill ${className}`}
+            style={{ width: `${result.score}%` }}
+          />
         </div>
         <span className="score-label">{result.score}% de confianza</span>
       </div>

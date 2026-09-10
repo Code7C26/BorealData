@@ -119,4 +119,24 @@ export default defineBackground(() => {
     if (message?.type === 'ALETHEIA_AUTH_SYNC') return handleAuthSync(message.payload);
     if (message?.type === 'GET_ID_TOKEN') return handleGetIdToken();
   });
+
+  // El panel queda anclado a la ventana, así que al cambiar de pestaña seguía
+  // abierto encima de la página nueva. Lo cerramos acá y no desde el panel
+  // porque close() llamado desde el propio panel resuelve sin error pero no
+  // cierra nada. A diferencia de open(), close() no necesita un gesto del
+  // usuario, y es un no-op si el panel ya estaba cerrado.
+  browser.tabs.onActivated.addListener(({ windowId }) => {
+    browser.sidePanel
+      ?.close({ windowId })
+      .catch((err: unknown) => console.error('No se pudo cerrar el side panel:', err));
+  });
+
+  // Al clickear el ícono de la extensión, abrir el side panel (queda anclado
+  // a la derecha mientras navegás, como la extensión de Claude) en vez de un
+  // popup que se cierra apenas perdés el foco. Es una API solo de Chrome —
+  // en Firefox el entrypoint de sidepanel se resuelve como sidebar_action,
+  // con su propio ícono en el panel de sidebars del navegador.
+  browser.sidePanel
+    ?.setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((err: unknown) => console.error('No se pudo configurar el side panel:', err));
 });

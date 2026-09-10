@@ -96,33 +96,19 @@
 .hint {
   font-size: 11px;
   color: var(--text-muted);
+  margin: 0;
+}
+
+.hint.tab-hint {
   margin: -6px 0 10px;
 }
 
-.error-box {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.hint.kbd-hint {
+  margin: -6px 0 12px;
 }
 
 .result-error {
-  margin: 0;
+  margin: 10px 0 0;
   font-size: 12px;
   color: #e08585;
-}
-
-.retry-btn {
-  align-self: flex-start;
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.retry-btn:hover {
-  border-color: var(--accent);
 }

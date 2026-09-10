@@ -1,9 +1,32 @@
 import { Router, type Request, type Response } from "express";
 import { scrapeUrl } from "../scraper/scrapeUrl.js";
 import { analyzeContent } from "../gemini/analyzeContent.js";
-import { saveAnalysis } from "../db/analysesRepository.js";
+import {
+  getAnalysisForUserByUrl,
+  getLatestAnalysisByUrl,
+  saveAnalysis,
+  saveReusedAnalysis,
+  type AnalysisHistoryItem,
+} from "../db/analysesRepository.js";
 import { upsertUser } from "../db/usersRepository.js";
 import { requireAuth } from "../auth/verifyAuth.js";
+
+/** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
+function responseFromCached(cached: AnalysisHistoryItem) {
+  return {
+    id: cached.id,
+    url: cached.url,
+    title: cached.title,
+    scrapeMethod: cached.scrapeMethod,
+    score: cached.score,
+    label: cached.label,
+    summary: cached.summary,
+    explanation: cached.explanation,
+    claimVsEvidence: cached.claimVsEvidence,
+    sources: cached.sources,
+    toneFlags: cached.toneFlags,
+  };
+}
 
 const router = Router();
 
@@ -13,10 +36,24 @@ const router = Router();
  * Header obligatorio: Authorization: Bearer <Firebase ID token>
  *
  * Flujo: requireAuth (login obligatorio, corta con 401 si falta o el token es
- * inválido/expiró) -> scrapeUrl() -> analyzeContent() -> upsertUser() para resolver el
- * id interno del usuario -> guarda en Postgres -> responde con el resultado combinado.
- * Solo se guardan los análisis exitosos (200); si el guardado falla no se rompe la
- * respuesta (ver saveAnalysis).
+ * inválido/expiró) -> upsertUser() para resolver el id interno del usuario -> caché por
+ * URL exacta (ver getAnalysisForUserByUrl/getLatestAnalysisByUrl más abajo) -> si no hubo
+ * cache hit, scrapeUrl() -> analyzeContent() -> guarda en Postgres -> responde con el
+ * resultado combinado. Solo se guardan los análisis exitosos (200); si el guardado falla
+ * no se rompe la respuesta (ver saveAnalysis).
+ *
+ * Caché por URL (10-sep-2026): analizar con Gemini tiene costo real (tokens + tiempo), y
+ * antes /analyze repetía todo el flujo aunque la URL ya estuviera analizada — se veían
+ * noticias duplicadas en el propio historial. Ahora, antes de scrapear:
+ *   1. Si ESTE usuario ya tiene un análisis para esta URL exacta, se devuelve tal cual
+ *      (ni insert nuevo: evita el duplicado que se veía en /history).
+ *   2. Si no, pero CUALQUIER otro usuario ya la analizó, se reusan esos campos (sin
+ *      scrapear ni llamar a Gemini de nuevo) y se inserta una fila liviana para este
+ *      usuario, para que le aparezca en su propio historial.
+ *   3. Si no hay ningún análisis previo para esta URL, se hace el flujo completo.
+ * A propósito NO se intenta detectar "la misma noticia" bajo una URL distinta (otro
+ * portal, parámetros de tracking, etc.) — el contenido puede haber cambiado o venir de
+ * una fuente sin respaldo, así que una URL distinta siempre se analiza de nuevo.
  *
  * Cambio de diseño (31-ago-2026): antes la auth era opcional acá (attachUserIfPresent),
  * pensado para que la extensión pudiera analizar sin login. Se decidió requerir login
@@ -36,6 +73,22 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    // req.user siempre existe acá: requireAuth ya cortó la request con 401 si no.
+    const userId = await upsertUser(req.user!.uid, req.user!.email);
+
+    if (userId) {
+      const ownAnalysis = await getAnalysisForUserByUrl(userId, url);
+      if (ownAnalysis) {
+        return res.status(200).json(responseFromCached(ownAnalysis));
+      }
+
+      const existingAnalysis = await getLatestAnalysisByUrl(url);
+      if (existingAnalysis) {
+        await saveReusedAnalysis(existingAnalysis, userId);
+        return res.status(200).json(responseFromCached(existingAnalysis));
+      }
+    }
+
     const scraped = await scrapeUrl(url);
 
     if (!scraped.success) {
@@ -59,10 +112,10 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    // req.user siempre existe acá: requireAuth ya cortó la request con 401 si no.
-    const userId = await upsertUser(req.user!.uid, req.user!.email);
-    // id null si el guardado falla (best-effort, ver saveAnalysis) — el front
-    // oculta el botón de "Compartir resultado" cuando no hay id.
+    // userId ya se resolvió arriba (lo necesitó la caché) — no hace falta
+    // llamar a upsertUser() de nuevo. id null si el guardado falla
+    // (best-effort, ver saveAnalysis) — el front oculta el botón de
+    // "Compartir resultado" cuando no hay id.
     const id = await saveAnalysis(scraped, analysis, userId);
 
     return res.status(200).json({

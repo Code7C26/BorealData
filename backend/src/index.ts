@@ -4,6 +4,7 @@ import analyzeRouter from "./routes/analyze.js";
 import historyRouter from "./routes/history.js";
 import meRouter from "./routes/me.js";
 import analysesRouter from "./routes/analyses.js";
+import statsRouter from "./routes/stats.js";
 import "dotenv/config";
 
 const app = express();
@@ -24,6 +25,7 @@ app.use(analyzeRouter);
 app.use(historyRouter);
 app.use(meRouter);
 app.use(analysesRouter);
+app.use(statsRouter);
 
 const PORT = Number(process.env.PORT) || 3000;
 

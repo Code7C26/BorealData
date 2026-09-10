@@ -4,10 +4,40 @@
   gap: 12px;
 }
 
+.result .card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.result-enter {
+  animation: result-fade-in 0.2s ease-out;
+}
+
+@keyframes result-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .analyzed-label {
   margin: 0;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.extraction-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .verdict-badge {
@@ -15,25 +45,32 @@
   align-items: center;
   gap: 6px;
   align-self: flex-start;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
+  border: 1px solid transparent;
 }
 
 .verdict-confiable {
   background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.3);
   color: #4ade80;
+  box-shadow: 0 0 20px -8px rgba(74, 222, 128, 0.6);
 }
 
 .verdict-dudoso {
   background: rgba(245, 184, 96, 0.12);
+  border-color: rgba(245, 184, 96, 0.3);
   color: #f5b860;
+  box-shadow: 0 0 20px -8px rgba(245, 184, 96, 0.6);
 }
 
 .verdict-falso {
   background: rgba(240, 96, 95, 0.12);
+  border-color: rgba(240, 96, 95, 0.3);
   color: #f0605f;
+  box-shadow: 0 0 20px -8px rgba(240, 96, 95, 0.6);
 }
 
 .score-row {
@@ -54,6 +91,19 @@
   height: 100%;
   background: var(--accent);
   border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.score-fill.verdict-confiable {
+  background: #4ade80;
+}
+
+.score-fill.verdict-dudoso {
+  background: #f5b860;
+}
+
+.score-fill.verdict-falso {
+  background: #f0605f;
 }
 
 .score-label {
@@ -66,6 +116,12 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-title);
+  /* El resumen completo (con la explicación y el detalle) vive en "Ver
+     análisis completo" — acá alcanza con un vistazo. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .section {
@@ -83,8 +139,7 @@
   color: var(--text-muted);
 }
 
-.signals,
-.sources {
+.signals {
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
@@ -92,21 +147,36 @@
   color: var(--text-secondary);
 }
 
-.signals li,
-.sources li {
+.signals li {
   margin-bottom: 4px;
 }
 
-.sources a {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--accent);
-  text-decoration: none;
+.signals-more {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
-.sources a:hover {
-  text-decoration: underline;
+/* Es el llamado a la acción principal de esta vista: acá se corta el
+   análisis, así que tiene que quedar claro que hay más adentro. */
+.view-full-btn {
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px;
+}
+
+.view-full-btn-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.view-full-btn-sub {
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.85;
 }
 
 .reset-btn {

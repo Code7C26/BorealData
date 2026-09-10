@@ -14,6 +14,10 @@ export default defineConfig({
     name: 'AletheIA',
     description:
       'Detector de noticias falsas con IA: verificación de fuentes y análisis de contenido.',
+    // Sin entrypoint de popup, MV3 no genera un ícono en la barra de
+    // herramientas por sí solo — lo declaramos vacío para que exista el
+    // botón y background.ts pueda abrir el side panel al clickearlo.
+    action: {},
     permissions: [
       // activeTab alcanza para leer la URL de la pestaña activa cuando el
       // usuario abre el popup, sin pedir acceso permanente a todas las webs.
@@ -25,5 +29,16 @@ export default defineConfig({
     // Sin esto, el fetch del popup/background contra el backend y contra el
     // endpoint de refresh de Firebase quedaría sujeto a CORS del browser.
     host_permissions: [`${API_URL}/*`, 'https://securetoken.googleapis.com/*'],
+  },
+  dev: {
+    server: {
+      // Por defecto WXT usa el primer puerto libre entre 3000 y 3010,
+      // pisando el 3000 de la web (Next.js) — en Windows "localhost"
+      // resuelve a la loopback IPv6 (::1), que WXT sí llega a bindear
+      // aunque Next.js ya tenga tomado el 3000 en IPv4/IPv6 wildcard,
+      // y el browser termina cayendo en el dev server de la extensión
+      // en vez de en la web. Puerto fijo, fuera del rango 3000-3010.
+      port: 3300,
+    },
   },
 });
