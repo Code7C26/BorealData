@@ -14,6 +14,7 @@ import { requireAuth } from "../auth/verifyAuth.js";
 /** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
 function responseFromCached(cached: AnalysisHistoryItem) {
   return {
+    id: cached.id,
     url: cached.url,
     title: cached.title,
     scrapeMethod: cached.scrapeMethod,
@@ -111,9 +112,14 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    await saveAnalysis(scraped, analysis, userId);
+    // userId ya se resolvió arriba (lo necesitó la caché) — no hace falta
+    // llamar a upsertUser() de nuevo. id null si el guardado falla
+    // (best-effort, ver saveAnalysis) — el front oculta el botón de
+    // "Compartir resultado" cuando no hay id.
+    const id = await saveAnalysis(scraped, analysis, userId);
 
     return res.status(200).json({
+      id,
       url: scraped.url,
       title: scraped.title,
       scrapeMethod: scraped.method,

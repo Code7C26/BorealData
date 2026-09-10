@@ -16,17 +16,22 @@ interface AnalysisRowFields {
   toneFlags: string[];
 }
 
-/** INSERT compartido por saveAnalysis() y saveReusedAnalysis() — mismo try/catch best-effort. */
+/**
+ * INSERT compartido por saveAnalysis() y saveReusedAnalysis() — mismo try/catch
+ * best-effort. Devuelve el id de la fila insertada (para el link público de
+ * /resultado/:id, ver getAnalysisById() más abajo), o null si el guardado falló.
+ */
 async function insertAnalysisRow(
   fields: AnalysisRowFields,
   userId: string | null
-): Promise<boolean> {
+): Promise<string | null> {
   try {
     const pool = await getPool();
-    await pool.query(
+    const result = await pool.query<{ id: string }>(
       `INSERT INTO analyses
         (url, title, scrape_method, score, label, summary, explanation, claim_vs_evidence, sources, tone_flags, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING id`,
       [
         fields.url,
         fields.title,
@@ -41,21 +46,22 @@ async function insertAnalysisRow(
         userId,
       ]
     );
-    return true;
+    return result.rows[0]?.id ?? null;
   } catch (err) {
     console.error(
       "No se pudo guardar el análisis en la DB:",
       err instanceof Error ? err.message : err
     );
-    return false;
+    return null;
   }
 }
 
 /**
- * Guarda el resultado de un análisis exitoso. No propaga errores: si la DB no está
- * configurada o el insert falla, loguea y devuelve false, para no tirar abajo la
- * respuesta de /analyze por un problema de persistencia (funcionalidad secundaria,
- * no bloqueante para el usuario).
+ * Guarda el resultado de un análisis exitoso y devuelve su id (para armar el link
+ * público de /resultado/:id). No propaga errores: si la DB no está configurada o el
+ * insert falla, loguea y devuelve null, para no tirar abajo la respuesta de /analyze
+ * por un problema de persistencia (funcionalidad secundaria, no bloqueante para el
+ * usuario) — en ese caso simplemente no hay nada para compartir.
  *
  * `userId` es el id interno (uuid, tabla `users`) del usuario autenticado, ya resuelto
  * por upsertUser() en usersRepository.ts — no el uid de Firebase. Se pasa `null` cuando
@@ -65,7 +71,7 @@ export async function saveAnalysis(
   scraped: Pick<ScrapedContent, "url" | "title" | "method">,
   analysis: AnalysisResult,
   userId: string | null = null
-): Promise<boolean> {
+): Promise<string | null> {
   return insertAnalysisRow(
     {
       url: scraped.url,
@@ -86,12 +92,13 @@ export async function saveAnalysis(
 /**
  * Guarda una fila de historial para `userId` reutilizando un análisis ya hecho (por este
  * mismo usuario u otro) para la misma URL — sin volver a scrapear ni llamar a Gemini. Ver
- * getLatestAnalysisByUrl() y su uso en routes/analyze.ts.
+ * getLatestAnalysisByUrl() y su uso en routes/analyze.ts. El id devuelto es el de esta
+ * fila nueva (no el del análisis original del que se copiaron los campos).
  */
 export async function saveReusedAnalysis(
   cached: AnalysisHistoryItem,
   userId: string | null
-): Promise<boolean> {
+): Promise<string | null> {
   return insertAnalysisRow(cached, userId);
 }
 
@@ -145,6 +152,11 @@ function mapAnalysisRow(row: AnalysisRow): AnalysisHistoryItem {
   };
 }
 
+const ANALYSIS_COLUMNS =
+  "id, url, title, scrape_method, score, label, summary, explanation, claim_vs_evidence, sources, tone_flags, created_at";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Trae el historial de análisis de un usuario, más recientes primero.
  *
@@ -160,8 +172,7 @@ export async function getAnalysesByUserId(
 ): Promise<AnalysisHistoryItem[]> {
   const pool = await getPool();
   const result = await pool.query<AnalysisRow>(
-    `SELECT id, url, title, scrape_method, score, label, summary, explanation,
-            claim_vs_evidence, sources, tone_flags, created_at
+    `SELECT ${ANALYSIS_COLUMNS}
      FROM analyses
      WHERE user_id = $1
      ORDER BY created_at DESC
@@ -170,6 +181,31 @@ export async function getAnalysesByUserId(
   );
 
   return result.rows.map(mapAnalysisRow);
+}
+
+/**
+ * Trae un análisis puntual por id, sin importar de qué usuario es — es el punto de
+ * entrada de la ruta pública GET /analyses/:id (el link de "Compartir resultado"),
+ * pensada para que cualquiera con el link pueda ver ese análisis puntual, esté
+ * logueado o no. El id es un uuid prácticamente imposible de adivinar, así que no hace
+ * falta un chequeo de dueño para este caso de uso (a diferencia de /history, que sí
+ * filtra por usuario).
+ *
+ * Devuelve null tanto si el id no tiene forma de uuid como si no existe — mismo
+ * resultado (404) para el caller en routes/analyses.ts, evitamos que un id con formato
+ * inválido llegue a romper la query en Postgres.
+ */
+export async function getAnalysisById(id: string): Promise<AnalysisHistoryItem | null> {
+  if (!UUID_PATTERN.test(id)) return null;
+
+  const pool = await getPool();
+  const result = await pool.query<AnalysisRow>(
+    `SELECT ${ANALYSIS_COLUMNS} FROM analyses WHERE id = $1`,
+    [id]
+  );
+
+  const row = result.rows[0];
+  return row ? mapAnalysisRow(row) : null;
 }
 
 /**
@@ -197,8 +233,7 @@ export async function getAnalysisForUserByUrl(
   try {
     const pool = await getPool();
     const result = await pool.query<AnalysisRow>(
-      `SELECT id, url, title, scrape_method, score, label, summary, explanation,
-              claim_vs_evidence, sources, tone_flags, created_at
+      `SELECT ${ANALYSIS_COLUMNS}
        FROM analyses
        WHERE user_id = $1 AND url = $2
        ORDER BY created_at DESC
@@ -221,8 +256,7 @@ export async function getLatestAnalysisByUrl(url: string): Promise<AnalysisHisto
   try {
     const pool = await getPool();
     const result = await pool.query<AnalysisRow>(
-      `SELECT id, url, title, scrape_method, score, label, summary, explanation,
-              claim_vs_evidence, sources, tone_flags, created_at
+      `SELECT ${ANALYSIS_COLUMNS}
        FROM analyses
        WHERE url = $1
        ORDER BY created_at DESC

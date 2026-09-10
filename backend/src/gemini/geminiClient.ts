@@ -139,10 +139,27 @@ function extractGroundingLinks(response: {
     .filter((s) => s.url.length > 0);
 }
 
+/** Palabras de 4+ letras de un título, en minúscula — para matchear por solapamiento. */
+function tokensSignificativos(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .trim()
+      .split(/[^a-z0-9áéíóúñ]+/i)
+      .filter((palabra) => palabra.length > 3)
+  );
+}
+
 /**
  * Cruza las fuentes que Gemini describió (title/stance/note, sin URL) con los links
  * reales de groundingChunks, matcheando por título. Si no hay match (o no hubo búsqueda),
  * la fuente queda con url: null en vez de inventar un link.
+ *
+ * Dos pasadas: (1) substring exacto en cualquier sentido, para cuando los títulos
+ * coinciden casi literal; (2) solapamiento de palabras significativas, porque en la
+ * práctica Gemini suele titular la fuente distinto de como la tituló la búsqueda real
+ * (ej. "Wikipedia — Batman: Arkham City" vs. "es.wikipedia.org" — no hay substring en
+ * común, pero comparten el token "wikipedia").
  */
 function attachRealUrls(
   rawSources: RawSource[],
@@ -159,13 +176,25 @@ function attachRealUrls(
         typeof s.note === "string"
     )
     .map((s) => {
-      // Match simple por similitud de título (case-insensitive, substring en cualquier sentido).
-      const match = groundingLinks.find((link) => {
-        if (usedUrls.has(link.url)) return false;
+      const candidatos = groundingLinks.filter((link) => !usedUrls.has(link.url));
+
+      let match = candidatos.find((link) => {
         const a = s.title.toLowerCase().trim();
         const b = link.title.toLowerCase().trim();
         return a.length > 0 && b.length > 0 && (a.includes(b) || b.includes(a));
       });
+
+      if (!match) {
+        const tokensFuente = tokensSignificativos(s.title);
+        match = candidatos.find((link) => {
+          const tokensLink = tokensSignificativos(link.title);
+          if (tokensLink.size === 0) return false;
+          for (const token of tokensLink) {
+            if (tokensFuente.has(token)) return true;
+          }
+          return false;
+        });
+      }
 
       if (match) {
         usedUrls.add(match.url);
