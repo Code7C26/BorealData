@@ -14,6 +14,10 @@ export default defineConfig({
     name: 'AletheIA',
     description:
       'Detector de noticias falsas con IA: verificación de fuentes y análisis de contenido.',
+    // Sin entrypoint de popup, MV3 no genera un ícono en la barra de
+    // herramientas por sí solo — lo declaramos vacío para que exista el
+    // botón y background.ts pueda abrir el side panel al clickearlo.
+    action: {},
     permissions: [
       // activeTab alcanza para leer la URL de la pestaña activa cuando el
       // usuario abre el popup, sin pedir acceso permanente a todas las webs.

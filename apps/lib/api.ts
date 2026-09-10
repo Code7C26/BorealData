@@ -57,6 +57,17 @@ export interface HistoryResponse {
   offset: number;
 }
 
+/**
+ * Respuesta de GET /stats (backend/src/db/analysesRepository.ts::GlobalStats).
+ * Totales de toda la plataforma acumulados desde siempre — no son del día ni del
+ * usuario logueado.
+ */
+export interface GlobalStats {
+  totalAnalyses: number;
+  averageScore: number;
+  totalSources: number;
+}
+
 /** Respuesta de GET /me (backend/src/db/usersRepository.ts::UserProfile). */
 export interface UserProfile {
   id: string;

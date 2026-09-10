@@ -32,6 +32,11 @@ interface ResultViewProps {
   onViewFull: () => void;
 }
 
+// El panel es para un vistazo rápido, no para leer el análisis entero — las
+// señales de más y las fuentes citadas (con sus links) quedan solo en "Ver
+// análisis completo" en la web.
+const MAX_SIGNALS = 3;
+
 function ResultView({
   result,
   analyzedLabel,
@@ -40,6 +45,8 @@ function ResultView({
   onViewFull,
 }: ResultViewProps) {
   const { label, icon: Icon, className } = VERDICT_CONFIG[result.verdict];
+  const signalsToShow = result.signals.slice(0, MAX_SIGNALS);
+  const signalsRestantes = result.signals.length - signalsToShow.length;
 
   return (
     <div className="result result-enter">
@@ -52,56 +59,47 @@ function ResultView({
             : `Se incluyó el texto completo de la página (${extractionInfo.chars.toLocaleString('es-AR')} caracteres).`}
         </p>
       )}
-      <div className={`verdict-badge ${className}`}>
-        <Icon size={18} />
-        <span>{label}</span>
-      </div>
 
-      <div className="score-row">
-        <div className="score-bar">
-          <div
-            className={`score-fill ${className}`}
-            style={{ width: `${result.score}%` }}
-          />
+      <div className="card">
+        <div className={`verdict-badge ${className}`}>
+          <Icon size={18} />
+          <span>{label}</span>
         </div>
-        <span className="score-label">{result.score}% de confianza</span>
-      </div>
 
-      <p className="summary">{result.summary}</p>
+        <div className="score-row">
+          <div className="score-bar">
+            <div
+              className={`score-fill ${className}`}
+              style={{ width: `${result.score}%` }}
+            />
+          </div>
+          <span className="score-label">{result.score}% de confianza</span>
+        </div>
 
-      <div className="section">
-        <h2 className="section-title">Por qué este veredicto</h2>
-        <ul className="signals">
-          {result.signals.map((signal) => (
-            <li key={signal}>{signal}</li>
-          ))}
-        </ul>
-      </div>
+        <p className="summary">{result.summary}</p>
 
-      {result.sources.length > 0 && (
         <div className="section">
-          <h2 className="section-title">Fuentes consultadas</h2>
-          <ul className="sources">
-            {result.sources.map((source) => (
-              <li key={source.name}>
-                {source.url ? (
-                  <a href={source.url} target="_blank" rel="noreferrer">
-                    {source.name}
-                    <ExternalLink size={12} />
-                  </a>
-                ) : (
-                  source.name
-                )}
-              </li>
+          <h2 className="section-title">Por qué este veredicto</h2>
+          <ul className="signals">
+            {signalsToShow.map((signal) => (
+              <li key={signal}>{signal}</li>
             ))}
           </ul>
+          {signalsRestantes > 0 && (
+            <p className="signals-more">
+              +{signalsRestantes} señal{signalsRestantes === 1 ? '' : 'es'} más en el análisis completo
+            </p>
+          )}
         </div>
-      )}
 
-      <button className="view-full-btn" onClick={onViewFull}>
-        <ExternalLink size={14} />
-        Ver análisis completo
-      </button>
+        <button className="analyze-btn view-full-btn" onClick={onViewFull}>
+          <span className="view-full-btn-title">
+            <ExternalLink size={14} />
+            Ver análisis completo
+          </span>
+          <span className="view-full-btn-sub">Con fuentes citadas y la explicación completa</span>
+        </button>
+      </div>
 
       <button className="reset-btn" onClick={onReset}>
         <RotateCcw size={14} />
