@@ -8,9 +8,12 @@ const router = (0, express_1.Router)();
  * Sin auth: son los totales públicos de la plataforma (no hay nada por usuario acá),
  * así que también los puede consumir la landing sin sesión.
  *
- * Devuelve { totalAnalyses, averageScore, totalSources } acumulados desde siempre:
- * ni "de hoy" ni "de este usuario". Son los números que muestran los 3 bloques del
- * dashboard, y suben con cada análisis nuevo que se guarda en /analyze.
+ * Devuelve { totalAnalyses, totalSources, averageConfidence, verdicts } acumulados desde
+ * siempre: ni "de hoy" ni "de este usuario". Son los números que muestran los bloques del
+ * dashboard y la landing, y suben con cada análisis nuevo que se guarda en /analyze.
+ *
+ * Rediseño V1 (sep-2026): `averageScore` (porcentaje) salió del contrato junto con el
+ * score. Lo reemplazan `averageConfidence` (1 a 5) y el reparto por veredicto.
  */
 router.get("/stats", async (_req, res) => {
     try {

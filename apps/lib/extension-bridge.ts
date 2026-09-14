@@ -13,16 +13,32 @@ import { getIdTokenResult, type User } from "firebase/auth";
  */
 export const ALETHEIA_AUTH_MESSAGE_SOURCE = "aletheia-web";
 
+/**
+ * ¿Esta pestaña llegó a ver una sesión activa?
+ *
+ * Firebase dispara `onIdTokenChanged(null)` también en una pestaña que todavía
+ * no restauró la sesión (o que directamente no la tiene). Sin este guard, abrir
+ * una pestaña nueva desde la extensión mandaba AUTH_LOGOUT y le borraba la
+ * sesión guardada a la extensión — el usuario veía que "se le cerró la sesión"
+ * por el solo hecho de usarla. Solo avisamos el logout cuando de verdad hubo
+ * una transición usuario -> null.
+ */
+let huboSesion = false;
+
 export async function broadcastAuthState(user: User | null) {
   if (typeof window === "undefined") return;
 
   if (!user) {
+    if (!huboSesion) return;
+    huboSesion = false;
     window.postMessage(
       { source: ALETHEIA_AUTH_MESSAGE_SOURCE, type: "AUTH_LOGOUT" },
       window.location.origin
     );
     return;
   }
+
+  huboSesion = true;
 
   try {
     const tokenResult = await getIdTokenResult(user);

@@ -1,14 +1,36 @@
 :root {
-  --bg: #0b1929;
-  --bg-elevated: #10233a;
-  --blue-primary: #1a6db5;
-  --blue-deep: #124d80;
-  --accent: #60b8f0;
-  --accent-soft: #8fd4ff;
-  --text-title: #e8f4ff;
-  --text-secondary: #7eb8dc;
-  --text-muted: #4a7a9b;
-  --border: #1d3a5c;
+  /* --- Paleta V1 ---
+     Los mismos roles que apps/app/global.css, con los nombres que ya usaba el
+     panel para no reescribir cada regla. Noche boreal, no azul corporativo: el
+     violeta viene del fenomeno fisico (aurora), no del sector tecnologico.
+     El panel es siempre oscuro: es el contexto real de uso, leer una nota al
+     costado del navegador. */
+  --bg: #0b100f;
+  --bg-elevated: #141a19;
+  --border: #1f2726;
+  --border-strong: #2c3634;
+
+  --text-title: #e8ecea;
+  --text-secondary: #a8b3b1;
+  --text-muted: #94a3a0;
+  --display: #f2e8d5;
+
+  --accent: #7a5af8;
+  --accent-text: #b9a4ff;
+  --accent-soft: #f2e8d5;
+  --accent-ink: #0b100f;
+
+  /* Veredicto: siempre color + etiqueta, nunca el color solo. */
+  --verificado: #34c48a;
+  --dudoso: #e9a93c;
+  --falso: #f0705f;
+  --sindatos: #94a3a0;
+
+  /* La extension no puede usar next/font: se pide la familia real y se cae a
+     la del sistema si no esta instalada. */
+  --font-display: Archivo, 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
 .app {
@@ -26,16 +48,12 @@
   padding: 24px 20px 28px;
   background: var(--bg);
   background-image:
-    radial-gradient(ellipse 480px 320px at 15% -10%, rgba(26, 109, 181, 0.24), transparent 60%),
-    radial-gradient(ellipse 420px 340px at 100% 10%, rgba(96, 184, 240, 0.13), transparent 55%),
-    radial-gradient(ellipse 460px 360px at 0% 100%, rgba(26, 109, 181, 0.16), transparent 55%);
+    radial-gradient(ellipse 480px 320px at 15% -10%, rgba(122, 90, 248, 0.26), transparent 60%),
+    radial-gradient(ellipse 420px 340px at 100% 10%, rgba(185, 164, 255, 0.14), transparent 55%),
+    radial-gradient(ellipse 460px 360px at 0% 100%, rgba(242, 232, 213, 0.07), transparent 55%);
   background-repeat: no-repeat;
   color: var(--text-title);
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* El ambiente se anima siempre, como en la web (ver global.css) — no es un
@@ -53,7 +71,7 @@
   left: -50px;
   width: 220px;
   height: 220px;
-  background: rgba(26, 109, 181, 0.55);
+  background: rgba(122, 90, 248, 0.5);
   animation: float-a 9s ease-in-out infinite;
 }
 
@@ -62,7 +80,7 @@
   right: -70px;
   width: 220px;
   height: 220px;
-  background: rgba(96, 184, 240, 0.3);
+  background: rgba(185, 164, 255, 0.3);
   animation: float-b 11s ease-in-out infinite;
   animation-delay: -4s;
 }
@@ -72,7 +90,7 @@
   left: -40px;
   width: 240px;
   height: 240px;
-  background: rgba(26, 109, 181, 0.4);
+  background: rgba(242, 232, 213, 0.14);
   animation: float-a 13s ease-in-out infinite;
   animation-delay: -7s;
 }
@@ -120,7 +138,6 @@
   width: 30px;
   height: 30px;
   object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(96, 184, 240, 0.45));
 }
 
 .app-top-row {
@@ -131,6 +148,7 @@
 }
 
 .app-header {
+  font-family: var(--font-display);
   font-size: 21px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -144,14 +162,14 @@
   background: transparent;
   color: var(--text-muted);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px;
+  border-radius: 999px;
+  padding: 7px;
   cursor: pointer;
 }
 
 .logout-btn:hover {
-  color: var(--text-secondary);
-  border-color: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent-text);
 }
 
 .login-gate {
@@ -180,7 +198,7 @@
 }
 
 .brand-ia {
-  background: linear-gradient(100deg, var(--accent) 0%, var(--accent-soft) 45%, var(--accent) 100%);
+  background: linear-gradient(100deg, var(--accent-text) 0%, var(--accent-soft) 45%, var(--accent-text) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -191,16 +209,16 @@
   align-items: center;
   gap: 6px;
   align-self: flex-start;
-  border: 1px solid rgba(96, 184, 240, 0.4);
-  background: rgba(26, 109, 181, 0.12);
-  color: var(--accent);
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--accent-text);
+  font-family: var(--font-mono);
   font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 5px 10px;
+  padding: 5px 11px;
   border-radius: 999px;
-  box-shadow: 0 0 18px -6px rgba(96, 184, 240, 0.5);
 }
 
 .subtitle {
@@ -216,9 +234,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 18px;
-  box-shadow:
-    0 20px 50px -24px rgba(2, 8, 15, 0.7),
-    0 0 40px -22px rgba(26, 109, 181, 0.45);
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.55);
 }
 
 .card::before {
@@ -245,8 +261,8 @@
 
 .input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(96, 184, 240, 0.15);
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 4px rgba(185, 164, 255, 0.18);
 }
 
 .analyze-btn {
@@ -256,11 +272,12 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--blue-primary) 55%, var(--blue-deep) 100%);
-  color: var(--text-title);
+  background: var(--accent-text);
+  color: var(--accent-ink);
   border: none;
-  border-radius: 10px;
-  padding: 11px;
+  border-radius: 999px;
+  padding: 12px;
+  font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -269,8 +286,8 @@
     box-shadow 0.15s ease,
     filter 0.15s ease;
   box-shadow:
-    0 8px 22px -8px rgba(26, 109, 181, 0.65),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+    0 10px 26px -10px rgba(185, 164, 255, 0.7),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
 }
 
 .spin {
@@ -293,11 +310,11 @@
 }
 
 .analyze-btn:not(:disabled):hover {
-  filter: brightness(1.12);
+  background: var(--accent-soft);
   transform: translateY(-1px);
   box-shadow:
-    0 12px 28px -8px rgba(96, 184, 240, 0.55),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+    0 14px 32px -10px rgba(185, 164, 255, 0.6),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
 }
 
 .hint {
@@ -314,17 +331,20 @@
   margin: -6px 0 12px;
 }
 
+/* Ambar y no coral: el coral (--falso) esta reservado al veredicto del
+   contenido. Un fallo del producto no puede parecer un juicio sobre la nota. */
 .result-error {
   margin: 10px 0 0;
   font-size: 12px;
-  color: #e08585;
+  color: var(--dudoso);
 }
 
 .steps-title {
+  font-family: var(--font-mono);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
   margin: 4px 0 2px;
 }
@@ -349,11 +369,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(26, 109, 181, 0.18);
-  border: 1px solid rgba(96, 184, 240, 0.35);
-  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--accent-text);
+  font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .step-text {
@@ -387,16 +408,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(26, 109, 181, 0.2);
-  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--accent-text);
 }
 
 .tip-title {
   font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent);
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
   margin: 0 0 4px;
 }
 

@@ -1,186 +1,141 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import {
-  signInWithEmailAndPassword,
-  setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { mensajeErrorFirebase } from "@/lib/firebase-errors";
-import { AuthRedirect } from "@/components/auth-redirect";
+  setPersistence,
+  signInWithEmailAndPassword,
+} from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { mensajeErrorFirebase } from '@/lib/firebase-errors'
+import { AuthRedirect } from '@/components/auth-redirect'
+import { AuthShell, Campo } from '@/components/auth-shell'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [error, setError] = useState("");
-  const [enviando, setEnviando] = useState(false);
+  const router = useRouter()
+  const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  // Arranca en true a propósito. Con `false` Firebase usa sessionStorage, que
+  // es POR PESTAÑA: cualquier pestaña nueva (por ejemplo la que abre la
+  // extensión) nacía deslogueada y parecía que se había cerrado la sesión.
+  const [remember, setRemember] = useState(true)
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!email || !password) {
-      setError("Por favor completá todos los campos.");
-      return;
+      setError('Falta completar el email o la contraseña.')
+      return
     }
-    setError("");
-    setEnviando(true);
+    setError('')
+    setEnviando(true)
 
     try {
-      await setPersistence(
-        auth,
-        remember ? browserLocalPersistence : browserSessionPersistence
-      );
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+      await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence)
+      await signInWithEmailAndPassword(auth, email, password)
+      router.push('/dashboard')
     } catch (err) {
-      setError(mensajeErrorFirebase(err, "No pudimos iniciar sesión. Intentá de nuevo."));
+      setError(mensajeErrorFirebase(err, 'No pudimos iniciar sesión. Probá de nuevo.'))
     } finally {
-      setEnviando(false);
+      setEnviando(false)
     }
-  };
+  }
 
   return (
-    <main className="relative isolate min-h-screen overflow-hidden bg-navy flex flex-col items-center justify-center px-4 py-12">
-      <AuthRedirect to="/dashboard" />
-
-      <div aria-hidden="true" className="grid-overlay pointer-events-none absolute inset-0 -z-20" />
-      <div
-        aria-hidden="true"
-        className="glow-blob animate-float -top-24 left-[4%] h-96 w-96 -z-10 bg-blue/55"
-      />
-      <div
-        aria-hidden="true"
-        className="glow-blob animate-float-delayed bottom-[-4rem] right-[4%] h-80 w-80 -z-10 bg-blue-light/40"
-      />
-
-      {/* Logo */}
-      <Link href="/" className="relative flex items-center gap-3 mb-10">
-        <Image
-          src="/logoAletheia.png"
-          alt="AletheIA"
-          width={40}
-          height={40}
-          className="object-contain"
-        />
-        <div className="flex flex-col leading-tight">
-          <span className="text-ice font-bold text-sm tracking-widest uppercase">
-            Boreal Data
-          </span>
-          <span className="text-blue-light text-xs tracking-wider">AletheIA</span>
-        </div>
-      </Link>
-
-      {/* Card */}
-      <div className="auth-card animate-fade-up">
-        {/* Header */}
-        <div className="mb-8">
-          <span className="eyebrow-badge mb-3">
-            <Shield size={14} aria-hidden="true" />
-            Acceso seguro
-          </span>
-          <h1 className="font-serif text-2xl font-bold text-ice">Iniciá sesión</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Accedé a tu historial y análisis guardados.
-          </p>
-        </div>
-
-        {/* Error */}
-        {error && <div className="alert-error mb-6">{error}</div>}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {/* Email */}
-          <div className="flex flex-col gap-1.5">
-            <label className="field-label">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              className="field-input"
-            />
-          </div>
-
-          {/* Contraseña */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label className="field-label">Contraseña</label>
-              <Link
-                href="/recuperar"
-                className="text-xs text-blue-light hover:text-ice transition-colors"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="field-input pr-12"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-ice transition-colors"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Recordarme */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="remember"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-              className="w-4 h-4 accent-blue cursor-pointer"
-            />
-            <label
-              htmlFor="remember"
-              className="text-muted-foreground text-sm cursor-pointer"
-            >
-              Recordarme
-            </label>
-          </div>
-
-          {/* Botón */}
-          <button
-            type="submit"
-            disabled={enviando}
-            className="btn-primary mt-2 w-full py-3"
-          >
-            {enviando ? "Iniciando sesión…" : "Iniciar sesión"}
-          </button>
-        </form>
-
-        {/* Footer de la card */}
-        <p className="text-center text-muted-foreground text-sm mt-6">
-          ¿No tenés cuenta?{" "}
+    <AuthShell
+      eyebrow="Entrar"
+      titulo="Volvé a tus verificaciones"
+      bajada="Tu historial, con el veredicto y las fuentes de cada nota que analizaste."
+      pie={
+        <>
+          ¿No tenés cuenta?{' '}
           <Link
             href="/registro"
-            className="text-blue-light hover:text-ice transition-colors"
+            className="text-accent-text underline-offset-4 transition-colors duration-150 ease-boreal hover:underline"
           >
-            Registrate
+            Creá una
           </Link>
-        </p>
-      </div>
+        </>
+      }
+    >
+      <AuthRedirect to="/dashboard" />
 
-      {/* Footer */}
-      <p className="relative text-muted-foreground text-xs mt-8">
-        © 2026 Boreal Data — AletheIA
-      </p>
-    </main>
-  );
+      {error && (
+        <p role="alert" className="alert-form">
+          <AlertTriangle aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Campo label="Email" htmlFor="email">
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@email.com"
+            className="field-input"
+          />
+        </Campo>
+
+        <Campo
+          label="Contraseña"
+          htmlFor="password"
+          extra={
+            <Link
+              href="/recuperar"
+              className="font-mono text-micro uppercase text-accent-text underline-offset-4 hover:underline"
+            >
+              ¿La olvidaste?
+            </Link>
+          }
+        >
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="field-input pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-subtle transition-colors duration-150 ease-boreal hover:text-ink"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </Campo>
+
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="remember"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="size-4 cursor-pointer accent-[var(--accent)]"
+          />
+          <label htmlFor="remember" className="cursor-pointer text-body-sm text-muted">
+            Mantener la sesión abierta
+          </label>
+        </div>
+
+        <button type="submit" disabled={enviando} className="btn-primary mt-2 w-full">
+          {enviando ? 'Entrando…' : 'Entrar'}
+        </button>
+      </form>
+    </AuthShell>
+  )
 }

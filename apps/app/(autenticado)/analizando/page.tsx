@@ -1,224 +1,120 @@
-"use client";
+'use client'
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { AnalysisPanel, STEPS } from '@/components/result/analysis-panel'
+import { apiFetch, ApiError, type AnalyzeResponse } from '@/lib/api'
 import {
-  FileSearch,
-  ShieldCheck,
-  Scale,
-  Sparkles,
-  Check,
-} from "lucide-react";
-import { apiFetch, ApiError, type AnalyzeResponse } from "@/lib/api";
-import { guardarResultado, type ResultadoGuardado } from "@/lib/resultado-storage";
+  guardarResultado,
+  limpiarBorrador,
+  type ResultadoGuardado,
+} from '@/lib/resultado-storage'
 
-const ETAPAS = [
-  {
-    icon: FileSearch,
-    titulo: "Analizando contenido",
-    descripcion: "Leyendo el texto y extrayendo las afirmaciones clave.",
-  },
-  {
-    icon: ShieldCheck,
-    titulo: "Verificando fuentes",
-    descripcion: "Cruzando la información con fuentes periodísticas confiables.",
-  },
-  {
-    icon: Scale,
-    titulo: "Contrastando información",
-    descripcion: "Comparando las afirmaciones contra la evidencia encontrada.",
-  },
-  {
-    icon: Sparkles,
-    titulo: "Generando resultado",
-    descripcion: "Armando el veredicto y el razonamiento explicado.",
-  },
-];
+/** Cuánto dura cada paso de la animación mientras se espera al backend. */
+const DURACION_POR_PASO_MS = 2200
 
-const DURACION_POR_ETAPA_MS = 1800;
+/** Cadencia del contador de segundos (alimenta el aviso de "está tardando"). */
+const TICK_MS = 1000
 
-function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
-  const router = useRouter();
-  const [etapaActual, setEtapaActual] = useState(0);
-  const [respuestaLista, setRespuestaLista] = useState(false);
-  const resultadoRef = useRef<ResultadoGuardado | null>(null);
-  const iniciadoRef = useRef(false);
+type Paso = 0 | 1 | 2 | 3
+
+function AnalizandoContent({ valor }: { valor: string }) {
+  const router = useRouter()
+  const [paso, setPaso] = useState<Paso>(0)
+  const [segundos, setSegundos] = useState(0)
+  const [respuestaLista, setRespuestaLista] = useState(false)
+  const resultadoRef = useRef<ResultadoGuardado | null>(null)
+  const iniciadoRef = useRef(false)
 
   // Dispara el análisis real una única vez (el ref evita el doble fetch que
   // provoca React Strict Mode en dev al montar el efecto dos veces — acá
   // importa de verdad porque cada llamada gasta una consulta real a Gemini).
   useEffect(() => {
-    if (iniciadoRef.current) return;
-    iniciadoRef.current = true;
+    if (iniciadoRef.current) return
+    iniciadoRef.current = true
 
-    if (tipo !== "url" || !valor) {
-      resultadoRef.current = { status: "error", tipo, valor };
-      setRespuestaLista(true);
-      return;
+    if (!valor) {
+      resultadoRef.current = { status: 'error', tipo: 'url', valor }
+      setRespuestaLista(true)
+      return
     }
 
-    apiFetch<AnalyzeResponse>("/analyze", { method: "POST", body: { url: valor } })
+    apiFetch<AnalyzeResponse>('/analyze', { method: 'POST', body: { url: valor } })
       .then((data) => {
         resultadoRef.current = {
-          status: "ok",
-          tipo,
+          status: 'ok',
+          tipo: 'url',
           valor,
           data,
           fecha: new Date().toISOString(),
-        };
+        }
+        // El borrador existe para que un error no te haga perder lo que pegaste.
+        // Si el análisis salió bien ya cumplió su función: dejarlo hace que al
+        // volver al formulario aparezca el enlace de la nota anterior ya cargado.
+        limpiarBorrador()
       })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 401) {
-          router.replace("/login");
-          return;
+          router.replace('/login')
+          return
         }
-        const status = err instanceof ApiError && err.status === 422 ? "insuficiente" : "error";
+        // 422 = el scraper no pudo sacar contenido de la URL. No es un error del
+        // producto ni un veredicto: es "sin datos suficientes", y así se muestra.
+        const status = err instanceof ApiError && err.status === 422 ? 'insuficiente' : 'error'
         resultadoRef.current = {
           status,
-          tipo,
+          tipo: 'url',
           valor,
           mensaje: err instanceof Error ? err.message : undefined,
-        };
+          codigo: err instanceof ApiError ? `HTTP_${err.status}` : 'NET_UNKNOWN',
+        }
       })
-      .finally(() => setRespuestaLista(true));
-  }, [tipo, valor, router]);
+      .finally(() => setRespuestaLista(true))
+  }, [valor, router])
 
-  // Animación de etapas — puramente visual, se detiene en la última.
+  // Los pasos avanzan solos y se frenan en el último: son los pasos reales del
+  // motor, pero el backend no emite progreso, así que la cadencia es local.
   useEffect(() => {
-    if (etapaActual >= ETAPAS.length) return;
-    const timeout = setTimeout(() => {
-      setEtapaActual((prev) => prev + 1);
-    }, DURACION_POR_ETAPA_MS);
-    return () => clearTimeout(timeout);
-  }, [etapaActual]);
+    if (paso >= STEPS.length - 1) return
+    const t = setTimeout(() => setPaso((p) => (p + 1) as Paso), DURACION_POR_PASO_MS)
+    return () => clearTimeout(t)
+  }, [paso])
 
-  // Recién navega cuando terminó la animación Y ya llegó la respuesta real.
   useEffect(() => {
-    if (etapaActual < ETAPAS.length || !respuestaLista || !resultadoRef.current) return;
-    guardarResultado(resultadoRef.current);
-    const timeout = setTimeout(() => router.push("/resultado"), 400);
-    return () => clearTimeout(timeout);
-  }, [etapaActual, respuestaLista, router]);
+    if (respuestaLista) return
+    const t = setInterval(() => setSegundos((s) => s + 1), TICK_MS)
+    return () => clearInterval(t)
+  }, [respuestaLista])
 
-  // Artículos largos con búsqueda real pueden tardar bastante más que la
-  // animación de 4 etapas (hasta 90s, ver timeout de Gemini en el backend).
-  // Por eso el progreso nunca llega a "100%" hasta que la respuesta real
-  // está lista — mostrar 100% antes de tiempo hace que la pantalla parezca
-  // trabada cuando en realidad sigue esperando al backend.
-  const esperandoRespuesta = etapaActual >= ETAPAS.length && !respuestaLista;
-  const progreso = respuestaLista
-    ? 100
-    : Math.min(95, Math.round((etapaActual / ETAPAS.length) * 100));
+  // Recién navega cuando llegó la respuesta real Y el último paso estuvo un
+  // instante marcado: el corte seco desde el primer paso se lee como un bug.
+  useEffect(() => {
+    if (!respuestaLista || !resultadoRef.current) return
+    guardarResultado(resultadoRef.current)
+    const t = setTimeout(() => router.push('/resultado'), 600)
+    return () => clearTimeout(t)
+  }, [respuestaLista, router])
 
   return (
-    <div className="relative isolate min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 py-12">
-      {/* El ambiente de fondo lo aporta el layout (sidebar.tsx) */}
-
-      {/* Card */}
-      <div className="auth-card max-w-lg animate-fade-up">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="relative flex h-2 w-2">
-              <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-light opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-light" />
-            </span>
-            <span className="text-blue-light text-xs tracking-widest uppercase">
-              Analizando
-            </span>
-          </div>
-          <h1 className="font-serif text-2xl font-bold text-ice">
-            Estamos verificando tu noticia
-          </h1>
-          {valor && (
-            <p className="text-muted-foreground text-sm mt-1 truncate">
-              {tipo === "url" ? "Fuente: " : "Texto: "}
-              <span className="text-ice/80">{valor}</span>
-            </p>
-          )}
-        </div>
-
-        {/* Etapas */}
-        <div className="flex flex-col gap-5">
-          {ETAPAS.map((etapa, index) => {
-            const esUltima = index === ETAPAS.length - 1;
-            const Icon = etapa.icon;
-            // La última etapa se queda "activa" (no completada) mientras
-            // seguimos esperando la respuesta real, en vez de mostrar un
-            // check prematuro.
-            const completada = esUltima ? respuestaLista : index < etapaActual;
-            const activa = esUltima ? esperandoRespuesta || index === etapaActual : index === etapaActual;
-
-            return (
-              <div key={etapa.titulo} className="flex items-start gap-4">
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    completada
-                      ? "border-blue bg-blue text-ice"
-                      : activa
-                      ? "border-blue-light text-blue-light motion-safe:animate-pulse"
-                      : "border-border text-muted-foreground"
-                  }`}
-                >
-                  {completada ? (
-                    <Check size={16} />
-                  ) : (
-                    <Icon size={16} />
-                  )}
-                </div>
-                <div className="pt-1">
-                  <p
-                    className={`text-sm font-semibold transition-colors ${
-                      completada || activa ? "text-ice" : "text-muted-foreground"
-                    }`}
-                  >
-                    {etapa.titulo}
-                  </p>
-                  <p className="text-muted-foreground text-xs mt-0.5">
-                    {etapa.descripcion}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Barra de progreso */}
-        <div className="mt-8">
-          <div className="h-1.5 w-full rounded-full bg-navy overflow-hidden">
-            <div
-              className="h-full rounded-full bg-blue transition-all duration-500 ease-out"
-              style={{ width: `${progreso}%` }}
-            />
-          </div>
-          <p className="text-muted-foreground text-xs mt-2 text-right">
-            {progreso}%
-          </p>
-          {esperandoRespuesta && (
-            <p className="text-muted-foreground text-xs mt-2 text-center italic motion-safe:animate-pulse">
-              Los artículos extensos pueden tardar un poco más — seguimos trabajando…
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <p className="relative text-muted-foreground text-xs mt-8">
-        © 2026 Boreal Data — AletheIA
+    <div className="mx-auto flex w-full max-w-card flex-col gap-6 px-gutter py-16 md:px-6">
+      <AnalysisPanel
+        state={{ kind: 'loading', step: paso, elapsed: segundos, resuelto: respuestaLista }}
+      />
+      <p className="truncate px-1 font-mono text-micro uppercase text-disabled" title={valor}>
+        {valor.replace(/^https?:\/\//, '')}
       </p>
     </div>
-  );
+  )
 }
 
 function AnalizandoWrapper() {
-  const searchParams = useSearchParams();
-  const tipo = searchParams.get("tipo") ?? "url";
-  const valor = searchParams.get("valor") ?? "";
+  const searchParams = useSearchParams()
+  const valor = searchParams.get('valor') ?? ''
 
   // key = searchParams.toString() fuerza un remount completo cada vez que
-  // cambia la URL, así el estado de las etapas siempre arranca de cero
+  // cambia la URL, así el estado de los pasos siempre arranca de cero
   // (Next.js reutiliza el componente si solo cambian los query params).
-  return <AnalizandoContent key={searchParams.toString()} tipo={tipo} valor={valor} />;
+  return <AnalizandoContent key={searchParams.toString()} valor={valor} />
 }
 
 export default function AnalizandoPage() {
@@ -226,5 +122,5 @@ export default function AnalizandoPage() {
     <Suspense fallback={null}>
       <AnalizandoWrapper />
     </Suspense>
-  );
+  )
 }

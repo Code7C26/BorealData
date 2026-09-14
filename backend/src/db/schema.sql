@@ -71,3 +71,43 @@ WHERE a.url = b.url
   AND a.user_id IS NOT DISTINCT FROM b.user_id
   AND (a.created_at < b.created_at
        OR (a.created_at = b.created_at AND a.id < b.id));
+
+-- ── Rediseño V1: veredicto + confianza (11-sep-2026) ────────────────────────
+-- El porcentaje de veracidad (`score`, 0-100) se eliminó del producto: fingía una
+-- precisión decimal que el análisis no tiene. Lo reemplazan dos campos:
+--   `verdict`     una de cuatro etiquetas cerradas (verificado/dudoso/falso/sin-datos)
+--   `confidence`  qué tan sólida es la evidencia, en cinco escalones (1 a 5)
+-- más el titular en lenguaje natural (`headline` + `lead_text`) y los pasos del
+-- razonamiento (`reasoning`), que antes no se guardaban.
+--
+-- Las columnas viejas (score, label, explanation, claim_vs_evidence) NO se borran y
+-- `score` pasa a ser nullable: las filas anteriores al rediseño siguen en la tabla y se
+-- traducen al leerlas (ver analysesRepository.ts::mapAnalysisRow). Borrarlas tiraría el
+-- historial de todos los usuarios. `label` también pierde el NOT NULL por lo mismo: las
+-- filas nuevas no lo escriben.
+--
+-- Todo es ADD COLUMN IF NOT EXISTS / ALTER COLUMN, así que se puede re-correr sin daño.
+ALTER TABLE analyses
+  ADD COLUMN IF NOT EXISTS verdict    text,
+  ADD COLUMN IF NOT EXISTS confidence smallint,
+  ADD COLUMN IF NOT EXISTS headline   text,
+  ADD COLUMN IF NOT EXISTS lead_text  text,
+  ADD COLUMN IF NOT EXISTS reasoning  jsonb NOT NULL DEFAULT '[]';
+
+ALTER TABLE analyses ALTER COLUMN score DROP NOT NULL;
+ALTER TABLE analyses ALTER COLUMN label DROP NOT NULL;
+
+-- La regla dura del sistema, también en la DB: sin-datos nunca supera el nivel 2 y
+-- falso/verificado nunca bajan de 3. Si el motor devuelve una combinación fuera de tabla,
+-- el backend ya la degrada a sin-datos antes de insertar (normalizeVerdict en
+-- gemini/types.ts); esta constraint es la red por si alguien escribe a mano.
+-- (No hay ADD CONSTRAINT IF NOT EXISTS en Postgres: si ya la corriste, el error de
+-- "constraint already exists" es ignorable.)
+ALTER TABLE analyses
+  ADD CONSTRAINT analyses_verdict_confidence_chk CHECK (
+    verdict IS NULL
+    OR (verdict = 'verificado' AND confidence BETWEEN 3 AND 5)
+    OR (verdict = 'falso'      AND confidence BETWEEN 3 AND 5)
+    OR (verdict = 'dudoso'     AND confidence BETWEEN 2 AND 4)
+    OR (verdict = 'sin-datos'  AND confidence BETWEEN 1 AND 2)
+  );

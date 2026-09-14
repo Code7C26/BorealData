@@ -1,9 +1,9 @@
 import express from "express";
 import cors from "cors";
 import analyzeRouter from "./routes/analyze.js";
+import analysesRouter from "./routes/analyses.js";
 import historyRouter from "./routes/history.js";
 import meRouter from "./routes/me.js";
-import analysesRouter from "./routes/analyses.js";
 import statsRouter from "./routes/stats.js";
 import "dotenv/config";
 
@@ -22,9 +22,9 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.use(analyzeRouter);
+app.use(analysesRouter);
 app.use(historyRouter);
 app.use(meRouter);
-app.use(analysesRouter);
 app.use(statsRouter);
 
 const PORT = Number(process.env.PORT) || 3000;

@@ -1,131 +1,224 @@
-"use client";
+'use client'
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, SearchX, AlertOctagon } from "lucide-react";
-import { BotonesAccion, VistaVeredicto } from "@/components/resultado-veredicto";
-import { leerResultado, type ResultadoGuardado } from "@/lib/resultado-storage";
+import { Suspense, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, RotateCcw } from 'lucide-react'
+import { AnalysisPanel, type AnalysisState } from '@/components/result/analysis-panel'
+import { ResultCard } from '@/components/result/result-card'
+import type { AnalyzeResponse } from '@/lib/api'
+import { leerResultado, type ResultadoGuardado } from '@/lib/resultado-storage'
+import { cn } from '@/lib/utils'
 
 /**
- * Botón fijo para volver al historial cuando se llegó a /resultado desde ahí.
- * Vive FUERA de la columna centrada (`max-w-4xl`) de cada vista — no es hijo
- * de ese contenedor, sino un hermano suyo dentro de <main> — para que en
- * pantallas anchas caiga en el margen vacío entre el sidebar y la columna de
- * contenido en vez de quedar pegado al mismo borde izquierdo que las tarjetas
- * (que es donde estaba antes: al hacer scroll, el botón fijo terminaba tapando
- * el título/ícono de lo que fuera que hubiera debajo). `<main>` ya tiene el
- * padding-left que esquiva el sidebar (`lg:pl-72` / colapsado `lg:pl-[76px]`),
- * así que alcanza con NO centrar este botón para que caiga en ese margen —
- * sin necesidad de saber el ancho exacto del sidebar ni si está colapsado.
- * `sticky` (no `fixed`) para que siga sin problema esa posición horizontal
- * de flujo normal en vez de tener que fijarla a mano.
+ * La pantalla de resultado.
+ *
+ * A 1280 la página es una grilla de minmax(0,720px) + 380 con gap 32 dentro del
+ * shell de 1120: la card se queda en 720 y "Ver razonamiento completo" abre el
+ * panel lateral, nunca un modal. La card queda sticky mientras se scrollea el
+ * panel. Por debajo de 1280 el panel cae abajo, apilado.
  */
-function BotonVolverHistorialSticky() {
+function VistaResultado({ resultado }: { resultado: AnalyzeResponse & { fecha?: string } }) {
+  const [panelAbierto, setPanelAbierto] = useState(false)
+  const panelRef = useRef<HTMLHeadingElement>(null)
+
+  const abrirPanel = () => {
+    setPanelAbierto(true)
+    // El foco va al título del panel: en mobile además lo trae a la vista.
+    requestAnimationFrame(() => panelRef.current?.focus())
+  }
+
   return (
-    <div className="px-6 pt-6">
+    <div
+      className={cn(
+        'mx-auto grid w-full max-w-shell gap-8 px-gutter py-12 md:px-6 md:py-16',
+        'xl:grid-cols-[minmax(0,720px)_380px] xl:items-start',
+      )}
+    >
+      <div className="xl:sticky xl:top-24">
+        <ResultCard
+          analysis={resultado}
+          fecha={resultado.fecha}
+          onVerRazonamiento={panelAbierto ? undefined : abrirPanel}
+        />
+      </div>
+
+      {panelAbierto && (
+        <PanelRazonamiento analysis={resultado} tituloRef={panelRef} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * El contenido que no entra en la card: de qué trata la nota, las señales de
+ * tono y el razonamiento entero sin recortar. La card nunca crece — a partir de
+ * 720 px el contenido extra va acá, no al ancho.
+ */
+function PanelRazonamiento({
+  analysis,
+  tituloRef,
+}: {
+  analysis: AnalyzeResponse
+  tituloRef: React.RefObject<HTMLHeadingElement | null>
+}) {
+  return (
+    <aside className="flex animate-rise flex-col gap-6 xl:max-w-panel" aria-label="Razonamiento completo">
+      <section className="panel flex flex-col gap-4">
+        <h2
+          ref={tituloRef}
+          tabIndex={-1}
+          className="font-mono text-caption uppercase text-subtle outline-none"
+        >
+          De qué trata la nota
+        </h2>
+        <p className="text-body-sm text-muted">
+          {analysis.summary || 'El motor no dejó un resumen del contenido para este análisis.'}
+        </p>
+        {analysis.title && (
+          <p className="border-t border-border pt-4 font-display text-body-sm font-semibold text-display">
+            {analysis.title}
+          </p>
+        )}
+      </section>
+
+      {analysis.reasoning.length > 0 && (
+        <section className="panel flex flex-col gap-4">
+          <h2 className="font-mono text-caption uppercase text-subtle">Razonamiento completo</h2>
+          <ol className="flex flex-col gap-4">
+            {analysis.reasoning.map((paso, i) => (
+              <li key={i} className="flex items-start gap-3.5">
+                <span
+                  aria-hidden="true"
+                  className="w-5 shrink-0 pt-1 font-mono text-caption tracking-normal text-accent-text"
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <p className="text-body-sm text-ink">{paso}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {analysis.toneFlags.length > 0 && (
+        <section className="panel flex flex-col gap-4">
+          <h2 className="font-mono text-caption uppercase text-subtle">Señales de redacción</h2>
+          <p className="text-caption tracking-normal text-subtle">
+            Cómo está escrita la nota. Es una señal de contexto, no parte del veredicto.
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {analysis.toneFlags.map((flag) => (
+              <li
+                key={flag}
+                className="rounded-pill border border-border px-3 py-1 font-mono text-micro uppercase text-subtle"
+              >
+                {flag}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <p className="px-1 text-caption tracking-normal text-disabled">
+        Esta verificación se apoya en la evidencia disponible al momento del análisis. Las fuentes
+        están listadas con su postura para que puedas revisarlas vos.
+      </p>
+    </aside>
+  )
+}
+
+/** Volver al historial, solo cuando se llegó desde ahí. */
+function VolverAlHistorial() {
+  return (
+    <div className="mx-auto w-full max-w-shell px-gutter pt-6 md:px-6">
       <Link
         href="/historial"
-        className="sticky top-4 z-10 inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-card/90 px-4 py-2 text-sm font-semibold text-ice shadow-lg shadow-navy/40 backdrop-blur-md transition-all hover:border-blue-light/50"
+        className="sticky top-4 z-10 inline-flex w-fit items-center gap-2 rounded-pill border border-border bg-surface/90 px-4 py-2 font-display text-body-sm font-medium text-ink shadow-md backdrop-blur-md transition-colors duration-150 ease-boreal hover:border-accent-text hover:text-accent-text"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        <ArrowLeft aria-hidden="true" size={16} />
         Volver al historial
       </Link>
     </div>
-  );
+  )
 }
 
-function VistaInsuficiente() {
-  return (
-    <div className="mx-auto flex max-w-2xl flex-col items-center px-6 py-20 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-card">
-        <SearchX className="h-7 w-7 text-blue-light" aria-hidden="true" />
-      </div>
-      <h1 className="mt-6 font-serif text-2xl font-bold text-ice">
-        No pudimos completar el análisis
-      </h1>
-      <p className="mt-3 leading-relaxed text-muted-foreground">
-        No encontramos suficiente información pública sobre esta noticia como
-        para determinar su confiabilidad. Esto puede pasar cuando el contenido
-        es muy reciente, muy específico de una comunidad local, o cuando la
-        fuente original no está disponible.
-      </p>
-      <div className="mt-8 w-full">
-        <BotonesAccion />
-      </div>
-    </div>
-  );
-}
+/**
+ * Errores y "sin contenido" se muestran en la MISMA caja que el resultado —
+ * mismo ancho, radio, borde y padding — para que no haya salto de layout.
+ */
+function VistaError({ estado, valor }: { estado: AnalysisState; valor: string }) {
+  const router = useRouter()
 
-function VistaError() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col items-center px-6 py-20 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/40 bg-red-900/20">
-        <AlertOctagon className="h-7 w-7 text-red-400" aria-hidden="true" />
-      </div>
-      <h1 className="mt-6 font-serif text-2xl font-bold text-ice">
-        Ocurrió un error al analizar la noticia
-      </h1>
-      <p className="mt-3 leading-relaxed text-muted-foreground">
-        Algo falló mientras procesábamos tu solicitud. Puede ser un problema
-        temporal de conexión con la fuente o del servidor de análisis. Podés
-        intentarlo de nuevo en unos segundos.
-      </p>
-      <div className="mt-8 w-full">
-        {/* Sin id no hay nada que compartir — BotonesAccion ya oculta el botón solo. */}
-        <BotonesAccion />
-      </div>
+    <div className="mx-auto flex w-full max-w-card flex-col gap-6 px-gutter py-16 md:px-6">
+      <AnalysisPanel
+        state={estado as Exclude<AnalysisState, { kind: 'idle' }>}
+        onRetry={() => router.push(`/analizando?tipo=url&valor=${encodeURIComponent(valor)}`)}
+        onEditar={() => router.push('/dashboard')}
+      />
+      <Link href="/dashboard" className="btn-secondary self-start">
+        <RotateCcw aria-hidden="true" size={16} />
+        Analizar otra nota
+      </Link>
     </div>
-  );
+  )
 }
 
 function ResultadoContent({ desdeHistorial }: { desdeHistorial: boolean }) {
-  const router = useRouter();
-  const [resultado, setResultado] = useState<ResultadoGuardado | null>();
+  const router = useRouter()
+  const [resultado, setResultado] = useState<ResultadoGuardado | null>()
 
   useEffect(() => {
-    const guardado = leerResultado();
+    const guardado = leerResultado()
     if (!guardado) {
       // No hay ningún análisis para mostrar (ej. se entró directo a /resultado
       // sin pasar por /analizando ni por el historial) — no hay nada que
       // renderizar acá.
-      router.replace("/dashboard");
-      return;
+      router.replace('/dashboard')
+      return
     }
-    setResultado(guardado);
-  }, [router]);
+    setResultado(guardado)
+  }, [router])
 
-  if (!resultado) return null;
+  if (!resultado) return null
+
+  if (resultado.status === 'ok' && resultado.data) {
+    return (
+      <div className="min-h-screen">
+        {desdeHistorial && <VolverAlHistorial />}
+        <VistaResultado resultado={{ ...resultado.data, fecha: resultado.fecha }} />
+      </div>
+    )
+  }
+
+  const estado: AnalysisState =
+    resultado.status === 'insuficiente'
+      ? { kind: 'error-content', value: resultado.valor }
+      : { kind: 'error-network', attempt: 1, code: resultado.codigo ?? 'NET_UNKNOWN' }
 
   return (
     <div className="min-h-screen">
-      {desdeHistorial && <BotonVolverHistorialSticky />}
-      {resultado.status === "insuficiente" ? (
-        <VistaInsuficiente />
-      ) : resultado.status === "error" || !resultado.data ? (
-        <VistaError />
-      ) : (
-        <VistaVeredicto resultado={resultado.data} fecha={resultado.fecha} />
-      )}
+      {desdeHistorial && <VolverAlHistorial />}
+      <VistaError estado={estado} valor={resultado.valor} />
     </div>
-  );
+  )
 }
 
 function ResultadoWrapper() {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams()
 
   // key = searchParams.toString() fuerza un remount cada vez que cambia el
-  // identificador en la URL (ver sidebar.tsx / historial/page.tsx: agregan
-  // ?item=<id>, y desde el historial también &from=historial), aunque la
-  // ruta en sí sea siempre "/resultado" — sin esto, abrir un segundo análisis
-  // reciente mientras ya estás parado en /resultado no releía sessionStorage
-  // (Next no remonta si el pathname no cambia).
+  // identificador en la URL (ver sidebar/historial), aunque la ruta en sí
+  // sea siempre "/resultado" — sin esto, abrir un segundo análisis reciente
+  // mientras ya estás en /resultado no releía sessionStorage (Next no
+  // remonta si el pathname no cambia).
   return (
     <ResultadoContent
       key={searchParams.toString()}
-      desdeHistorial={searchParams.get("from") === "historial"}
+      desdeHistorial={searchParams.get('from') === 'historial'}
     />
-  );
+  )
 }
 
 export default function ResultadoPage() {
@@ -133,5 +226,5 @@ export default function ResultadoPage() {
     <Suspense fallback={null}>
       <ResultadoWrapper />
     </Suspense>
-  );
+  )
 }

@@ -7,17 +7,18 @@ const analysesRepository_js_1 = require("../db/analysesRepository.js");
 const usersRepository_js_1 = require("../db/usersRepository.js");
 const verifyAuth_js_1 = require("../auth/verifyAuth.js");
 /** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
-function responseFromCached(cached) {
+function responseFromCached(cached, id = cached.id) {
     return {
-        id: cached.id,
+        id,
         url: cached.url,
         title: cached.title,
         scrapeMethod: cached.scrapeMethod,
-        score: cached.score,
-        label: cached.label,
+        verdict: cached.verdict,
+        confidence: cached.confidence,
+        headline: cached.headline,
+        lead: cached.lead,
         summary: cached.summary,
-        explanation: cached.explanation,
-        claimVsEvidence: cached.claimVsEvidence,
+        reasoning: cached.reasoning,
         sources: cached.sources,
         toneFlags: cached.toneFlags,
     };
@@ -73,8 +74,10 @@ router.post("/analyze", verifyAuth_js_1.requireAuth, async (req, res) => {
             }
             const existingAnalysis = await (0, analysesRepository_js_1.getLatestAnalysisByUrl)(url);
             if (existingAnalysis) {
-                await (0, analysesRepository_js_1.saveReusedAnalysis)(existingAnalysis, userId);
-                return res.status(200).json(responseFromCached(existingAnalysis));
+                // La fila nueva es la de ESTE usuario: el link para compartir tiene que
+                // apuntar a esa y no a la del usuario que lo analizo primero.
+                const nuevoId = await (0, analysesRepository_js_1.saveReusedAnalysis)(existingAnalysis, userId);
+                return res.status(200).json(responseFromCached(existingAnalysis, nuevoId));
             }
         }
         const scraped = await (0, scrapeUrl_js_1.scrapeUrl)(url);
@@ -106,11 +109,12 @@ router.post("/analyze", verifyAuth_js_1.requireAuth, async (req, res) => {
             url: scraped.url,
             title: scraped.title,
             scrapeMethod: scraped.method,
-            score: analysis.score,
-            label: analysis.label,
+            verdict: analysis.verdict,
+            confidence: analysis.confidence,
+            headline: analysis.headline,
+            lead: analysis.lead,
             summary: analysis.summary,
-            explanation: analysis.explanation,
-            claimVsEvidence: analysis.claimVsEvidence,
+            reasoning: analysis.reasoning,
             sources: analysis.sources,
             toneFlags: analysis.toneFlags,
         });

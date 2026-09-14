@@ -12,17 +12,18 @@ import { upsertUser } from "../db/usersRepository.js";
 import { requireAuth } from "../auth/verifyAuth.js";
 
 /** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
-function responseFromCached(cached: AnalysisHistoryItem) {
+function responseFromCached(cached: AnalysisHistoryItem, id: string | null = cached.id) {
   return {
-    id: cached.id,
+    id,
     url: cached.url,
     title: cached.title,
     scrapeMethod: cached.scrapeMethod,
-    score: cached.score,
-    label: cached.label,
+    verdict: cached.verdict,
+    confidence: cached.confidence,
+    headline: cached.headline,
+    lead: cached.lead,
     summary: cached.summary,
-    explanation: cached.explanation,
-    claimVsEvidence: cached.claimVsEvidence,
+    reasoning: cached.reasoning,
     sources: cached.sources,
     toneFlags: cached.toneFlags,
   };
@@ -84,8 +85,10 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
 
       const existingAnalysis = await getLatestAnalysisByUrl(url);
       if (existingAnalysis) {
-        await saveReusedAnalysis(existingAnalysis, userId);
-        return res.status(200).json(responseFromCached(existingAnalysis));
+        // La fila nueva es la de ESTE usuario: el link para compartir tiene que
+        // apuntar a esa y no a la del usuario que lo analizo primero.
+        const nuevoId = await saveReusedAnalysis(existingAnalysis, userId);
+        return res.status(200).json(responseFromCached(existingAnalysis, nuevoId));
       }
     }
 
@@ -123,11 +126,12 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       url: scraped.url,
       title: scraped.title,
       scrapeMethod: scraped.method,
-      score: analysis.score,
-      label: analysis.label,
+      verdict: analysis.verdict,
+      confidence: analysis.confidence,
+      headline: analysis.headline,
+      lead: analysis.lead,
       summary: analysis.summary,
-      explanation: analysis.explanation,
-      claimVsEvidence: analysis.claimVsEvidence,
+      reasoning: analysis.reasoning,
       sources: analysis.sources,
       toneFlags: analysis.toneFlags,
     });

@@ -1,98 +1,136 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Link2, FileText } from 'lucide-react'
+import { Search, Sparkles } from 'lucide-react'
+import { AnalysisPanel, MAX_CHARS, type AnalysisState } from '@/components/result/analysis-panel'
+import { guardarBorrador, leerBorrador } from '@/lib/resultado-storage'
+import { cn } from '@/lib/utils'
 
-export function AnalisisInput() {
+/**
+ * Estado inicial · vacío — y el formulario de análisis.
+ *
+ * El vacío ES el formulario: nunca una ilustración vacía ni un "aún no hay
+ * nada". Es el estado de trabajo, no un hueco esperando contenido.
+ *
+ * El borde superior va en borde neutro: ningún color de veredicto antes de
+ * tener veredicto.
+ */
+export function AnalisisInput({ className }: { className?: string }) {
   const router = useRouter()
-  const [mode, setMode] = useState<'url' | 'texto'>('url')
-  const [value, setValue] = useState('')
+  const [valor, setValor] = useState('')
+  const [estado, setEstado] = useState<AnalysisState>({ kind: 'idle' })
 
-  const handleAnalyze = () => {
-    if (mode !== 'url' || !value.trim()) return
-    router.push(`/analizando?tipo=${mode}&valor=${encodeURIComponent(value.trim())}`)
+  // El input jamás se pierde: si volvió acá después de un error (o recargó),
+  // reponemos lo que había pegado.
+  useEffect(() => {
+    const borrador = leerBorrador()
+    if (borrador) setValor(borrador)
+  }, [])
+
+  const analizar = (texto: string) => {
+    const limpio = texto.trim()
+    if (!limpio) return
+
+    guardarBorrador(limpio)
+
+    if (limpio.length > MAX_CHARS) {
+      setEstado({ kind: 'error-too-long', length: limpio.length })
+      return
+    }
+
+    if (!esUrlDeNota(limpio)) {
+      setEstado({ kind: 'error-url', value: limpio })
+      return
+    }
+
+    router.push(`/analizando?tipo=url&valor=${encodeURIComponent(limpio)}`)
+  }
+
+  // /ejemplo es una ruta pública: el ejemplo tiene que poder verse SIN cuenta,
+  // que es justo para quien sirve. (Antes iba a /resultado, dentro del área
+  // autenticada, y a un visitante lo escupía al login.)
+  const verEjemplo = () => router.push('/ejemplo')
+
+  if (estado.kind !== 'idle') {
+    return (
+      <AnalysisPanel
+        state={estado}
+        className={className}
+        onEditar={() => setEstado({ kind: 'idle' })}
+        onTruncate={() => analizar(valor.trim().slice(0, MAX_CHARS))}
+      />
+    )
   }
 
   return (
-    <div
-      className="mx-auto max-w-2xl rounded-2xl border border-border/80 bg-card p-6"
-      style={{
-        boxShadow:
-          '0 30px 80px -25px rgba(2, 8, 15, 0.75), 0 0 100px -30px rgba(26, 109, 181, 0.6)',
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        analizar(valor)
       }}
+      className={cn('card-shell border-t-border', className)}
+      aria-labelledby="idle-title"
     >
-      <div className="relative flex rounded-lg bg-navy p-1">
-        <div
-          aria-hidden="true"
-          className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md bg-gradient-to-r from-blue-light to-blue shadow-lg shadow-blue/30 transition-transform duration-300 ease-out ${
-            mode === 'texto' ? 'translate-x-full' : 'translate-x-0'
-          }`}
+      <h2 id="idle-title" className="font-display text-h3 font-semibold text-display">
+        Pegá el enlace de la nota que querés chequear
+      </h2>
+      <p className="text-body-sm text-muted">
+        Tarda unos segundos y te mostramos cada paso del análisis.
+      </p>
+
+      <label className="flex flex-col gap-3">
+        <span className="sr-only">Enlace de la nota</span>
+        <textarea
+          rows={3}
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter analiza; Shift+Enter deja escribir varias líneas.
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              analizar(valor)
+            }
+          }}
+          maxLength={MAX_CHARS * 2}
+          spellCheck={false}
+          placeholder="https://diario-ejemplo.com/nota/8821"
+          className="field-input resize-y font-mono text-caption tracking-normal"
+          aria-label="Enlace de la nota"
         />
-        <button
-          onClick={() => {
-            setMode('url')
-            setValue('')
-          }}
-          className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition-colors duration-300 ${
-            mode === 'url' ? 'text-ice' : 'text-muted-foreground hover:text-ice'
-          }`}
-          aria-pressed={mode === 'url'}
-        >
-          <Link2 className="h-4 w-4" aria-hidden="true" />
-          URL
+      </label>
+
+      <div className="flex flex-col gap-3 md:flex-row">
+        <button type="submit" disabled={!valor.trim()} className="btn-primary w-full md:w-auto">
+          <Search aria-hidden="true" size={16} />
+          Analizar
         </button>
-        <button
-          onClick={() => {
-            setMode('texto')
-            setValue('')
-          }}
-          className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition-colors duration-300 ${
-            mode === 'texto' ? 'text-ice' : 'text-muted-foreground hover:text-ice'
-          }`}
-          aria-pressed={mode === 'texto'}
-        >
-          <FileText className="h-4 w-4" aria-hidden="true" />
-          Texto
+        <button type="button" onClick={verEjemplo} className="btn-secondary w-full md:w-auto">
+          <Sparkles aria-hidden="true" size={16} />
+          Probar un ejemplo
         </button>
       </div>
 
-      <div className="mt-4">
-        {mode === 'url' ? (
-          <input
-            type="url"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="https://www.ejemplo.com/noticia..."
-            className="w-full rounded-lg border border-border bg-navy px-4 py-3 text-ice placeholder:text-muted-foreground/70 focus:border-blue-light focus:outline-none focus:ring-2 focus:ring-blue-light/40"
-            aria-label="URL de la noticia"
-          />
-        ) : (
-          <>
-            <p className="mb-2 text-sm text-amber-300/90">
-              Disponible próximamente — por ahora AletheIA solo analiza URLs.
-            </p>
-            <textarea
-              rows={4}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="Pegá aquí el texto de la noticia que querés verificar..."
-              disabled
-              className="w-full resize-none cursor-not-allowed rounded-lg border border-border bg-navy px-4 py-3 text-ice/60 placeholder:text-muted-foreground/70 focus:outline-none"
-              aria-label="Texto de la noticia"
-            />
-          </>
-        )}
-      </div>
-
-      <button
-        onClick={handleAnalyze}
-        disabled={mode !== 'url' || !value.trim()}
-        className="btn-primary mt-4 w-full py-3.5 text-base"
-      >
-        <Search className="h-5 w-5" aria-hidden="true" />
-        Analizar con AletheIA
-      </button>
-    </div>
+      {/* La promesa de privacidad va en micro, abajo, sin ícono de candado. */}
+      <p className="font-mono text-micro uppercase text-disabled">No guardamos lo que analizás</p>
+    </form>
   )
+}
+
+/**
+ * ¿Esto parece un enlace a una publicación?
+ *
+ * Deliberadamente permisivo: acepta sin protocolo (la gente copia
+ * "diario.com/nota" desde el navegador) pero exige host con punto y TLD de al
+ * menos dos letras, que es lo que separa un enlace cortado de uno entero.
+ * Las validaciones que importan de verdad las hace el backend al scrapear.
+ */
+function esUrlDeNota(valor: string): boolean {
+  if (/\s/.test(valor)) return false
+  try {
+    const url = new URL(/^https?:\/\//i.test(valor) ? valor : `https://${valor}`)
+    return /^[^.]+(\.[^.]+)+$/.test(url.hostname) && /\.[a-z]{2,}$/i.test(url.hostname)
+  } catch {
+    return false
+  }
 }
