@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer";
 import * as cheerio from "cheerio";
 import { ScrapedContent, ScraperOptions } from "./types";
+import { stripControlChars } from "../utils/sanitize";
 
 export async function scrapeWithPuppeteer(
   url: string,
@@ -43,7 +44,9 @@ export async function scrapeWithPuppeteer(
     // limpia el HTML
     $("script, style, noscript, iframe, svg, nav, footer, header, form, aside").remove();
 
-    const title = $("title").first().text().trim() || $("h1").first().text().trim();
+    const title = stripControlChars(
+      $("title").first().text().trim() || $("h1").first().text().trim()
+    );
 
     const container = $("article").length
       ? $("article")
@@ -51,12 +54,15 @@ export async function scrapeWithPuppeteer(
       ? $("main")
       : $("body");
 
-    const text = container
-      .find("p, h1, h2, h3, li")
-      .map((_, el) => $(el).text().trim())
-      .get()
-      .filter(Boolean)
-      .join("\n");
+    const text = stripControlChars(
+      container
+        .find("p, h1, h2, h3, li")
+        .map((_, el) => $(el).text().trim())
+        .get()
+        .filter(Boolean)
+        .join("\n"),
+      true
+    );
 
     return {
       url,

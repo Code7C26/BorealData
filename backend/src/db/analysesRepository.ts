@@ -1,4 +1,4 @@
-import { getPool } from "./pool.js";
+import { runInUserTransaction } from "./context.js";
 import {
   normalizeVerdict,
   type AnalysisResult,
@@ -37,29 +37,30 @@ async function insertAnalysisRow(
   userId: string | null
 ): Promise<string | null> {
   try {
-    const pool = await getPool();
-    const result = await pool.query<{ id: string }>(
-      `INSERT INTO analyses
-        (url, title, scrape_method, verdict, confidence, headline, lead_text,
-         summary, reasoning, sources, tone_flags, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING id`,
-      [
-        fields.url,
-        fields.title,
-        fields.scrapeMethod,
-        fields.verdict,
-        fields.confidence,
-        fields.headline,
-        fields.lead,
-        fields.summary,
-        JSON.stringify(fields.reasoning),
-        JSON.stringify(fields.sources),
-        JSON.stringify(fields.toneFlags),
-        userId,
-      ]
-    );
-    return result.rows[0]?.id ?? null;
+    return await runInUserTransaction({ currentUserId: userId }, async (client) => {
+      const result = await client.query<{ id: string }>(
+        `INSERT INTO analyses
+          (url, title, scrape_method, verdict, confidence, headline, lead_text,
+           summary, reasoning, sources, tone_flags, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         RETURNING id`,
+        [
+          fields.url,
+          fields.title,
+          fields.scrapeMethod,
+          fields.verdict,
+          fields.confidence,
+          fields.headline,
+          fields.lead,
+          fields.summary,
+          JSON.stringify(fields.reasoning),
+          JSON.stringify(fields.sources),
+          JSON.stringify(fields.toneFlags),
+          userId,
+        ]
+      );
+      return result.rows[0]?.id ?? null;
+    });
   } catch (err) {
     console.error(
       "No se pudo guardar el análisis en la DB:",
@@ -310,17 +311,18 @@ export async function getAnalysesByUserId(
   limit: number,
   offset: number
 ): Promise<AnalysisHistoryItem[]> {
-  const pool = await getPool();
-  const result = await pool.query<AnalysisRow>(
-    `SELECT ${SELECT_COLUMNS}
-     FROM analyses
-     WHERE user_id = $1
-     ORDER BY created_at DESC
-     LIMIT $2 OFFSET $3`,
-    [userId, limit, offset]
-  );
+  return runInUserTransaction({ currentUserId: userId }, async (client) => {
+    const result = await client.query<AnalysisRow>(
+      `SELECT ${SELECT_COLUMNS}
+       FROM analyses
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
 
-  return result.rows.map(mapAnalysisRow);
+    return result.rows.map(mapAnalysisRow);
+  });
 }
 
 /**
@@ -337,14 +339,15 @@ export async function getAnalysesByUserId(
 export async function getAnalysisById(id: string): Promise<AnalysisHistoryItem | null> {
   if (!UUID_PATTERN.test(id)) return null;
 
-  const pool = await getPool();
-  const result = await pool.query<AnalysisRow>(
-    `SELECT ${SELECT_COLUMNS} FROM analyses WHERE id = $1`,
-    [id]
-  );
+  return runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
+    const result = await client.query<AnalysisRow>(
+      `SELECT ${SELECT_COLUMNS} FROM analyses WHERE id = $1`,
+      [id]
+    );
 
-  const row = result.rows[0];
-  return row ? mapAnalysisRow(row) : null;
+    const row = result.rows[0];
+    return row ? mapAnalysisRow(row) : null;
+  });
 }
 
 /**
@@ -370,18 +373,19 @@ export async function getAnalysisForUserByUrl(
   url: string
 ): Promise<AnalysisHistoryItem | null> {
   try {
-    const pool = await getPool();
-    const result = await pool.query<AnalysisRow>(
-      `SELECT ${SELECT_COLUMNS}
-       FROM analyses
-       WHERE user_id = $1 AND url = $2
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [userId, url]
-    );
+    return await runInUserTransaction({ currentUserId: userId }, async (client) => {
+      const result = await client.query<AnalysisRow>(
+        `SELECT ${SELECT_COLUMNS}
+         FROM analyses
+         WHERE user_id = $1 AND url = $2
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [userId, url]
+      );
 
-    const row = result.rows[0];
-    return row ? mapAnalysisRow(row) : null;
+      const row = result.rows[0];
+      return row ? mapAnalysisRow(row) : null;
+    });
   } catch (err) {
     console.error(
       "No se pudo buscar el análisis previo del usuario en la DB:",
@@ -391,20 +395,26 @@ export async function getAnalysisForUserByUrl(
   }
 }
 
+/**
+ * bypassOwnerCheck: true a propósito (ver policy analyses_select_own_or_shared en
+ * schema.sql) — esta búsqueda es la caché de /analyze que reusa el análisis de
+ * CUALQUIER usuario para la misma URL, para no gastar otra llamada a Gemini.
+ */
 export async function getLatestAnalysisByUrl(url: string): Promise<AnalysisHistoryItem | null> {
   try {
-    const pool = await getPool();
-    const result = await pool.query<AnalysisRow>(
-      `SELECT ${SELECT_COLUMNS}
-       FROM analyses
-       WHERE url = $1
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [url]
-    );
+    return await runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
+      const result = await client.query<AnalysisRow>(
+        `SELECT ${SELECT_COLUMNS}
+         FROM analyses
+         WHERE url = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [url]
+      );
 
-    const row = result.rows[0];
-    return row ? mapAnalysisRow(row) : null;
+      const row = result.rows[0];
+      return row ? mapAnalysisRow(row) : null;
+    });
   } catch (err) {
     console.error(
       "No se pudo buscar el análisis previo por URL en la DB:",
@@ -442,78 +452,79 @@ export interface GlobalStats {
  * Igual que getAnalysesByUserId(), el error se propaga: la ruta decide qué responder.
  */
 export async function getGlobalStats(): Promise<GlobalStats> {
-  const pool = await getPool();
-  const result = await pool.query<{
-    verdict: string;
-    total: string;
-    sources: string | null;
-    confidence_sum: string | null;
-    confidence_count: string;
-  }>(
-    `SELECT COALESCE(
-              verdict,
-              CASE label
-                WHEN 'verdadero'            THEN 'verificado'
-                WHEN 'mayormente_verdadero' THEN 'verificado'
-                WHEN 'mixto'                THEN 'dudoso'
-                WHEN 'mayormente_falso'     THEN 'falso'
-                WHEN 'falso'                THEN 'falso'
-                ELSE 'sin-datos'
-              END
-            )                                       AS verdict,
-            COUNT(*)                                AS total,
-            SUM(jsonb_array_length(sources))        AS sources,
-            -- Las filas viejas no tienen confidence (el esquema anterior no medía
-            -- la solidez de la evidencia). Se les asigna acá el mismo mínimo válido
-            -- por veredicto que usa LEGACY_CONFIDENCE al leerlas — si cambia uno hay
-            -- que cambiar el otro. Sin esto el promedio daba 0 mientras no hubiera
-            -- ni un análisis nuevo.
-            SUM(COALESCE(
-              confidence,
-              CASE label
-                WHEN 'verdadero'            THEN 3
-                WHEN 'mayormente_verdadero' THEN 3
-                WHEN 'mixto'                THEN 2
-                WHEN 'mayormente_falso'     THEN 3
-                WHEN 'falso'                THEN 3
-                ELSE 1
-              END
-            ))                                      AS confidence_sum,
-            COUNT(*)                                AS confidence_count
-     FROM analyses
-     GROUP BY 1`
-  );
+  return runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
+    const result = await client.query<{
+      verdict: string;
+      total: string;
+      sources: string | null;
+      confidence_sum: string | null;
+      confidence_count: string;
+    }>(
+      `SELECT COALESCE(
+                verdict,
+                CASE label
+                  WHEN 'verdadero'            THEN 'verificado'
+                  WHEN 'mayormente_verdadero' THEN 'verificado'
+                  WHEN 'mixto'                THEN 'dudoso'
+                  WHEN 'mayormente_falso'     THEN 'falso'
+                  WHEN 'falso'                THEN 'falso'
+                  ELSE 'sin-datos'
+                END
+              )                                       AS verdict,
+              COUNT(*)                                AS total,
+              SUM(jsonb_array_length(sources))        AS sources,
+              -- Las filas viejas no tienen confidence (el esquema anterior no medía
+              -- la solidez de la evidencia). Se les asigna acá el mismo mínimo válido
+              -- por veredicto que usa LEGACY_CONFIDENCE al leerlas — si cambia uno hay
+              -- que cambiar el otro. Sin esto el promedio daba 0 mientras no hubiera
+              -- ni un análisis nuevo.
+              SUM(COALESCE(
+                confidence,
+                CASE label
+                  WHEN 'verdadero'            THEN 3
+                  WHEN 'mayormente_verdadero' THEN 3
+                  WHEN 'mixto'                THEN 2
+                  WHEN 'mayormente_falso'     THEN 3
+                  WHEN 'falso'                THEN 3
+                  ELSE 1
+                END
+              ))                                      AS confidence_sum,
+              COUNT(*)                                AS confidence_count
+       FROM analyses
+       GROUP BY 1`
+    );
 
-  const verdicts: Record<Verdict, number> = {
-    verificado: 0,
-    dudoso: 0,
-    falso: 0,
-    "sin-datos": 0,
-  };
+    const verdicts: Record<Verdict, number> = {
+      verificado: 0,
+      dudoso: 0,
+      falso: 0,
+      "sin-datos": 0,
+    };
 
-  let totalAnalyses = 0;
-  let totalSources = 0;
-  let confidenceSum = 0;
-  let confidenceCount = 0;
+    let totalAnalyses = 0;
+    let totalSources = 0;
+    let confidenceSum = 0;
+    let confidenceCount = 0;
 
-  for (const row of result.rows) {
-    // COUNT/SUM vuelven como string (bigint/numeric) desde pg.
-    const total = Number(row.total);
-    totalAnalyses += total;
-    totalSources += Number(row.sources ?? 0);
-    confidenceSum += Number(row.confidence_sum ?? 0);
-    confidenceCount += Number(row.confidence_count);
+    for (const row of result.rows) {
+      // COUNT/SUM vuelven como string (bigint/numeric) desde pg.
+      const total = Number(row.total);
+      totalAnalyses += total;
+      totalSources += Number(row.sources ?? 0);
+      confidenceSum += Number(row.confidence_sum ?? 0);
+      confidenceCount += Number(row.confidence_count);
 
-    if (row.verdict in verdicts) {
-      verdicts[row.verdict as Verdict] += total;
+      if (row.verdict in verdicts) {
+        verdicts[row.verdict as Verdict] += total;
+      }
     }
-  }
 
-  return {
-    totalAnalyses,
-    totalSources,
-    averageConfidence:
-      confidenceCount > 0 ? Math.round((confidenceSum / confidenceCount) * 10) / 10 : 0,
-    verdicts,
-  };
+    return {
+      totalAnalyses,
+      totalSources,
+      averageConfidence:
+        confidenceCount > 0 ? Math.round((confidenceSum / confidenceCount) * 10) / 10 : 0,
+      verdicts,
+    };
+  });
 }

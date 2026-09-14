@@ -111,3 +111,85 @@ ALTER TABLE analyses
     OR (verdict = 'dudoso'     AND confidence BETWEEN 2 AND 4)
     OR (verdict = 'sin-datos'  AND confidence BETWEEN 1 AND 2)
   );
+
+-- ── Row Level Security (13-sep-2026) ────────────────────────────────────────
+-- Objetivo: que cada usuario solo pueda leer/escribir sus propias filas, incluso si
+-- algún día un endpoint nuevo se olvida del WHERE user_id = ... — RLS es la segunda
+-- capa, no reemplaza el filtro que ya hace cada función de db/analysesRepository.ts
+-- y db/usersRepository.ts.
+--
+-- Importante: Postgres IGNORA las policies de RLS para el dueño de la tabla (y para
+-- superusuarios), salvo que se use FORCE ROW LEVEL SECURITY. Acá NO se usa FORCE a
+-- propósito: se crea un rol de aplicación aparte, sin ser dueño de las tablas, y es
+-- ESE rol el que el backend tiene que usar (DB_USER) para que RLS aplique de verdad.
+-- El dueño original (el rol con el que se corrió este schema.sql) sigue sin
+-- restricciones, para poder hacer consultas de mantenimiento sin pelearte con las
+-- policies.
+--
+-- Password: cambiar el placeholder de abajo antes de correr esto, y usar esa misma
+-- contraseña como DB_PASSWORD del backend (nunca commitear la contraseña real a git —
+-- va en el .env local o en las variables de entorno del deploy, ambos gitignoreados).
+CREATE ROLE aletheia_app WITH LOGIN PASSWORD 'CAMBIAR_ESTA_PASSWORD';
+GRANT USAGE ON SCHEMA public TO aletheia_app;
+GRANT SELECT, INSERT, UPDATE ON public.analyses, public.users TO aletheia_app;
+-- Sin DELETE ni DDL: el backend nunca borra filas ni cambia el esquema en runtime.
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
+
+-- `users`: cada quien solo ve/crea/actualiza su propia fila, identificada por
+-- firebase_uid (el uid del token verificado por Firebase Admin en el backend — ver
+-- auth/verifyAuth.ts; el cliente nunca puede mandar un firebase_uid falso porque no
+-- sale del token, sale de verifyIdToken()). Backend la setea en cada transacción con
+-- set_config('app.current_firebase_uid', ...) — ver db/context.ts.
+CREATE POLICY users_select_own ON users
+  FOR SELECT
+  USING (firebase_uid = current_setting('app.current_firebase_uid', true));
+
+CREATE POLICY users_insert_own ON users
+  FOR INSERT
+  WITH CHECK (firebase_uid = current_setting('app.current_firebase_uid', true));
+
+CREATE POLICY users_update_own ON users
+  FOR UPDATE
+  USING (firebase_uid = current_setting('app.current_firebase_uid', true))
+  WITH CHECK (firebase_uid = current_setting('app.current_firebase_uid', true));
+
+-- `analyses`: por defecto cada quien solo ve/inserta filas con su propio user_id (uuid
+-- interno, no el uid de Firebase — ver db/context.ts::runInUserTransaction). El
+-- NULLIF+cast evita que current_setting(...) devuelva '' (contexto no seteado, ej. una
+-- request sin login) y reviente el cast a uuid: en ese caso user_id = NULL nunca
+-- matchea ninguna fila real, así que el efecto es "denegar", no un error.
+--
+-- La condición `OR current_setting('app.bypass_owner_check', true) = 'true'` es la
+-- excepción a propósito para los dos casos de lectura cruzada entre usuarios que ya
+-- existían ANTES de este RLS (no es un agujero nuevo, es preservar el comportamiento
+-- actual): el link público "Compartir resultado" (GET /analyses/:id, sin login) y la
+-- caché de /analyze que reusa el análisis de cualquier usuario para la misma URL en
+-- vez de gastar Gemini de nuevo. También la usa el agregado público de GET /stats
+-- (cuenta/promedia TODAS las filas, no las de un usuario). El backend solo prende ese
+-- flag alrededor de esas queries puntuales — ver getAnalysisById, getLatestAnalysisByUrl
+-- y getGlobalStats en db/analysesRepository.ts.
+CREATE POLICY analyses_select_own_or_shared ON analyses
+  FOR SELECT
+  USING (
+    user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+    OR current_setting('app.bypass_owner_check', true) = 'true'
+  );
+
+-- El INSERT nunca necesita el bypass: cada fila que el backend inserta representa el
+-- análisis TAL COMO LE QUEDA al usuario actual (aunque el contenido se haya reusado de
+-- otro usuario, la fila nueva es de quien la pidió). user_id IS NULL cubre el caso
+-- borde de que upsertUser() haya fallado (ver saveAnalysis en analysesRepository.ts) —
+-- no es un hueco de seguridad: nadie puede leer esa fila después salvo por el link
+-- público (bypass) o si en el futuro se le asigna un dueño.
+CREATE POLICY analyses_insert_own ON analyses
+  FOR INSERT
+  WITH CHECK (
+    user_id IS NULL
+    OR user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+  );
+
+-- Sin policies de UPDATE/DELETE a propósito: con RLS activado, la ausencia de policy
+-- para un comando lo deniega por completo para aletheia_app — correcto, el backend
+-- nunca actualiza ni borra filas de `analyses`.

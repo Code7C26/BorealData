@@ -1,4 +1,4 @@
-import { getPool } from "./pool.js";
+import { runInUserTransaction } from "./context.js";
 
 /**
  * Crea (o actualiza el email de) la fila en `users` correspondiente a un usuario de
@@ -22,17 +22,18 @@ export async function upsertUser(
   fullName?: string | null
 ): Promise<string | null> {
   try {
-    const pool = await getPool();
-    const result = await pool.query<{ id: string }>(
-      `INSERT INTO users (firebase_uid, email, full_name)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (firebase_uid) DO UPDATE SET
-         email = EXCLUDED.email,
-         full_name = COALESCE(EXCLUDED.full_name, users.full_name)
-       RETURNING id`,
-      [firebaseUid, email, fullName ?? null]
-    );
-    return result.rows[0]?.id ?? null;
+    return await runInUserTransaction({ firebaseUid }, async (client) => {
+      const result = await client.query<{ id: string }>(
+        `INSERT INTO users (firebase_uid, email, full_name)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (firebase_uid) DO UPDATE SET
+           email = EXCLUDED.email,
+           full_name = COALESCE(EXCLUDED.full_name, users.full_name)
+         RETURNING id`,
+        [firebaseUid, email, fullName ?? null]
+      );
+      return result.rows[0]?.id ?? null;
+    });
   } catch (err) {
     console.error(
       "No se pudo crear/actualizar el usuario en la DB:",
@@ -61,26 +62,27 @@ export interface UserProfile {
  * razonable si la DB falla.
  */
 export async function getUserProfile(firebaseUid: string): Promise<UserProfile | null> {
-  const pool = await getPool();
-  const result = await pool.query<{
-    id: string;
-    firebase_uid: string;
-    email: string | null;
-    full_name: string | null;
-    created_at: Date;
-  }>(
-    `SELECT id, firebase_uid, email, full_name, created_at FROM users WHERE firebase_uid = $1`,
-    [firebaseUid]
-  );
+  return runInUserTransaction({ firebaseUid }, async (client) => {
+    const result = await client.query<{
+      id: string;
+      firebase_uid: string;
+      email: string | null;
+      full_name: string | null;
+      created_at: Date;
+    }>(
+      `SELECT id, firebase_uid, email, full_name, created_at FROM users WHERE firebase_uid = $1`,
+      [firebaseUid]
+    );
 
-  const row = result.rows[0];
-  if (!row) return null;
+    const row = result.rows[0];
+    if (!row) return null;
 
-  return {
-    id: row.id,
-    firebaseUid: row.firebase_uid,
-    email: row.email,
-    fullName: row.full_name,
-    createdAt: row.created_at.toISOString(),
-  };
+    return {
+      id: row.id,
+      firebaseUid: row.firebase_uid,
+      email: row.email,
+      fullName: row.full_name,
+      createdAt: row.created_at.toISOString(),
+    };
+  });
 }
