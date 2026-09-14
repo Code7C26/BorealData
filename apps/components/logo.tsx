@@ -1,51 +1,85 @@
-export function Logo() {
+import { cn } from '@/lib/utils'
+
+/**
+ * Isotipo "Umbral".
+ *
+ * Aletheia es lo que deja de estar oculto: la tapa se levanta y aparece la luz.
+ * Un disco que emerge, no un ojo que vigila — los caminos con lupa, escudo, ojo
+ * o tilde de verificado quedaron descartados justamente por eso: AletheIA no
+ * juzga desde arriba, muestra lo que encontró.
+ *
+ * Doble lectura: tapa levantada (lo revelado) y sol sobre el horizonte (la idea
+ * boreal, luz en la oscuridad, el norte).
+ *
+ * Construcción — grilla de 64:
+ *   · Velo de 48×8, radio total, en Luz Boreal, con 8 unidades de aire. Ese
+ *     mismo aire funciona como margen mínimo del isotipo.
+ *   · Disco r=24 centrado en 32/36, en Violeta Aurora, cortado por la recta
+ *     y=22 (el corte deja la masa grande, de ahí el arco "large" de abajo).
+ *
+ * Son dos masas y no un dibujo: por eso sobrevive a 16 px.
+ */
+export function LogoMark({
+  className,
+  animated = false,
+}: {
+  className?: string
+  /** El velo se levanta al montar. Solo para entradas grandes (hero, login). */
+  animated?: boolean
+}) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative flex h-10 w-10 items-center justify-center">
-        <svg
-          viewBox="0 0 40 40"
-          className="h-10 w-10"
-          fill="none"
-          aria-hidden="true"
-        >
-          {/* Hexagon */}
-          <path
-            d="M20 2L34.6 10.5V27.5L20 36L5.4 27.5V10.5L20 2Z"
-            fill="#10233a"
-            stroke="#1a6db5"
-            strokeWidth="1.5"
-          />
-          {/* Light arc lines */}
-          <path
-            d="M12 24C13.5 17 17 13.5 24 13"
-            stroke="#60b8f0"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-          />
-          <path
-            d="M15 26C16.5 20.5 19 18 24.5 17"
-            stroke="#60b8f0"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            opacity="0.7"
-          />
-          <path
-            d="M18 27.5C19 23.5 21 21.5 25 20.5"
-            stroke="#60b8f0"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            opacity="0.45"
-          />
-        </svg>
-      </div>
-      <div className="flex flex-col leading-none">
-        <span className="font-serif text-lg font-bold tracking-wide text-ice">
-          BOREAL
+    <svg
+      viewBox="0 0 64 64"
+      className={cn('h-10 w-10 shrink-0', className)}
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Disco: la verdad revelada. El arco va del extremo izquierdo del corte
+          al derecho por abajo — large-arc=1, sweep=0. */}
+      <path
+        d="M12.51 22 A24 24 0 1 0 51.49 22 Z"
+        fill="var(--accent)"
+        className={animated ? 'motion-safe:animate-rise' : undefined}
+      />
+      {/* Velo: la tapa levantada. */}
+      <rect
+        x="8"
+        y="6"
+        width="48"
+        height="8"
+        rx="4"
+        fill="var(--display)"
+        className={animated ? 'motion-safe:animate-veil-lift' : undefined}
+      />
+    </svg>
+  )
+}
+
+/**
+ * Lockup completo. El acento va solo en "IA": el resto de la palabra queda en el
+ * color de titular.
+ */
+export function Logo({
+  className,
+  showParent = false,
+  animated = false,
+}: {
+  className?: string
+  /** Agrega la bajada "Boreal Data". Solo donde hace falta firmar. */
+  showParent?: boolean
+  animated?: boolean
+}) {
+  return (
+    <span className={cn('inline-flex items-center gap-3', className)}>
+      <LogoMark animated={animated} className="h-9 w-9" />
+      <span className="flex flex-col leading-none">
+        <span className="font-display text-[1.375rem] font-bold tracking-[-0.02em] text-display">
+          Alethe<span className="text-accent-text">IA</span>
         </span>
-        <span className="text-[0.65rem] font-medium uppercase tracking-[0.35em] text-blue-light">
-          Data
-        </span>
-      </div>
-    </div>
+        {showParent && (
+          <span className="mt-1 font-mono text-micro uppercase text-subtle">Boreal Data</span>
+        )}
+      </span>
+    </span>
   )
 }

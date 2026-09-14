@@ -5,7 +5,7 @@ const analysesRepository_js_1 = require("../db/analysesRepository.js");
 const router = (0, express_1.Router)();
 /**
  * GET /analyses/:id
- * Sin auth a propósito: es el endpoint detrás del botón "Compartir resultado" de
+ * Sin auth a propósito: es el endpoint detrás del botón "Compartir verificación" de
  * /resultado — cualquiera con el link (id uuid, no adivinable) tiene que poder ver
  * ese análisis puntual sin necesitar cuenta. Ver getAnalysisById() para el porqué de
  * no filtrar por dueño acá (a diferencia de GET /history).

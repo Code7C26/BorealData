@@ -20,7 +20,7 @@ export default function LayoutAutenticado({
   }, [loading, user, router]);
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-navy" />;
+    return <div className="min-h-screen bg-bg" />;
   }
 
   return <Sidebar>{children}</Sidebar>;

@@ -1,60 +1,59 @@
-import { Mail, MessageCircle, Clock } from "lucide-react";
+import { Clock, Mail, MessageCircle } from 'lucide-react'
+
+const NOTAS = [
+  {
+    icon: Clock,
+    titulo: 'Tiempo de respuesta',
+    texto: 'Normalmente contestamos dentro de 1 a 2 días hábiles.',
+  },
+  {
+    icon: MessageCircle,
+    titulo: 'Antes de escribir',
+    texto:
+      'Si el análisis se cortó, probá de nuevo: suele ser un corte momentáneo de conexión con la fuente.',
+  },
+]
 
 export default function ContactoPage() {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12 animate-fade-up">
-      <h1 className="font-serif text-2xl font-bold text-ice sm:text-3xl">
-        Contacto
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        ¿Tenés una duda, sugerencia o encontraste un problema? Escribinos.
-      </p>
-
-      <div className="mt-8 rounded-2xl border border-border bg-card p-8">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-light to-blue text-ice shadow-lg shadow-blue/30">
-          <Mail className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <h2 className="mt-6 font-serif text-lg font-bold text-ice">
-          Escribinos por email
-        </h2>
-        <p className="mt-2 leading-relaxed text-muted-foreground">
-          Te respondemos a la brevedad. Contanos qué noticia estabas
-          analizando y qué pasó, así podemos ayudarte más rápido.
+    <div className="mx-auto flex w-full max-w-card flex-col gap-6 px-gutter py-12 md:px-6 md:py-16">
+      <header className="flex flex-col gap-3">
+        <p className="eyebrow">Contacto</p>
+        <h1 className="font-display text-h2-fluid text-display">Escribinos</h1>
+        <p className="max-w-texto text-muted">
+          ¿Una duda, una sugerencia, o un análisis que salió raro? Contanos qué nota estabas
+          verificando y qué pasó.
         </p>
-        <a
-          href="mailto:contacto@borealdata.com"
-          className="btn-primary mt-6 inline-flex"
-        >
-          <Mail className="h-4 w-4" aria-hidden="true" />
+      </header>
+
+      <section className="card-shell border-t-accent">
+        <span className="flex size-12 items-center justify-center rounded-xl bg-accent text-bruma">
+          <Mail aria-hidden="true" size={22} />
+        </span>
+        <h2 className="font-display text-h3 font-semibold text-display">Por email</h2>
+        <p className="text-body-sm text-muted">
+          Es el canal que miramos todos los días. Si podés, pegá el enlace de la nota: con eso
+          reproducimos el caso enseguida.
+        </p>
+        <a href="mailto:contacto@borealdata.com" className="btn-primary self-start">
+          <Mail aria-hidden="true" size={16} />
           contacto@borealdata.com
         </a>
-      </div>
+      </section>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-6">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue/15 text-blue-light">
-            <Clock className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-ice">Tiempo de respuesta</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Normalmente respondemos dentro de 1 a 2 días hábiles.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-6">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue/15 text-blue-light">
-            <MessageCircle className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-ice">Antes de escribir</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Revisá que tu consulta no esté relacionada con un problema
-              temporal de conexión — probá analizar de nuevo primero.
-            </p>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {NOTAS.map(({ icon: Icon, titulo, texto }) => (
+          <section key={titulo} className="panel flex items-start gap-3.5">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-pill border border-border text-accent-text">
+              <Icon aria-hidden="true" size={16} />
+            </span>
+            <div>
+              <h2 className="font-mono text-micro uppercase text-subtle">{titulo}</h2>
+              <p className="mt-2 text-body-sm text-muted">{texto}</p>
+            </div>
+          </section>
+        ))}
       </div>
     </div>
-  );
+  )
 }

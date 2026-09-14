@@ -3,46 +3,37 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
+import { Logo } from '@/components/logo'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
   { href: '#como-funciona', label: 'Cómo funciona' },
-  { href: '#acerca-de', label: 'Acerca de' },
+  { href: '#extension', label: 'Extensión' },
+  { href: '#boreal-data', label: 'Boreal Data' },
+  { href: '#faq', label: 'Preguntas' },
 ]
 
 export function Navbar() {
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-navy/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-light/60 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent"
       />
-      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
-        <a href="#" aria-label="Boreal Data — inicio" className="group min-w-0 shrink-0">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logoAletheia.png"
-              alt="AletheIA"
-              className="h-9 shrink-0 object-contain transition-transform duration-300 group-hover:scale-110 sm:h-10"
-            />
-            <div className="hidden flex-col leading-tight sm:flex">
-              <span className="text-ice font-bold text-sm tracking-widest uppercase">
-                Boreal Data
-              </span>
-              <span className="text-blue-light text-xs tracking-wider">
-                by AletheIA
-              </span>
-            </div>
-          </div>
+      <nav className="mx-auto flex max-w-shell items-center justify-between gap-3 px-gutter py-4 md:px-6">
+        <a href="#" aria-label="AletheIA — inicio" className="min-w-0 shrink-0">
+          <Logo />
         </a>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-7 lg:flex">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="relative text-sm font-medium text-muted-foreground transition-colors hover:text-ice after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-blue-light after:transition-all after:duration-300 hover:after:w-full"
+              className="relative whitespace-nowrap text-body-sm text-muted transition-colors duration-150 ease-boreal hover:text-ink after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:bg-accent-text after:transition-all after:duration-300 hover:after:w-full"
             >
               {link.label}
             </a>
@@ -50,11 +41,9 @@ export function Navbar() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Link
-            href="/login"
-            className="btn-primary whitespace-nowrap px-3.5 py-2 sm:px-5"
-          >
-            Iniciar sesión
+          <ThemeToggle className="hidden sm:inline-flex" />
+          <Link href="/login" className="btn-primary whitespace-nowrap" style={{ padding: '10px 18px' }}>
+            Entrar
           </Link>
 
           <button
@@ -62,26 +51,30 @@ export function Navbar() {
             onClick={() => setMenuAbierto((v) => !v)}
             aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={menuAbierto}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-ice md:hidden"
+            className="flex size-10 shrink-0 items-center justify-center rounded-pill text-subtle transition-colors duration-150 ease-boreal hover:bg-surface hover:text-ink lg:hidden"
           >
-            {menuAbierto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {menuAbierto ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
           </button>
         </div>
       </nav>
 
       {menuAbierto && (
-        <div className="border-t border-border/60 bg-navy px-6 py-4 md:hidden animate-fade-up">
-          <div className="mx-auto flex max-w-6xl flex-col gap-1">
+        <div className={cn('animate-rise border-t border-border bg-bg px-gutter py-4 lg:hidden md:px-6')}>
+          <div className="mx-auto flex max-w-shell flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuAbierto(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-ice"
+                className="rounded-lg px-3 py-3 text-body-sm font-medium text-muted transition-colors duration-150 ease-boreal hover:bg-surface hover:text-ink"
               >
                 {link.label}
               </a>
             ))}
+            <div className="mt-2 flex items-center gap-3 border-t border-border px-3 pt-4 sm:hidden">
+              <ThemeToggle />
+              <span className="font-mono text-micro uppercase text-disabled">Modo de lectura</span>
+            </div>
           </div>
         </div>
       )}
