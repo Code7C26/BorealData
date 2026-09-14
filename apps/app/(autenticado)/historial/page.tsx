@@ -1,238 +1,248 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  HelpCircle,
-  Calendar,
-  Link2,
-  Inbox,
-  AlertOctagon,
-  RotateCcw,
-  Search,
-} from "lucide-react";
-import { apiFetch, mapLabelToVeredicto, type HistoryItem, type Veredicto } from "@/lib/api";
-import { guardarResultadoDesdeHistorial } from "@/lib/resultado-storage";
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { RotateCcw, Search, WifiOff } from 'lucide-react'
+import { apiFetch, type HistoryItem } from '@/lib/api'
+import { guardarResultadoDesdeHistorial } from '@/lib/resultado-storage'
+import { CONFIDENCE, normalize, VERDICT, type Verdict } from '@/lib/verdict'
+import { cn } from '@/lib/utils'
 
-const ESTILO_VEREDICTO: Record<
-  Veredicto,
-  { label: string; icon: typeof CheckCircle2; texto: string; fondo: string; borde: string }
-> = {
-  confiable: {
-    label: "Confiable",
-    icon: CheckCircle2,
-    texto: "text-emerald-300",
-    fondo: "bg-emerald-900/20",
-    borde: "border-emerald-500/30",
-  },
-  dudosa: {
-    label: "Dudosa",
-    icon: AlertTriangle,
-    texto: "text-amber-300",
-    fondo: "bg-amber-900/20",
-    borde: "border-amber-500/30",
-  },
-  desinformacion: {
-    label: "Posible desinformación",
-    icon: XCircle,
-    texto: "text-red-300",
-    fondo: "bg-red-900/20",
-    borde: "border-red-500/30",
-  },
-  no_verificable: {
-    label: "No verificable",
-    icon: HelpCircle,
-    texto: "text-slate-300",
-    fondo: "bg-slate-500/10",
-    borde: "border-slate-400/30",
-  },
-};
+const FILTROS: Array<{ valor: Verdict | 'todos'; label: string }> = [
+  { valor: 'todos', label: 'Todos' },
+  { valor: 'verificado', label: 'Verificado' },
+  { valor: 'dudoso', label: 'Dudoso' },
+  { valor: 'falso', label: 'Falso' },
+  { valor: 'sin-datos', label: 'Sin datos' },
+]
 
 function hostnameDe(url: string): string {
   try {
-    return new URL(url).hostname;
+    const host = new URL(url).hostname.toLowerCase()
+    return host.startsWith('www.') ? host.slice(4) : host
   } catch {
-    return url;
+    return url
   }
 }
 
-function formatearFecha(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function TarjetaHistorial({ item }: { item: HistoryItem }) {
-  const router = useRouter();
-  const veredicto = mapLabelToVeredicto(item.label);
-  const estilo = ESTILO_VEREDICTO[veredicto];
-  const Icon = estilo.icon;
+/**
+ * Una fila del historial.
+ *
+ * Es una lista, no una grilla de tarjetas: el historial se escanea de arriba a
+ * abajo buscando una nota concreta, y una columna alineada hace eso mucho mejor
+ * que tres columnas de cards. El borde izquierdo lleva el color del veredicto —
+ * el mismo rol que el borde superior en la card de resultado.
+ */
+function FilaHistorial({ item }: { item: HistoryItem }) {
+  const router = useRouter()
+  const { verdict, confidence } = normalize(item.verdict, item.confidence)
+  const meta = VERDICT[verdict]
+  const Icon = meta.icon
 
   const abrir = () => {
-    guardarResultadoDesdeHistorial(item);
+    guardarResultadoDesdeHistorial(item)
     // El id fuerza el remount de /resultado (ver comentario en esa página) y
     // "from=historial" habilita el botón de volver acá.
-    router.push(`/resultado?item=${item.id}&from=historial`);
-  };
+    router.push(`/resultado?item=${item.id}&from=historial`)
+  }
 
   return (
-    <button
-      onClick={abrir}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-6 text-left transition-all hover:-translate-y-1 hover:border-blue-light/50 hover:shadow-xl hover:shadow-blue/10"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${estilo.fondo} ${estilo.borde} ${estilo.texto}`}
-        >
-          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-          {estilo.label}
-        </span>
-        <span className="text-xs font-semibold text-muted-foreground">
-          {item.score}%
-        </span>
-      </div>
+    <li>
+      <button
+        onClick={abrir}
+        className={cn(
+          'group flex w-full flex-col gap-3 rounded-lg border border-border border-l-[3px] bg-surface',
+          'px-5 py-4 text-left transition-colors duration-150 ease-boreal',
+          'hover:border-border-strong hover:bg-surface-sunk',
+          meta.borderLeft,
+        )}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <span className={cn('inline-flex items-center gap-2 font-mono text-micro uppercase', meta.text)}>
+            <Icon aria-hidden="true" size={13} strokeWidth={2.25} />
+            {meta.label}
+          </span>
+          <span className="flex items-center gap-2.5 font-mono text-micro uppercase text-subtle">
+            <span className="flex h-1.5 w-10 gap-0.5" aria-hidden="true">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <span
+                  key={i}
+                  className={cn('flex-1 rounded-pill', i <= confidence ? meta.bg : 'bg-border')}
+                />
+              ))}
+            </span>
+            confianza {CONFIDENCE[confidence].label.toLowerCase()}
+          </span>
+        </div>
 
-      <h3 className="mt-4 line-clamp-2 font-serif text-base font-bold leading-snug text-ice">
-        {item.title ?? item.url}
-      </h3>
+        <p className="line-clamp-2 font-display text-body font-semibold leading-snug text-display">
+          {item.headline || item.title || item.url}
+        </p>
 
-      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-        {item.summary ?? ""}
-      </p>
+        {item.lead && (
+          <p className="line-clamp-2 text-body-sm text-muted">{item.lead}</p>
+        )}
 
-      <div className="mt-4 flex items-center gap-4 border-t border-border/60 pt-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-          {formatearFecha(item.createdAt)}
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5">
-          <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">{hostnameDe(item.url)}</span>
-        </span>
-      </div>
-    </button>
-  );
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-micro uppercase text-subtle">
+          <time dateTime={item.createdAt}>
+            {new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium' }).format(
+              new Date(item.createdAt),
+            )}
+          </time>
+          <span className="truncate normal-case tracking-normal">{hostnameDe(item.url)}</span>
+          <span>{item.sources.length} fuentes</span>
+        </div>
+      </button>
+    </li>
+  )
 }
 
-function VistaVacia() {
+/**
+ * El vacío es el estado de trabajo, no un hueco: no hay ilustración triste ni
+ * un "aún no hay nada", hay una salida directa a analizar la primera nota.
+ */
+function VistaVacia({ filtrando }: { filtrando: boolean }) {
   return (
-    <div className="flex flex-col items-center px-6 py-20 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-card">
-        <Inbox className="h-7 w-7 text-blue-light" aria-hidden="true" />
-      </div>
-      <h2 className="mt-6 font-serif text-xl font-bold text-ice">
-        Todavía no analizaste ninguna noticia
+    <div className="card-shell border-t-border">
+      <h2 className="font-display text-h3 font-semibold text-display">
+        {filtrando ? 'Ninguna nota con ese veredicto' : 'Todavía no analizaste ninguna nota'}
       </h2>
-      <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
-        Cuando analices tu primera noticia, va a aparecer acá para que puedas
-        volver a consultarla cuando quieras.
+      <p className="text-body-sm text-muted">
+        {filtrando
+          ? 'Probá con otro veredicto, o mirá el historial completo.'
+          : 'Cuando verifiques tu primera nota va a quedar acá, con su veredicto y sus fuentes, para volver a consultarla cuando quieras.'}
       </p>
-      <Link
-        href="/dashboard"
-        className="btn-primary mt-8"
-      >
-        <Search className="h-4 w-4" aria-hidden="true" />
-        Analizar tu primera noticia
-      </Link>
+      {!filtrando && (
+        <Link href="/dashboard" className="btn-primary self-start">
+          <Search aria-hidden="true" size={16} />
+          Verificar la primera
+        </Link>
+      )}
     </div>
-  );
+  )
 }
 
 function VistaCargando() {
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
+    <ul className="flex flex-col gap-3" aria-busy="true" aria-label="Cargando historial">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <li
           key={i}
-          className="flex flex-col rounded-2xl border border-border bg-card p-6"
+          className="flex flex-col gap-3 rounded-lg border border-border border-l-[3px] bg-surface px-5 py-4"
         >
-          <div className="h-5 w-24 animate-pulse rounded-full bg-border" />
-          <div className="mt-4 h-4 w-full animate-pulse rounded bg-border" />
-          <div className="mt-2 h-4 w-3/4 animate-pulse rounded bg-border" />
-          <div className="mt-3 h-3 w-full animate-pulse rounded bg-border/70" />
-          <div className="mt-1 h-3 w-2/3 animate-pulse rounded bg-border/70" />
-          <div className="mt-4 h-3 w-1/2 animate-pulse rounded bg-border/50" />
-        </div>
+          <span className="h-3 w-28 animate-pulse-soft rounded-sm bg-border" />
+          <span className="h-4 w-4/5 animate-pulse-soft rounded-sm bg-border" />
+          <span className="h-3 w-3/5 animate-pulse-soft rounded-sm bg-border" />
+        </li>
       ))}
-    </div>
-  );
+    </ul>
+  )
 }
 
-function VistaErrorHistorial({ onReintentar }: { onReintentar: () => void }) {
+function VistaError({ onReintentar }: { onReintentar: () => void }) {
   return (
-    <div className="flex flex-col items-center px-6 py-20 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/40 bg-red-900/20">
-        <AlertOctagon className="h-7 w-7 text-red-400" aria-hidden="true" />
-      </div>
-      <h2 className="mt-6 font-serif text-xl font-bold text-ice">
-        No pudimos cargar tu historial
-      </h2>
-      <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
-        Hubo un problema de conexión con el servidor. Probá de nuevo en unos
-        segundos.
+    <section role="alert" className="card-shell border-t-verdict-dudoso">
+      <p className="chip self-start text-verdict-dudoso">
+        <WifiOff aria-hidden="true" size={14} /> Sin conexión
       </p>
-      <button
-        onClick={onReintentar}
-        className="btn-primary mt-8"
-      >
-        <RotateCcw className="h-4 w-4" aria-hidden="true" />
-        Reintentar
+      <h2 className="font-display text-h3 font-semibold text-display">
+        No pudimos traer tu historial
+      </h2>
+      <p className="text-body-sm text-muted">
+        Se cortó la conexión con el servidor. Tus análisis siguen guardados: probá de nuevo en
+        unos segundos.
+      </p>
+      <button onClick={onReintentar} className="btn-primary self-start">
+        <RotateCcw aria-hidden="true" size={16} /> Reintentar
       </button>
-    </div>
-  );
+    </section>
+  )
 }
 
-type Estado = "cargando" | "error" | "listo";
+type Estado = 'cargando' | 'error' | 'listo'
 
 export default function HistorialPage() {
-  const [estado, setEstado] = useState<Estado>("cargando");
-  const [analyses, setAnalyses] = useState<HistoryItem[]>([]);
+  const [estado, setEstado] = useState<Estado>('cargando')
+  const [analyses, setAnalyses] = useState<HistoryItem[]>([])
+  const [filtro, setFiltro] = useState<Verdict | 'todos'>('todos')
 
   const cargar = () => {
-    setEstado("cargando");
-    apiFetch<{ analyses: HistoryItem[] }>("/history")
+    setEstado('cargando')
+    apiFetch<{ analyses: HistoryItem[] }>('/history')
       .then((res) => {
-        setAnalyses(res.analyses);
-        setEstado("listo");
+        setAnalyses(res.analyses)
+        setEstado('listo')
       })
-      .catch(() => setEstado("error"));
-  };
+      .catch(() => setEstado('error'))
+  }
 
   useEffect(() => {
-    cargar();
-  }, []);
+    cargar()
+  }, [])
+
+  const visibles =
+    filtro === 'todos'
+      ? analyses
+      : analyses.filter((a) => normalize(a.verdict, a.confidence).verdict === filtro)
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12 animate-fade-up">
-      <div className="mb-8">
-        <h1 className="font-serif text-2xl font-bold text-ice sm:text-3xl">
-          Historial de análisis
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Todas las noticias que analizaste, con su veredicto y nivel de
-          confiabilidad.
+    <div className="mx-auto flex w-full max-w-card flex-col gap-8 px-gutter py-12 md:px-6 md:py-16">
+      <header className="flex flex-col gap-3">
+        <p className="eyebrow">Historial</p>
+        <h1 className="font-display text-h2-fluid text-display">Lo que ya verificaste</h1>
+        <p className="max-w-texto text-muted">
+          Cada nota con su veredicto y qué tan sólida era la evidencia. Se abren sin volver a
+          analizarlas.
         </p>
-      </div>
+      </header>
 
-      {estado === "cargando" ? (
-        <VistaCargando />
-      ) : estado === "error" ? (
-        <VistaErrorHistorial onReintentar={cargar} />
-      ) : analyses.length === 0 ? (
-        <VistaVacia />
-      ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {analyses.map((item) => (
-            <TarjetaHistorial key={item.id} item={item} />
-          ))}
+      {estado === 'listo' && analyses.length > 0 && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por veredicto">
+          {FILTROS.map((f) => {
+            const activo = filtro === f.valor
+            return (
+              <button
+                key={f.valor}
+                type="button"
+                onClick={() => setFiltro(f.valor)}
+                aria-pressed={activo}
+                className={cn(
+                  'rounded-pill border px-3.5 py-1.5 font-mono text-micro uppercase transition-colors duration-150 ease-boreal',
+                  activo
+                    ? 'border-accent-text text-accent-text'
+                    : 'border-border text-subtle hover:border-border-strong hover:text-ink',
+                )}
+              >
+                {f.label}
+                {f.valor !== 'todos' && (
+                  <span className="ml-2 text-disabled">
+                    {
+                      analyses.filter(
+                        (a) => normalize(a.verdict, a.confidence).verdict === f.valor,
+                      ).length
+                    }
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
+
+      {estado === 'cargando' ? (
+        <VistaCargando />
+      ) : estado === 'error' ? (
+        <VistaError onReintentar={cargar} />
+      ) : visibles.length === 0 ? (
+        <VistaVacia filtrando={filtro !== 'todos' && analyses.length > 0} />
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {visibles.map((item) => (
+            <FilaHistorial key={item.id} item={item} />
+          ))}
+        </ul>
+      )}
     </div>
-  );
+  )
 }

@@ -22,8 +22,19 @@ export async function scrapeWithPuppeteer(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
     );
 
-    // "networkidle2" espera a que la mayoría de los requests de la pestaña terminen,
-    await page.goto(url, { waitUntil: "networkidle2", timeout: timeoutMs });
+    // "networkidle2" se cuelga en páginas con video/streaming/ads: esos widgets
+    // mantienen conexiones de red casi continuas (buffering, tracking, precarga
+    // de segmentos) y la página nunca llega a estar "idle", así que Puppeteer
+    // termina esperando el timeout completo y tirando error. "domcontentloaded"
+    // resuelve apenas el HTML está parseado, sin depender de que la red se calme.
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+
+    // Best-effort: si la red sí llega a asentarse pronto (contenido cargado por
+    // JS ya terminó de pedir lo que necesitaba), esperamos un toque más para
+    // capturar ese contenido. Si nunca se asienta (video, ads, etc.), seguimos
+    // igual en vez de colgarnos - a diferencia del waitUntil de arriba, acá un
+    // timeout no es un error fatal.
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }).catch(() => {});
 
     // obtiene y parsea el HTML con cheerio
     const html = await page.content();

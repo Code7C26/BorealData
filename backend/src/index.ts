@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import analyzeRouter from "./routes/analyze.js";
+import analysesRouter from "./routes/analyses.js";
 import historyRouter from "./routes/history.js";
 import meRouter from "./routes/me.js";
 import statsRouter from "./routes/stats.js";
@@ -21,6 +22,7 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.use(analyzeRouter);
+app.use(analysesRouter);
 app.use(historyRouter);
 app.use(meRouter);
 app.use(statsRouter);

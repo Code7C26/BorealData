@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="AletheIA">
+  <title>AletheIA — isotipo Umbral</title>
+  <!-- Disco: la verdad revelada. Circunferencia r=24 centrada en 32/36,
+       cortada por la recta y=22; queda la masa grande (arco largo, por abajo). -->
+  <path d="M12.51 22 A24 24 0 1 0 51.49 22 Z" fill="#7A5AF8"/>
+  <!-- Velo: la tapa levantada. 48x8, radio total, 8 unidades de aire. -->
+  <rect x="8" y="6" width="48" height="8" rx="4" fill="#F2E8D5"/>
+</svg>

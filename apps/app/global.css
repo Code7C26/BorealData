@@ -1,207 +1,575 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:is(.dark *));
+/* ═══════════════════════════════════════════════════════════════════════════
+   AletheIA — Design System V1
+   "Boreal Data · AletheIA — Identidad de marca V1" + "Design System V1.0"
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+   Dos capas: paleta cruda (los hex viven acá una sola vez) y roles semánticos.
+   Ningún componente usa un hex ni un color crudo: usa el rol (bg-surface,
+   text-muted, border-border). Así el cambio de modo no toca ni un componente.
 
-  --color-navy: var(--navy);
-  --color-navy-light: var(--navy-light);
-  --color-blue: var(--blue);
-  --color-blue-light: var(--blue-light);
-  --color-ice: var(--ice);
+   El sistema original está escrito para Tailwind v3 con tailwind.config.ts.
+   Este proyecto usa Tailwind v4, donde la config vive en CSS: cada bloque de
+   @theme de abajo es la traducción literal de una sección de aquel archivo.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  --font-sans: var(--font-inter);
-  --font-serif: var(--font-lora);
+/* Dark es el canónico y el default del SSR; light se activa con data-theme. */
+@custom-variant light (&:where([data-theme='light'], [data-theme='light'] *));
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
+/* ── Paleta cruda — única fuente de verdad de los hex de la V1 ────────────── */
+:root {
+  /* Neutros Noche — negros con verde apenas perceptible, 0.01 de croma */
+  --noche-900: #0b100f;
+  --noche-800: #141a19;
+  --noche-700: #1f2726;
+  --noche-600: #2c3634;
+  --gris-500: #6f7b79;
+  --gris-400: #94a3a0;
+  --gris-300: #a8b3b1;
+  --bruma-100: #e8ecea;
+
+  /* Neutros Papel */
+  --papel-50: #f7f8f6;
+  --papel-100: #eff1ee;
+  --papel-200: #e3e6e1;
+  --tinta: #171c1b;
+
+  /* Marca — el violeta viene del fenómeno físico (aurora), no del sector tecnológico */
+  --aurora-300: #b9a4ff;
+  --aurora-500: #7a5af8;
+  --aurora-700: #4c2fb8;
+  --luz: #f2e8d5;
+
+  /* Veredicto — par oscuro / claro. Nunca un color solo: siempre color + etiqueta */
+  --verificado-d: #34c48a;
+  --verificado-l: #127a52;
+  --dudoso-d: #e9a93c;
+  --dudoso-l: #8a5a00;
+  --falso-d: #f0705f;
+  --falso-l: #a8331f;
+  --sindatos-d: #94a3a0;
+  --sindatos-l: #4a5654;
+
+  /* Radios */
+  --radio-sm: 8px;
+  --radio-md: 10px;
+  --radio-lg: 12px;
+  --radio-xl: 16px;
+  --radio-2xl: 20px;
+  --radio-pill: 999px;
+
+  /* Focus ring */
+  --ring-width: 2px;
+  --ring-offset: 2px;
 }
 
-:root {
+/* ── Roles semánticos · DARK (canónico, también el default del SSR) ───────── */
+:root,
+[data-theme='dark'] {
   color-scheme: dark;
 
-  --navy: #0b1929;
-  --navy-light: #10233a;
-  --blue: #1a6db5;
-  --blue-light: #60b8f0;
-  --ice: #e8f4ff;
+  --bg: var(--noche-900);
+  --surface: var(--noche-800);
+  --surface-sunk: var(--noche-900);
+  --border-c: var(--noche-700);
+  --border-strong: var(--noche-600);
 
-  --background: #0b1929;
-  --foreground: #e8f4ff;
-  --card: #10233a;
-  --card-foreground: #e8f4ff;
-  --popover: #10233a;
-  --popover-foreground: #e8f4ff;
-  --primary: #1a6db5;
-  --primary-foreground: #e8f4ff;
-  --secondary: #10233a;
-  --secondary-foreground: #e8f4ff;
-  --muted: #16304d;
-  --muted-foreground: #8fb4d9;
-  --accent: #60b8f0;
-  --accent-foreground: #0b1929;
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: #1d3a5c;
-  --input: #1d3a5c;
-  --ring: #60b8f0;
-  --radius: 0.75rem;
+  --text: var(--bruma-100);
+  --text-muted: var(--gris-300);
+  --text-subtle: var(--gris-400);
+  --text-disabled: var(--gris-500);
+  --display: var(--luz);
+
+  --accent: var(--aurora-500); /* solo superficies y bordes */
+  --accent-text: var(--aurora-300); /* texto y enlaces — 8.96:1 */
+  --accent-solid: var(--aurora-300); /* fondo de botón primario */
+  --accent-ink: var(--noche-900); /* texto sobre accent-solid */
+  --accent-hover: var(--luz);
+  --ring: var(--aurora-300);
+
+  --verificado: var(--verificado-d);
+  --dudoso: var(--dudoso-d);
+  --falso: var(--falso-d);
+  --sindatos: var(--sindatos-d);
+
+  /* Sobre Noche la sombra casi no se ve: la elevación real la da el borde y el
+     salto bg → surface. En light la sombra sí trabaja. */
+  --sombra-sm: 0 1px 2px rgb(0 0 0 / 0.45);
+  --sombra-md: 0 4px 16px -4px rgb(0 0 0 / 0.55);
+  --sombra-lg: 0 16px 40px -12px rgb(0 0 0 / 0.65);
+  --sombra-focus: 0 0 0 4px rgb(185 164 255 / 0.18);
+
+  /* Ambiente: intensidad de los blobs de aurora del fondo */
+  --aurora-a: rgb(122 90 248 / 0.5);
+  --aurora-b: rgb(185 164 255 / 0.32);
+  --aurora-c: rgb(242 232 213 / 0.16);
+  --aurora-opacity: 1;
+  --grid-line: rgb(185 164 255 / 0.07);
+}
+
+/* ── Roles semánticos · LIGHT (obligatorio: aula, impresión, captura) ─────── */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: var(--papel-50);
+  --surface: #ffffff;
+  --surface-sunk: var(--papel-100);
+  --border-c: var(--papel-200);
+  --border-strong: #cdd3cd;
+
+  --text: var(--tinta);
+  --text-muted: #4a5654;
+  --text-subtle: #5c6664;
+  --text-disabled: #8a9391;
+  --display: var(--tinta);
+
+  --accent: var(--aurora-700); /* 8.2:1 sobre Papel 50 */
+  --accent-text: var(--aurora-700);
+  --accent-solid: var(--aurora-700);
+  --accent-ink: var(--papel-50);
+  --accent-hover: #3b2496;
+  --ring: var(--aurora-700);
+
+  --verificado: var(--verificado-l);
+  --dudoso: var(--dudoso-l);
+  --falso: var(--falso-l);
+  --sindatos: var(--sindatos-l);
+
+  --sombra-sm: 0 1px 2px rgb(23 28 27 / 0.06);
+  --sombra-md: 0 4px 16px -4px rgb(23 28 27 / 0.1);
+  --sombra-lg: 0 16px 40px -12px rgb(23 28 27 / 0.14);
+  --sombra-focus: 0 0 0 4px rgb(76 47 184 / 0.16);
+
+  --aurora-a: rgb(122 90 248 / 0.18);
+  --aurora-b: rgb(76 47 184 / 0.1);
+  --aurora-c: rgb(242 232 213 / 0.4);
+  --aurora-opacity: 0.7;
+  --grid-line: rgb(76 47 184 / 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   @theme inline — los tokens que ven los componentes
+   `inline` es obligatorio: sin él Tailwind copia el VALOR de la variable al
+   generar la utilidad y el cambio de modo dejaría de funcionar. Con `inline`,
+   bg-surface compila a `background-color: var(--surface)`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@theme inline {
+  /* ── Roles: lo que usan los componentes ── */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-sunk: var(--surface-sunk);
+  --color-border: var(--border-c);
+  --color-border-strong: var(--border-strong);
+
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-disabled: var(--text-disabled);
+  --color-display: var(--display);
+
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-solid: var(--accent-solid);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-hover: var(--accent-hover);
+  --color-ring: var(--ring);
+
+  --color-verdict-verificado: var(--verificado);
+  --color-verdict-dudoso: var(--dudoso);
+  --color-verdict-falso: var(--falso);
+  --color-verdict-sindatos: var(--sindatos);
+
+  /* ── Paleta cruda: solo para el logo, ilustración y docs ── */
+  --color-noche-900: #0b100f;
+  --color-noche-800: #141a19;
+  --color-noche-700: #1f2726;
+  --color-noche-600: #2c3634;
+  --color-gris-500: #6f7b79;
+  --color-gris-400: #94a3a0;
+  --color-gris-300: #a8b3b1;
+  --color-bruma: #e8ecea;
+  --color-luz: #f2e8d5;
+  --color-papel-50: #f7f8f6;
+  --color-papel-100: #eff1ee;
+  --color-papel-200: #e3e6e1;
+  --color-tinta: #171c1b;
+  --color-aurora-300: #b9a4ff;
+  --color-aurora-500: #7a5af8;
+  --color-aurora-700: #4c2fb8;
+
+  /* ── Tipografía: Archivo (titulares) + IBM Plex Sans/Mono (cuerpo y datos) ── */
+  --font-display: var(--font-archivo), Archivo, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* ── Escala tipográfica · base 1rem = 17px ── */
+  --text-h1: 3.5rem;
+  --text-h1--line-height: 1.05;
+  --text-h1--letter-spacing: -0.03em;
+  --text-h1--font-weight: 700;
+
+  --text-h2: 2.25rem;
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 600;
+
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.25;
+  --text-h3--font-weight: 600;
+
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.6;
+
+  --text-body-sm: 0.9375rem;
+  --text-body-sm--line-height: 1.55;
+
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.4;
+  --text-caption--letter-spacing: 0.08em;
+  --text-caption--font-weight: 500;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.3;
+  --text-micro--letter-spacing: 0.08em;
+  --text-micro--font-weight: 500;
+
+  /* Fluidos: los titulares de landing usan estos */
+  --text-h1-fluid: clamp(2.25rem, 6vw, 3.5rem);
+  --text-h1-fluid--line-height: 1.02;
+  --text-h1-fluid--letter-spacing: -0.03em;
+  --text-h1-fluid--font-weight: 700;
+
+  --text-h2-fluid: clamp(1.75rem, 3.4vw, 2.25rem);
+  --text-h2-fluid--line-height: 1.1;
+  --text-h2-fluid--letter-spacing: -0.02em;
+  --text-h2-fluid--font-weight: 600;
+
+  /* ── Espaciado · base 4px ──
+     En px y no en rem a propósito: la base tipográfica es 17px, así que un
+     scale en rem daría pasos de 4,25px y rompería la grilla de 4 de la V1. */
+  --spacing: 4px;
+  --spacing-gutter: 16px; /* margen lateral mobile */
+
+  /* El padding interno de la card (32 en ≥768, 20 en <768) NO va como token
+     propio: en Tailwind v4 el namespace de spacing y el de containers se
+     comparten, así que un `--spacing-card` haría que `max-w-card` resolviera
+     a 32px en vez de a 720. Los dos valores caen exactos en la escala de 4,
+     así que la card usa `p-5 md:p-8` y el nombre `card` queda libre para el
+     ancho, que es donde de verdad hace falta. */
+
+  /* ── Radios ── */
+  --radius-sm: var(--radio-sm);
+  --radius-md: var(--radio-md);
+  --radius-lg: var(--radio-lg);
+  --radius-xl: var(--radio-xl);
+  --radius-2xl: var(--radio-2xl);
+  --radius-pill: var(--radio-pill);
+
+  /* ── Sombras ── */
+  --shadow-sm: var(--sombra-sm);
+  --shadow-md: var(--sombra-md);
+  --shadow-lg: var(--sombra-lg);
+  --shadow-focus: var(--sombra-focus);
+
+  /* ── Contenedores ── */
+  --container-card: 720px;
+  --container-panel: 380px;
+  --container-shell: 1120px;
+  /* La medida de lectura de la V1: 58ch. Va con nombre propio y no pisando
+     `max-w-prose` porque esa utilidad de Tailwind trae su propio valor (65ch)
+     y no se deja sobrescribir desde el tema. */
+  --container-texto: 58ch;
+
+  /* ── Breakpoints ── */
+  --breakpoint-xs: 375px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+
+  /* ── Movimiento ── */
+  --ease-boreal: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pulse-soft: pulse-soft 1.8s ease-in-out infinite;
+  --animate-aurora-sweep: aurora-sweep 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-rise: rise 0.5s var(--ease-boreal) both;
+  --animate-veil-lift: veil-lift 0.7s var(--ease-boreal) both;
+  --animate-aurora-drift: aurora-drift 26s ease-in-out infinite;
+  --animate-aurora-drift-slow: aurora-drift 38s ease-in-out infinite;
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-drift-y: drift-y 34s linear infinite;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
   html {
+    font-size: 106.25%; /* 1rem = 17px, la base de la V1 */
     scroll-behavior: smooth;
   }
+
   body {
-    @apply bg-background text-foreground;
-    background-image:
-      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(26, 109, 181, 0.16), transparent 60%),
-      radial-gradient(ellipse 700px 500px at 100% 20%, rgba(96, 184, 240, 0.08), transparent 55%);
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.6;
+    text-wrap: pretty;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    color: var(--display);
+  }
+
+  /* Focus ring global: un solo lugar, nunca se desactiva. */
+  :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+    outline: var(--ring-width) solid var(--ring);
+    outline-offset: var(--ring-offset);
+    box-shadow: var(--sombra-focus);
+    border-radius: inherit;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--noche-900);
+  }
+
+  /* Las URLs, dominios y fechas van en mono — tabular para que no bailen. */
+  time,
+  [data-mono] {
+    font-variant-numeric: tabular-nums;
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Componentes recurrentes
+   ═══════════════════════════════════════════════════════════════════════════ */
 @layer components {
-  .field-label {
-    @apply text-xs font-medium uppercase tracking-wide text-muted-foreground;
-  }
+  /* ── Botones ──
+     El padding 13px/22px es la única excepción documentada a los valores
+     arbitrarios de la V1: existe para alcanzar los 44px de alto táctil.
 
-  .field-input {
-    @apply w-full rounded-lg border border-border bg-navy px-4 py-3 text-sm text-ice placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-blue-light focus:ring-2 focus:ring-blue-light/20 disabled:cursor-not-allowed disabled:opacity-60;
-  }
-
-  .auth-card {
-    @apply relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-8;
-    box-shadow:
-      0 25px 70px -20px rgba(2, 8, 15, 0.7),
-      0 0 80px -25px rgba(26, 109, 181, 0.55);
-  }
-
-  .auth-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, var(--blue-light), transparent);
-    opacity: 0.9;
-  }
-
-  .eyebrow-badge {
-    @apply relative inline-flex items-center gap-2 rounded-full border border-blue-light/40 bg-blue/10 px-3.5 py-1.5 text-xs font-medium tracking-wide text-blue-light uppercase;
-    box-shadow: 0 0 24px -6px rgba(96, 184, 240, 0.5);
+     La base va como lista de selectores y NO como un `.btn` que las variantes
+     hagan `@apply`: en Tailwind v4 `@apply` solo acepta utilidades, no otras
+     clases de componente, y referenciar `.btn` rompe la compilación del CSS. */
+  .btn,
+  .btn-primary,
+  .btn-secondary {
+    @apply inline-flex min-h-11 items-center justify-center gap-3 rounded-pill font-display text-body-sm whitespace-nowrap transition-all duration-150 ease-boreal;
+    padding: 13px 22px;
   }
 
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg px-5 py-3 text-sm font-semibold text-ice transition-all disabled:cursor-not-allowed disabled:opacity-60;
-    background: linear-gradient(135deg, var(--blue-light) 0%, var(--blue) 55%, #124d80 100%);
+    @apply font-semibold;
+    background: var(--accent-solid);
+    color: var(--accent-ink);
     box-shadow:
-      0 8px 24px -8px rgba(26, 109, 181, 0.65),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+      0 10px 30px -12px var(--accent-solid),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.25);
   }
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(1.12);
+    background: var(--accent-hover);
     transform: translateY(-1px);
     box-shadow:
-      0 12px 32px -8px rgba(96, 184, 240, 0.55),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+      0 16px 38px -12px var(--accent-solid),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.35);
   }
   .btn-primary:active:not(:disabled) {
     transform: translateY(0);
   }
+  .btn-primary:disabled {
+    @apply cursor-not-allowed opacity-50;
+    box-shadow: none;
+  }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-3 text-sm font-semibold text-ice transition-all hover:border-blue-light/50 hover:bg-muted;
+    @apply border border-border font-medium text-ink;
+    background: transparent;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--accent-text);
+    color: var(--accent-text);
+  }
+  .btn-secondary:disabled {
+    @apply cursor-not-allowed opacity-50;
   }
 
-  .alert-error {
-    @apply rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-300;
+  /* ── Chip: etiqueta chica en mono, borde del color que le toque ── */
+  .chip {
+    @apply inline-flex min-h-8 items-center gap-2.5 rounded-pill border border-current px-3.5 py-1.5 font-mono uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
   }
 
-  .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(100deg, var(--blue-light) 0%, #8fd4ff 45%, var(--blue-light) 100%);
+  /* ── Eyebrow: el label chiquito arriba de una sección ── */
+  .eyebrow {
+    @apply inline-flex items-center gap-3 font-mono text-micro uppercase text-subtle;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 24px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-text));
   }
 
-  .glass-panel {
-    @apply relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl;
+  /* ── Campos ── */
+  .field-label {
+    @apply font-mono text-micro uppercase text-subtle;
   }
 
-  .grid-overlay {
-    background-image:
-      linear-gradient(rgba(96, 184, 240, 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(96, 184, 240, 0.1) 1px, transparent 1px);
-    background-size: 44px 44px;
-    -webkit-mask-image: radial-gradient(ellipse 65% 55% at 50% 30%, black 20%, transparent 75%);
-    mask-image: radial-gradient(ellipse 65% 55% at 50% 30%, black 20%, transparent 75%);
+  .field-input {
+    @apply w-full rounded-md border border-border bg-surface-sunk px-4 py-3.5 text-body-sm text-ink transition-colors duration-150 ease-boreal;
+    @apply placeholder:text-disabled;
+  }
+  .field-input:hover:not(:disabled) {
+    border-color: var(--border-strong);
+  }
+  .field-input:disabled {
+    @apply cursor-not-allowed opacity-60;
   }
 
-  .glow-blob {
-    position: absolute;
-    border-radius: 9999px;
-    filter: blur(70px);
-    pointer-events: none;
+  /* ── Aviso de validación de formulario ──
+     Ámbar, nunca coral: el coral (--falso) está reservado al veredicto del
+     contenido. Un campo mal completado no puede parecer un juicio sobre una
+     noticia. Regla de sistema, no estética — vale igual para toasts. */
+  .alert-form {
+    @apply flex items-start gap-2.5 rounded-lg border border-verdict-dudoso/45 bg-verdict-dudoso/10 px-4 py-3 text-body-sm text-verdict-dudoso;
+  }
+
+  /* ── La caja compartida por la card de resultado y TODOS sus estados ──
+     Misma caja para todos: sin salto de layout al resolverse. Solo cambia el
+     color del borde superior y el contenido. */
+  .card-shell {
+    @apply flex w-full max-w-card flex-col gap-6 border border-border bg-surface p-5 text-ink shadow-md md:p-8;
+    @apply rounded-xl md:rounded-2xl;
+    border-top-width: 3px;
+  }
+
+  /* ── Divisor entre bloques de la card ── */
+  .card-block {
+    @apply flex flex-col border-t border-border pt-6;
+  }
+
+  /* ── Superficie de panel/tarjeta genérica fuera de la card de resultado ── */
+  .panel {
+    @apply rounded-xl border border-border bg-surface p-6 shadow-sm md:rounded-2xl;
+  }
+
+  /* ── Titular con degradé de aurora: reservado a los h1 de landing ── */
+  .text-aurora {
+    background: linear-gradient(
+      100deg,
+      var(--display) 0%,
+      var(--accent-text) 42%,
+      var(--luz) 70%,
+      var(--accent-text) 100%
+    );
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: aurora-shimmer 9s linear infinite;
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Utilidades de ambiente
+   ═══════════════════════════════════════════════════════════════════════════ */
 @layer utilities {
-  /* Decisión del proyecto: el ambiente se anima siempre, también con
-     "reducir movimiento" del sistema activado. Es movimiento lento y
-     difuminado de fondo, sin desplazar contenido ni texto. */
-  .animate-fade-up {
-    animation: fade-up 0.5s ease-out both;
+  /* Campo de aurora: el fondo vivo de la marca. Tres bandas de luz sobre la
+     línea del horizonte, una por cada capa de verificación. Va como hijo
+     absolute de un contenedor `relative isolate`. */
+  .aurora-field {
+    @apply pointer-events-none absolute inset-0 -z-10 overflow-hidden;
+    opacity: var(--aurora-opacity);
   }
-  .animate-float {
-    animation: float-slow 9s ease-in-out infinite;
+
+  .aurora-band {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(90px);
+    will-change: transform;
   }
-  .animate-float-delayed {
-    animation: float-slow 11s ease-in-out infinite;
-    animation-delay: -4s;
+
+  /* Grilla tenue con máscara radial: le da profundidad al vacío sin competir. */
+  .grid-field {
+    @apply pointer-events-none absolute inset-0 -z-10;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 25%, black 10%, transparent 72%);
+    mask-image: radial-gradient(ellipse 70% 55% at 50% 25%, black 10%, transparent 72%);
   }
-  .animate-pulse-slow {
-    animation: pulse-glow 4s ease-in-out infinite;
+
+  /* Grano: le saca el plano perfecto a las superficies grandes. */
+  .noise-field {
+    @apply pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
+    scrollbar-color: var(--border-c) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: var(--border);
+    background-color: var(--border-c);
     border-radius: 999px;
   }
 }
 
-@keyframes fade-up {
+/* ═══════════════════════════════════════════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes aurora-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes aurora-shimmer {
+  to {
+    background-position: 220% center;
+  }
+}
+
+/* Deriva del fondo: lenta, difusa, sin desplazar contenido. */
+@keyframes aurora-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(9%, -7%, 0) scale(1.18);
+  }
+  66% {
+    transform: translate3d(-7%, 5%, 0) scale(0.92);
+  }
+}
+
+@keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -209,25 +577,55 @@
   }
 }
 
-@keyframes float-slow {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
+/* El velo del isotipo se levanta y aparece la luz: el gesto de la marca. */
+@keyframes veil-lift {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
   }
-  33% {
-    transform: translate(70px, -45px) scale(1.15);
+  60% {
+    opacity: 1;
   }
-  66% {
-    transform: translate(-40px, 30px) scale(0.95);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    opacity: 0.55;
+/* La cinta y el muro duplican su contenido: el -50% cierra el loop sin salto. */
+@keyframes drift-y {
+  from {
+    transform: translateY(0);
   }
-  50% {
-    opacity: 1;
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Movimiento reducido
+   Se apaga todo el movimiento de CONTENIDO (pulsos, entradas, barras), como
+   pide el sistema. El ambiente de fondo (.aurora-band) queda exceptuado: es
+   una decisión tomada del lado del producto — movimiento lento y difuminado
+   que no desplaza ni una línea de texto — y ya estaba documentada así antes
+   del rediseño. No "corregirlo" pensando que es un descuido de accesibilidad.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.aurora-band),
+  *:not(.aurora-band)::before,
+  *:not(.aurora-band)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
