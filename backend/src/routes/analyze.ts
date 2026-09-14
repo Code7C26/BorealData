@@ -10,6 +10,20 @@ import {
 } from "../db/analysesRepository.js";
 import { upsertUser } from "../db/usersRepository.js";
 import { requireAuth } from "../auth/verifyAuth.js";
+import { assertSafeAnalyzeUrl } from "../utils/validateUrl.js";
+import { stripControlChars } from "../utils/sanitize.js";
+import { FixedWindowRateLimiter } from "../utils/rateLimiter.js";
+
+const MAX_URL_LENGTH = 2048;
+
+// Solo cuenta análisis reales (cache miss -> scrape + Gemini), no cache hits: ver el
+// bloque de caché más abajo. Gemini con grounding tiene costo real por llamada, así
+// que este límite protege ese costo, no la ruta en sí (que ya tiene su propio chequeo
+// de auth). 20/hora es holgado para uso normal (nadie analiza 20 noticias distintas
+// por hora a mano) pero frena un script que castigue el endpoint.
+const ANALYZE_RATE_LIMIT = 20;
+const ANALYZE_RATE_WINDOW_MS = 60 * 60 * 1000;
+const analyzeRateLimiter = new FixedWindowRateLimiter(ANALYZE_RATE_LIMIT, ANALYZE_RATE_WINDOW_MS);
 
 /** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
 function responseFromCached(cached: AnalysisHistoryItem) {
@@ -38,9 +52,10 @@ const router = Router();
  * Flujo: requireAuth (login obligatorio, corta con 401 si falta o el token es
  * inválido/expiró) -> upsertUser() para resolver el id interno del usuario -> caché por
  * URL exacta (ver getAnalysisForUserByUrl/getLatestAnalysisByUrl más abajo) -> si no hubo
- * cache hit, scrapeUrl() -> analyzeContent() -> guarda en Postgres -> responde con el
- * resultado combinado. Solo se guardan los análisis exitosos (200); si el guardado falla
- * no se rompe la respuesta (ver saveAnalysis).
+ * cache hit, rate limit por uid (ver analyzeRateLimiter, corta con 429 si ya gastó su
+ * cupo de análisis nuevos en la última hora) -> scrapeUrl() -> analyzeContent() -> guarda
+ * en Postgres -> responde con el resultado combinado. Solo se guardan los análisis
+ * exitosos (200); si el guardado falla no se rompe la respuesta (ver saveAnalysis).
  *
  * Caché por URL (10-sep-2026): analizar con Gemini tiene costo real (tokens + tiempo), y
  * antes /analyze repetía todo el flujo aunque la URL ya estuviera analizada — se veían
@@ -66,10 +81,25 @@ const router = Router();
  * UX, no seguridad — se puede saltear pegándole directo al backend.
  */
 router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
-  const { url } = req.body ?? {};
+  const { url: rawUrl } = req.body ?? {};
 
-  if (!url || typeof url !== "string") {
+  if (!rawUrl || typeof rawUrl !== "string") {
     return res.status(400).json({ error: "Falta el campo 'url' (string) en el body." });
+  }
+
+  const url = stripControlChars(rawUrl);
+
+  if (url.length === 0) {
+    return res.status(400).json({ error: "Falta el campo 'url' (string) en el body." });
+  }
+
+  if (url.length > MAX_URL_LENGTH) {
+    return res.status(400).json({ error: "La URL es demasiado larga." });
+  }
+
+  const urlSafety = await assertSafeAnalyzeUrl(url);
+  if (!urlSafety.safe) {
+    return res.status(400).json({ error: urlSafety.reason });
   }
 
   try {
@@ -87,6 +117,14 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
         await saveReusedAnalysis(existingAnalysis, userId);
         return res.status(200).json(responseFromCached(existingAnalysis));
       }
+    }
+
+    const rateCheck = analyzeRateLimiter.consume(req.user!.uid);
+    if (!rateCheck.allowed) {
+      res.set("Retry-After", String(rateCheck.retryAfterSeconds));
+      return res.status(429).json({
+        error: `Alcanzaste el límite de ${ANALYZE_RATE_LIMIT} análisis nuevos por hora. Probá de nuevo en unos minutos.`,
+      });
     }
 
     const scraped = await scrapeUrl(url);

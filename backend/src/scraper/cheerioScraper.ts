@@ -1,6 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { ScrapedContent, ScraperOptions } from "./types";
+import { stripControlChars } from "../utils/sanitize";
 
 // Selectores que indican una SPA sin contenido renderizado en el servidor.
 // Estos sitios se consideran "empty" y se rechazan.
@@ -29,7 +30,7 @@ function extractCleanText($: cheerio.CheerioAPI): { title: string; text: string 
     .filter(Boolean)
     .join("\n");
 
-  return { title, text };
+  return { title: stripControlChars(title), text: stripControlChars(text, true) };
 }
 
 function looksLikeEmptySpa($: cheerio.CheerioAPI): boolean {

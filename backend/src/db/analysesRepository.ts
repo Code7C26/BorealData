@@ -1,4 +1,4 @@
-import { getPool } from "./pool.js";
+import { runInUserTransaction } from "./context.js";
 import type { AnalysisResult, AnalysisSource } from "../gemini/types.js";
 import type { ScrapedContent } from "../scraper/types.js";
 
@@ -26,27 +26,28 @@ async function insertAnalysisRow(
   userId: string | null
 ): Promise<string | null> {
   try {
-    const pool = await getPool();
-    const result = await pool.query<{ id: string }>(
-      `INSERT INTO analyses
-        (url, title, scrape_method, score, label, summary, explanation, claim_vs_evidence, sources, tone_flags, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       RETURNING id`,
-      [
-        fields.url,
-        fields.title,
-        fields.scrapeMethod,
-        fields.score,
-        fields.label,
-        fields.summary,
-        fields.explanation,
-        fields.claimVsEvidence,
-        JSON.stringify(fields.sources),
-        JSON.stringify(fields.toneFlags),
-        userId,
-      ]
-    );
-    return result.rows[0]?.id ?? null;
+    return await runInUserTransaction({ currentUserId: userId }, async (client) => {
+      const result = await client.query<{ id: string }>(
+        `INSERT INTO analyses
+          (url, title, scrape_method, score, label, summary, explanation, claim_vs_evidence, sources, tone_flags, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING id`,
+        [
+          fields.url,
+          fields.title,
+          fields.scrapeMethod,
+          fields.score,
+          fields.label,
+          fields.summary,
+          fields.explanation,
+          fields.claimVsEvidence,
+          JSON.stringify(fields.sources),
+          JSON.stringify(fields.toneFlags),
+          userId,
+        ]
+      );
+      return result.rows[0]?.id ?? null;
+    });
   } catch (err) {
     console.error(
       "No se pudo guardar el análisis en la DB:",
@@ -170,17 +171,18 @@ export async function getAnalysesByUserId(
   limit: number,
   offset: number
 ): Promise<AnalysisHistoryItem[]> {
-  const pool = await getPool();
-  const result = await pool.query<AnalysisRow>(
-    `SELECT ${ANALYSIS_COLUMNS}
-     FROM analyses
-     WHERE user_id = $1
-     ORDER BY created_at DESC
-     LIMIT $2 OFFSET $3`,
-    [userId, limit, offset]
-  );
+  return runInUserTransaction({ currentUserId: userId }, async (client) => {
+    const result = await client.query<AnalysisRow>(
+      `SELECT ${ANALYSIS_COLUMNS}
+       FROM analyses
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
 
-  return result.rows.map(mapAnalysisRow);
+    return result.rows.map(mapAnalysisRow);
+  });
 }
 
 /**
@@ -198,14 +200,15 @@ export async function getAnalysesByUserId(
 export async function getAnalysisById(id: string): Promise<AnalysisHistoryItem | null> {
   if (!UUID_PATTERN.test(id)) return null;
 
-  const pool = await getPool();
-  const result = await pool.query<AnalysisRow>(
-    `SELECT ${ANALYSIS_COLUMNS} FROM analyses WHERE id = $1`,
-    [id]
-  );
+  return runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
+    const result = await client.query<AnalysisRow>(
+      `SELECT ${ANALYSIS_COLUMNS} FROM analyses WHERE id = $1`,
+      [id]
+    );
 
-  const row = result.rows[0];
-  return row ? mapAnalysisRow(row) : null;
+    const row = result.rows[0];
+    return row ? mapAnalysisRow(row) : null;
+  });
 }
 
 /**
@@ -231,18 +234,19 @@ export async function getAnalysisForUserByUrl(
   url: string
 ): Promise<AnalysisHistoryItem | null> {
   try {
-    const pool = await getPool();
-    const result = await pool.query<AnalysisRow>(
-      `SELECT ${ANALYSIS_COLUMNS}
-       FROM analyses
-       WHERE user_id = $1 AND url = $2
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [userId, url]
-    );
+    return await runInUserTransaction({ currentUserId: userId }, async (client) => {
+      const result = await client.query<AnalysisRow>(
+        `SELECT ${ANALYSIS_COLUMNS}
+         FROM analyses
+         WHERE user_id = $1 AND url = $2
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [userId, url]
+      );
 
-    const row = result.rows[0];
-    return row ? mapAnalysisRow(row) : null;
+      const row = result.rows[0];
+      return row ? mapAnalysisRow(row) : null;
+    });
   } catch (err) {
     console.error(
       "No se pudo buscar el análisis previo del usuario en la DB:",
@@ -252,20 +256,26 @@ export async function getAnalysisForUserByUrl(
   }
 }
 
+/**
+ * bypassOwnerCheck: true a propósito (ver policy analyses_select_own_or_shared en
+ * schema.sql) — esta búsqueda es la caché de /analyze que reusa el análisis de
+ * CUALQUIER usuario para la misma URL, para no gastar otra llamada a Gemini.
+ */
 export async function getLatestAnalysisByUrl(url: string): Promise<AnalysisHistoryItem | null> {
   try {
-    const pool = await getPool();
-    const result = await pool.query<AnalysisRow>(
-      `SELECT ${ANALYSIS_COLUMNS}
-       FROM analyses
-       WHERE url = $1
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [url]
-    );
+    return await runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
+      const result = await client.query<AnalysisRow>(
+        `SELECT ${ANALYSIS_COLUMNS}
+         FROM analyses
+         WHERE url = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [url]
+      );
 
-    const row = result.rows[0];
-    return row ? mapAnalysisRow(row) : null;
+      const row = result.rows[0];
+      return row ? mapAnalysisRow(row) : null;
+    });
   } catch (err) {
     console.error(
       "No se pudo buscar el análisis previo por URL en la DB:",
@@ -292,23 +302,24 @@ export interface GlobalStats {
  * Igual que getAnalysesByUserId(), el error se propaga: la ruta decide qué responder.
  */
 export async function getGlobalStats(): Promise<GlobalStats> {
-  const pool = await getPool();
-  const result = await pool.query<{
-    total_analyses: string;
-    average_score: string | null;
-    total_sources: string | null;
-  }>(
-    `SELECT COUNT(*)                          AS total_analyses,
-            ROUND(AVG(score))                 AS average_score,
-            SUM(jsonb_array_length(sources))  AS total_sources
-     FROM analyses`
-  );
+  return runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
+    const result = await client.query<{
+      total_analyses: string;
+      average_score: string | null;
+      total_sources: string | null;
+    }>(
+      `SELECT COUNT(*)                          AS total_analyses,
+              ROUND(AVG(score))                 AS average_score,
+              SUM(jsonb_array_length(sources))  AS total_sources
+       FROM analyses`
+    );
 
-  // COUNT/SUM/ROUND(AVG(...)) vuelven como string (bigint/numeric) desde pg.
-  const row = result.rows[0];
-  return {
-    totalAnalyses: Number(row.total_analyses),
-    averageScore: Number(row.average_score ?? 0),
-    totalSources: Number(row.total_sources ?? 0),
-  };
+    // COUNT/SUM/ROUND(AVG(...)) vuelven como string (bigint/numeric) desde pg.
+    const row = result.rows[0];
+    return {
+      totalAnalyses: Number(row.total_analyses),
+      averageScore: Number(row.average_score ?? 0),
+      totalSources: Number(row.total_sources ?? 0),
+    };
+  });
 }

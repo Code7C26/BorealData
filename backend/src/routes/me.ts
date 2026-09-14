@@ -1,8 +1,11 @@
 import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../auth/verifyAuth.js";
 import { getUserProfile, upsertUser } from "../db/usersRepository.js";
+import { stripControlChars } from "../utils/sanitize.js";
 
 const router = Router();
+
+const MAX_FULL_NAME_LENGTH = 200;
 
 /**
  * GET /me
@@ -43,20 +46,32 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
  * en el momento del login, ya que Firebase no lo persiste solo).
  */
 router.post("/me", requireAuth, async (req: Request, res: Response) => {
-  const { fullName } = req.body ?? {};
+  const { fullName: rawFullName } = req.body ?? {};
 
-  if (!fullName || typeof fullName !== "string" || fullName.trim().length === 0) {
+  if (!rawFullName || typeof rawFullName !== "string") {
     return res.status(400).json({ error: "Falta el campo 'fullName' (string no vacío) en el body." });
   }
 
+  const fullName = stripControlChars(rawFullName);
+
+  if (fullName.length === 0) {
+    return res.status(400).json({ error: "Falta el campo 'fullName' (string no vacío) en el body." });
+  }
+
+  if (fullName.length > MAX_FULL_NAME_LENGTH) {
+    return res.status(400).json({
+      error: `El campo 'fullName' no puede superar los ${MAX_FULL_NAME_LENGTH} caracteres.`,
+    });
+  }
+
   try {
-    const userId = await upsertUser(req.user!.uid, req.user!.email, fullName.trim());
+    const userId = await upsertUser(req.user!.uid, req.user!.email, fullName);
 
     if (!userId) {
       return res.status(500).json({ error: "No se pudo guardar el nombre en la base de datos." });
     }
 
-    return res.status(200).json({ id: userId, fullName: fullName.trim() });
+    return res.status(200).json({ id: userId, fullName });
   } catch (err) {
     return res.status(500).json({
       error: "Error inesperado al guardar el nombre.",
