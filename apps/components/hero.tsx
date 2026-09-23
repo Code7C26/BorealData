@@ -1,5 +1,5 @@
 import { AnalisisInput } from '@/components/analisis-input'
-import { Aurora } from '@/components/aurora'
+import { AuroraBoreal } from '@/components/aurora-boreal'
 import { PalabraRotativa } from '@/components/palabra-rotativa'
 import { VERDICT, type Verdict } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
@@ -77,9 +77,9 @@ function MuroDeNotas() {
 export function Hero() {
   return (
     <section className="relative isolate flex min-h-[900px] flex-col items-center justify-center overflow-hidden px-gutter pb-28 pt-24 md:px-6">
-      <Aurora intensity="loud" />
+      <AuroraBoreal />
       <MuroDeNotas />
-      <div aria-hidden="true" className="noise-field z-[2]" />
+      <div aria-hidden="true" className="noise-field fundido-abajo z-[2]" />
 
       {/* Scrim: deja el muro de fondo visible pero devuelve contraste al texto. */}
       <div

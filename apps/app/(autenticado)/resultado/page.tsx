@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, RotateCcw } from 'lucide-react'
@@ -14,20 +14,16 @@ import { cn } from '@/lib/utils'
  * La pantalla de resultado.
  *
  * A 1280 la página es una grilla de minmax(0,720px) + 380 con gap 32 dentro del
- * shell de 1120: la card se queda en 720 y "Ver razonamiento completo" abre el
- * panel lateral, nunca un modal. La card queda sticky mientras se scrollea el
- * panel. Por debajo de 1280 el panel cae abajo, apilado.
+ * shell de 1120: la card se queda en 720 y el razonamiento entero va al panel
+ * lateral. La card queda sticky mientras se scrollea el panel. Por debajo de
+ * 1280 el panel cae abajo, apilado.
+ *
+ * El panel se muestra SIEMPRE, sin botón de por medio: mostrar el trabajo es el
+ * producto, no un extra que haya que pedir. (El botón "ver razonamiento
+ * completo" sobrevive solo en la extensión, donde sí lleva a otro lado.) Como
+ * el panel ya lista los pasos, la card no repite su resumen.
  */
 function VistaResultado({ resultado }: { resultado: AnalyzeResponse & { fecha?: string } }) {
-  const [panelAbierto, setPanelAbierto] = useState(false)
-  const panelRef = useRef<HTMLHeadingElement>(null)
-
-  const abrirPanel = () => {
-    setPanelAbierto(true)
-    // El foco va al título del panel: en mobile además lo trae a la vista.
-    requestAnimationFrame(() => panelRef.current?.focus())
-  }
-
   return (
     <div
       className={cn(
@@ -36,16 +32,10 @@ function VistaResultado({ resultado }: { resultado: AnalyzeResponse & { fecha?: 
       )}
     >
       <div className="xl:sticky xl:top-24">
-        <ResultCard
-          analysis={resultado}
-          fecha={resultado.fecha}
-          onVerRazonamiento={panelAbierto ? undefined : abrirPanel}
-        />
+        <ResultCard analysis={resultado} fecha={resultado.fecha} razonamientoAparte />
       </div>
 
-      {panelAbierto && (
-        <PanelRazonamiento analysis={resultado} tituloRef={panelRef} />
-      )}
+      <PanelRazonamiento analysis={resultado} />
     </div>
   )
 }
@@ -55,23 +45,11 @@ function VistaResultado({ resultado }: { resultado: AnalyzeResponse & { fecha?: 
  * tono y el razonamiento entero sin recortar. La card nunca crece — a partir de
  * 720 px el contenido extra va acá, no al ancho.
  */
-function PanelRazonamiento({
-  analysis,
-  tituloRef,
-}: {
-  analysis: AnalyzeResponse
-  tituloRef: React.RefObject<HTMLHeadingElement | null>
-}) {
+function PanelRazonamiento({ analysis }: { analysis: AnalyzeResponse }) {
   return (
     <aside className="flex animate-rise flex-col gap-6 xl:max-w-panel" aria-label="Razonamiento completo">
       <section className="panel flex flex-col gap-4">
-        <h2
-          ref={tituloRef}
-          tabIndex={-1}
-          className="font-mono text-caption uppercase text-subtle outline-none"
-        >
-          De qué trata la nota
-        </h2>
+        <h2 className="font-mono text-caption uppercase text-subtle">De qué trata la nota</h2>
         <p className="text-body-sm text-muted">
           {analysis.summary || 'El motor no dejó un resumen del contenido para este análisis.'}
         </p>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowUpRight, Check, ExternalLink, Share2 } from 'lucide-react'
+import { Check, ExternalLink, Share2 } from 'lucide-react'
 import type { AnalysisSource, AnalyzeResponse } from '@/lib/api'
 import { normalize, STANCE, VERDICT } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
@@ -31,15 +31,19 @@ const PASOS_VISIBLES_MOBILE = 2
 export function ResultCard({
   analysis,
   fecha,
-  onVerRazonamiento,
+  razonamientoAparte = false,
   showActions = true,
   className,
 }: {
   analysis: AnalyzeResponse
   /** ISO del momento del análisis. Sin esto no se muestra la fecha. */
   fecha?: string
-  /** En desktop abre el panel lateral; sin handler, el bloque no aparece. */
-  onVerRazonamiento?: () => void
+  /**
+   * true donde el razonamiento entero ya se muestra al lado de la card (la
+   * pantalla de resultado). Ahí el resumen de la card sería el mismo texto dos
+   * veces, así que no se dibuja.
+   */
+  razonamientoAparte?: boolean
   /** false en la landing: ahí la card se muestra, no se opera. */
   showActions?: boolean
   className?: string
@@ -118,7 +122,7 @@ export function ResultCard({
       )}
 
       {/* 5 · razonamiento */}
-      {pasos.length > 0 && (
+      {pasos.length > 0 && !razonamientoAparte && (
         <section className="card-block gap-4">
           <h3 className="font-mono text-caption uppercase text-subtle">Razonamiento resumido</h3>
           <ol className="flex flex-col gap-3.5">
@@ -154,20 +158,10 @@ export function ResultCard({
       {/* 6 · acciones */}
       {showActions && (
         <footer className="card-block flex-col gap-3 md:flex-row">
-          {onVerRazonamiento && (
-            <button
-              type="button"
-              onClick={onVerRazonamiento}
-              className="btn-primary w-full md:w-auto"
-            >
-              Ver razonamiento completo
-              <ArrowUpRight aria-hidden="true" size={16} />
-            </button>
-          )}
-          <BotonCompartir
-            id={analysis.id}
-            className={onVerRazonamiento ? undefined : 'md:w-auto'}
-          />
+          {/* En la web el razonamiento no se pide: está ahí. El botón de "ver
+              razonamiento completo" quedó solo en la extensión, donde sí lleva
+              a otro lado (abre la pestaña de AletheIA). */}
+          <BotonCompartir id={analysis.id} className="md:w-auto" />
         </footer>
       )}
     </article>

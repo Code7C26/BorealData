@@ -106,6 +106,28 @@
   --aurora-c: rgb(242 232 213 / 0.16);
   --aurora-opacity: 1;
   --grid-line: rgb(185 164 255 / 0.07);
+
+  /* Aurora boreal de la home: tres cortinas (a principal, b fondo, c frente)
+     más un velo verde ocasional, cada una con su color arriba, al medio y en
+     el dobladillo. */
+  --ab-a-top: var(--aurora-500);
+  --ab-a-mid: var(--aurora-300);
+  --ab-a-low: var(--luz);
+  --ab-b-top: var(--aurora-700);
+  --ab-b-mid: var(--aurora-500);
+  --ab-b-low: var(--aurora-300);
+  --ab-c-top: var(--aurora-300);
+  --ab-c-mid: #d9ccff;
+  --ab-c-low: var(--luz);
+  --ab-verde-top: #22c98e;
+  --ab-verde-mid: #3ff0b0;
+  --ab-verde-low: #9dffd8;
+  --ab-glow: rgb(76 47 184 / 0.35);
+  --ab-estrella: var(--luz);
+  --ce-estrella: var(--luz);
+  --ce-halo: rgb(185 164 255 / 0.32);
+  --ce-opacity: 0.5;
+  --ab-opacity: 0.55;
 }
 
 /* ── Roles semánticos · LIGHT (obligatorio: aula, impresión, captura) ─────── */
@@ -146,6 +168,25 @@
   --aurora-c: rgb(242 232 213 / 0.4);
   --aurora-opacity: 0.7;
   --grid-line: rgb(76 47 184 / 0.06);
+
+  --ab-a-top: var(--aurora-300);
+  --ab-a-mid: var(--aurora-500);
+  --ab-a-low: var(--aurora-700);
+  --ab-b-top: var(--aurora-300);
+  --ab-b-mid: var(--aurora-300);
+  --ab-b-low: var(--aurora-500);
+  --ab-c-top: var(--aurora-300);
+  --ab-c-mid: var(--aurora-500);
+  --ab-c-low: var(--aurora-500);
+  --ab-verde-top: #7fdcb8;
+  --ab-verde-mid: #3fb88a;
+  --ab-verde-low: #1f8f66;
+  --ab-glow: rgb(185 164 255 / 0.3);
+  --ab-estrella: transparent;
+  --ce-estrella: var(--aurora-700);
+  --ce-halo: rgb(76 47 184 / 0.3);
+  --ce-opacity: 0.16;
+  --ab-opacity: 0.4;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -493,6 +534,153 @@
     will-change: transform;
   }
 
+  /* Cielo estrellado (components/cielo-estrellado.tsx): fijo al viewport,
+     detrás de toda la página. La capa "brillo" solo se ve dentro del círculo
+     que sigue al cursor; sin cursor (táctil) nunca se revela. */
+  .cielo-estrellado {
+    @apply pointer-events-none fixed inset-0 z-0;
+    opacity: var(--ce-opacity);
+    --cx: 50vw;
+    --cy: 30vh;
+    --px: 0;
+    --py: 0;
+  }
+  /* Pantallas de trabajo: el cielo está, pero se corre a un segundo plano. */
+  .cielo-estrellado.ce-tenue {
+    opacity: calc(var(--ce-opacity) * 0.45);
+  }
+  .cielo-estrellado .ce-capa {
+    position: absolute;
+    inset: -4%;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .cielo-estrellado[data-cursor='on'] .ce-base {
+    transform: translate3d(calc(var(--px) * -10px), calc(var(--py) * -10px), 0);
+  }
+  /* La capa de adelante se mueve más: eso es lo que da la sensación de fondo. */
+  .cielo-estrellado[data-cursor='on'] .ce-brillo {
+    transform: translate3d(calc(var(--px) * -26px), calc(var(--py) * -26px), 0);
+  }
+  .cielo-estrellado .ce-brillo {
+    opacity: 0;
+  }
+  .cielo-estrellado[data-cursor='on'] .ce-brillo {
+    opacity: 1;
+    -webkit-mask-image: radial-gradient(
+      circle 200px at var(--cx) var(--cy),
+      black 0%,
+      rgb(0 0 0 / 0.35) 45%,
+      transparent 72%
+    );
+    mask-image: radial-gradient(
+      circle 200px at var(--cx) var(--cy),
+      black 0%,
+      rgb(0 0 0 / 0.35) 45%,
+      transparent 72%
+    );
+  }
+  /* Un resplandor muy tenue alrededor del cursor: hace visible el gesto sin
+     que haya que mirar estrella por estrella. */
+  .cielo-estrellado[data-cursor='on']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle 260px at var(--cx) var(--cy),
+      var(--ce-halo),
+      transparent 70%
+    );
+  }
+  .cielo-estrellado .ce-tanda {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    animation: ab-titila 7s ease-in-out infinite;
+  }
+
+  /* Aurora boreal de la home (components/aurora-boreal.tsx). Solo se animan
+     transform y opacity de capas estáticas: corre en el compositor. La máscara
+     funde el pie con la página para que no quede un corte. */
+  .aurora-boreal {
+    @apply pointer-events-none absolute inset-0 -z-10 overflow-hidden;
+    opacity: var(--ab-opacity);
+    /* Dos máscaras cruzadas: la aurora se apaga hacia abajo y hacia los lados,
+       así nunca toca un borde con una línea recta. */
+    -webkit-mask-image:
+      linear-gradient(to bottom, black 45%, transparent 92%),
+      linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
+    mask-image:
+      linear-gradient(to bottom, black 45%, transparent 92%),
+      linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  /* Variante de trabajo: más corta, más tenue y sin resplandor de cielo. */
+  .aurora-boreal.ab-discreta {
+    opacity: calc(var(--ab-opacity) * 0.5);
+    -webkit-mask-image:
+      linear-gradient(to bottom, black 20%, transparent 68%),
+      linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%);
+    mask-image:
+      linear-gradient(to bottom, black 20%, transparent 68%),
+      linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%);
+  }
+  .aurora-boreal.ab-discreta .ab-cielo {
+    display: none;
+  }
+  .aurora-boreal .ab-cielo {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 50% at 50% 35%, var(--ab-glow), transparent 70%);
+  }
+  .aurora-boreal .ab-estrellas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    will-change: opacity;
+    animation: ab-titila 7s ease-in-out infinite;
+  }
+  .aurora-boreal .ab-capa {
+    position: absolute;
+    top: -6%;
+    left: -10%;
+    width: 120%;
+    height: 100%;
+    transform-origin: 50% 0%;
+    will-change: transform, opacity;
+  }
+  @media (max-width: 767px) {
+    .aurora-boreal .ab-capa {
+      left: -70%;
+      width: 240%;
+    }
+  }
+  .aurora-boreal .ab-ondula {
+    animation: ab-ondula 26s ease-in-out infinite;
+  }
+  /* El verde se mezcla en modo screen: suma luz en vez de tapar el violeta. */
+  .aurora-boreal .ab-capa-verde {
+    mix-blend-mode: screen;
+  }
+  .aurora-boreal .ab-verde {
+    opacity: 0;
+    animation: ab-verde 32s ease-in-out infinite;
+  }
+
+  /* Funde arriba y abajo un fondo de sección para que no se note dónde empieza
+     y dónde termina. */
+  .fundido-vertical {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%);
+  }
+  .fundido-abajo {
+    -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  }
+
   /* Grilla tenue con máscara radial: le da profundidad al vacío sin competir. */
   .grid-field {
     @apply pointer-events-none absolute inset-0 -z-10;
@@ -566,6 +754,47 @@
   }
 }
 
+/* Aurora boreal: las cortinas se mecen y se estiran, las estrellas titilan
+   y el velo verde aparece solo en una franja del ciclo. */
+@keyframes ab-ondula {
+  0%,
+  100% {
+    transform: translateX(-2.5%) skewX(-3deg) scaleY(0.96);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateX(2.5%) skewX(3deg) scaleY(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes ab-verde {
+  0%,
+  45%,
+  100% {
+    transform: translateX(3%) skewX(2deg) scaleY(0.95);
+    opacity: 0;
+  }
+  65% {
+    transform: translateX(0) skewX(-2deg) scaleY(1.04);
+    opacity: 0.6;
+  }
+  85% {
+    transform: translateX(-3%) skewX(-3deg) scaleY(1);
+    opacity: 0;
+  }
+}
+
+@keyframes ab-titila {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -614,15 +843,16 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Movimiento reducido
    Se apaga todo el movimiento de CONTENIDO (pulsos, entradas, barras), como
-   pide el sistema. El ambiente de fondo (.aurora-band) queda exceptuado: es
+   pide el sistema. El ambiente de fondo (.aurora-band y la aurora boreal de la
+   home) queda exceptuado: es
    una decisión tomada del lado del producto — movimiento lento y difuminado
    que no desplaza ni una línea de texto — y ya estaba documentada así antes
    del rediseño. No "corregirlo" pensando que es un descuido de accesibilidad.
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
-  *:not(.aurora-band),
-  *:not(.aurora-band)::before,
-  *:not(.aurora-band)::after {
+  *:not(.aurora-band, .aurora-boreal *),
+  *:not(.aurora-band, .aurora-boreal *)::before,
+  *:not(.aurora-band, .aurora-boreal *)::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

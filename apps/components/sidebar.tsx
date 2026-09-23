@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, History, Mail, Menu, Plus, Settings, X } from 'lucide-react'
-import { Aurora } from '@/components/aurora'
+import { CieloEstrellado } from '@/components/cielo-estrellado'
 import { Logo, LogoMark } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useAuth } from '@/lib/auth-context'
@@ -237,7 +237,9 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
        dónde "pegar" el sticky. El recorte del ambiente lo hace `.aurora-field`,
        que trae su propio overflow-hidden. */
     <div className="relative isolate min-h-screen bg-bg">
-      <Aurora intensity="soft" />
+      {/* El mismo cielo de la landing, en su versión de trabajo: tenue y sin la
+          linterna del cursor, que acá distraería de la card. */}
+      <CieloEstrellado tenue linterna={false} />
 
       {/* Barra superior mobile */}
       <div className="relative flex items-center justify-between border-b border-border bg-bg/70 px-4 py-3 backdrop-blur-xl lg:hidden">
