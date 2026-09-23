@@ -1,7 +1,8 @@
 <p align="center">
   <img 
-    src="/assets/logoAletheia.png" 
-    width="300px"
+    src="/assets/logoAletheia-banner.svg"
+    alt="AletheIA — Boreal Data"
+    width="360px"
   />
 </p>
 <h1 align="center">aletheIA</h1>
