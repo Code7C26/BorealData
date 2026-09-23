@@ -23,12 +23,16 @@ export function Navbar() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent"
       />
-      <nav className="mx-auto flex max-w-shell items-center justify-between gap-3 px-gutter py-4 md:px-6">
+      {/* A ancho completo, no dentro del shell: el logo y el botón viven en los
+          extremos de la pantalla, no a 400px del borde en un monitor grande. */}
+      <nav className="flex items-center justify-between gap-3 px-gutter py-4 md:px-8 xl:px-12">
         <a href="#" aria-label="AletheIA — inicio" className="min-w-0 shrink-0">
-          <Logo />
+          <Logo showParent />
         </a>
 
-        <div className="hidden items-center gap-7 lg:flex">
+        {/* `flex-1 justify-center`: los enlaces quedan centrados en la pantalla,
+            no pegados al logo, ahora que la barra ocupa todo el ancho. */}
+        <div className="hidden flex-1 items-center justify-center gap-7 lg:flex">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
@@ -59,8 +63,8 @@ export function Navbar() {
       </nav>
 
       {menuAbierto && (
-        <div className={cn('animate-rise border-t border-border bg-bg px-gutter py-4 lg:hidden md:px-6')}>
-          <div className="mx-auto flex max-w-shell flex-col gap-1">
+        <div className={cn('animate-rise border-t border-border bg-bg px-gutter py-4 lg:hidden md:px-8')}>
+          <div className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}

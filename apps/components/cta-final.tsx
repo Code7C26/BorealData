@@ -5,8 +5,12 @@ import { Aurora } from '@/components/aurora'
 export function CtaFinal() {
   return (
     <section className="relative isolate overflow-hidden px-gutter py-40 md:px-6">
-      <Aurora intensity="loud" />
-      <div aria-hidden="true" className="noise-field" />
+      {/* Fundido arriba y abajo: sin esto la sección arranca con un corte duro
+          contra la anterior. */}
+      <div aria-hidden="true" className="fundido-vertical pointer-events-none absolute inset-0 -z-10 isolate">
+        <Aurora />
+        <div className="noise-field" />
+      </div>
 
       <div className="relative mx-auto max-w-3xl text-center">
         <h2 className="text-balance font-display text-[clamp(2.25rem,5vw,3.75rem)] leading-[1.06] font-bold tracking-[-0.03em] text-display">

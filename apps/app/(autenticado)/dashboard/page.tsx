@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AnalisisInput } from '@/components/analisis-input'
-import { Aurora } from '@/components/aurora'
+import { AuroraBoreal } from '@/components/aurora-boreal'
 import { apiFetch, type GlobalStats } from '@/lib/api'
 import { VERDICT, type Verdict } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
@@ -23,7 +23,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden">
-      <Aurora intensity="soft" />
+      <AuroraBoreal discreta />
 
       <div className="mx-auto flex w-full max-w-card flex-col gap-12 px-gutter py-12 md:px-6 md:py-16">
         <header className="flex flex-col gap-4">

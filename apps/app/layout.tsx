@@ -11,7 +11,10 @@ import './global.css'
  */
 const archivo = Archivo({
   subsets: ['latin', 'latin-ext'],
-  weight: ['400', '500', '600', '700'],
+  /* El 300 existe por el lockup de Boreal Data: el corte de peso de la marca es
+     «Boreal» en extrabold (800) contra «Data» en light (300). Sin esos pesos el
+     navegador los falsea y el corte —que es toda la marca— se pierde. */
+  weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-archivo',
   display: 'swap',
 })

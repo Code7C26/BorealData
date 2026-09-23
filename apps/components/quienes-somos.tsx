@@ -1,9 +1,10 @@
-/* Los corchetes son datos pendientes de completar, no texto definitivo. */
+import { LogoBorealData } from '@/components/logo-boreal'
+
 const DATOS = [
   { etiqueta: 'Producto', valor: 'AletheIA' },
-  { etiqueta: 'Equipo', valor: '[CUÁNTAS PERSONAS]' },
-  { etiqueta: 'Desde', valor: '[AÑO]' },
-  { etiqueta: 'Dónde', valor: '[CIUDAD, PAÍS]' },
+  { etiqueta: 'Equipo', valor: 'Ciro Di Marsico · Renzo Lanata' },
+  { etiqueta: 'Desde', valor: '2026' },
+  { etiqueta: 'Dónde', valor: 'Córdoba, Argentina' },
 ]
 
 export function QuienesSomos() {
@@ -16,7 +17,12 @@ export function QuienesSomos() {
       <div className="mx-auto grid max-w-shell grid-cols-1 gap-16 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <p className="eyebrow">Quiénes somos</p>
-          <h2 id="boreal-title" className="mt-4 text-balance font-display text-h2-fluid text-display">
+          {/* La firma de la casa: acá es donde habla Boreal Data, no AletheIA.
+              Va en su propia línea — el lockup es inline-flex. */}
+          <div className="mt-8">
+            <LogoBorealData className="text-[2.5rem]" />
+          </div>
+          <h2 id="boreal-title" className="mt-6 text-balance font-display text-h2-fluid text-display">
             Boreal Data hace herramientas para que la información se pueda chequear.
           </h2>
         </div>
