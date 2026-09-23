@@ -2,7 +2,7 @@
 
 > Documento de continuidad. Se actualiza a medida que avanza el proyecto para no perder contexto entre sesiones.
 
-**Última actualización:** 14 de septiembre de 2026
+**Última actualización:** 23 de septiembre de 2026 (sin commits nuevos desde el 14-sep; esta pasada corrige desactualización de `design/DESIGN_SYSTEM.md` y `apps/extension/README.md`, que habían quedado con contenido viejo)
 
 ---
 
@@ -122,7 +122,7 @@ La extensión dejó de ser un popup y ahora es un **side panel** (`chrome.sidePa
 
 **Gotcha importante:** `chrome.sidePanel.close()` llamado desde el propio panel no cierra nada (resuelve la promesa pero no hace nada visible). La forma que funciona es llamarlo **desde el background script** (`entrypoints/background.ts`), escuchando un evento como `tabs.onActivated` — `close()`, a diferencia de `open()`, no requiere gesto directo del usuario.
 
-**Pendiente:** el botón "Ver análisis completo" abre `/historial` (el listado), no el análisis puntual, porque hasta hace poco no existía una ruta pública por id. Ya existe `apps/app/resultado/[id]/` para esto — falta confirmar que la extensión ya apunte ahí.
+**Resuelto (14-sep-2026):** el botón "Ver análisis completo" ya apunta a `${WEB_ORIGIN}/resultado/${id}` (`extension/entrypoints/sidepanel/App.tsx`), con fallback a `/historial` solo si el guardado no devolvió id.
 
 ---
 
@@ -144,7 +144,7 @@ Se hizo una pasada de seguridad completa sobre el backend:
 - ✅ Home (`app/page.tsx`) — navbar, hero, input URL/texto, stats bar, quiz de detección, FAQ, footer
 - ✅ Login / Registro (`app/login`, `app/registro`)
 - ✅ Dashboard, Historial, Analizando, Resultado, Perfil, Configuración, Contacto — todo bajo `app/(autenticado)/`
-- ✅ Resultado compartido por id (`app/resultado/[id]/`)
+- ✅ Resultado compartido por id (`app/resultado/[id]/`), con preview de Open Graph / Twitter Card real (`generateMetadata()`, pega contra `GET /analyses/:id`) — antes compartir el link por WhatsApp/redes no mostraba nada porque los crawlers no ejecutan JS.
 
 ### Bugs resueltos recientes (bitácora completa en memoria de sesión, no repetir diagnóstico)
 - Botón "Compartir resultado" ahora da feedback visual ("¡Enlace copiado!"), con manejo de error si `navigator.clipboard` no existe.
@@ -220,8 +220,6 @@ La extensión corre con `npm run dev` (WXT) desde la misma carpeta y se carga "u
 ## 12. Pendientes inmediatos
 
 - [ ] Decidir cómo resolver el bug de fuentes no clickeables (backend/Gemini) — ver sección 8.
-- [ ] Confirmar que el botón "Ver análisis completo" de la extensión ya apunte a `resultado/[id]` en vez de a `/historial`.
-- [ ] Evaluar si "compartir resultado" necesita un endpoint público real (hoy el link solo sirve si el análisis está en `sessionStorage` del mismo navegador/pestaña, salvo que ya se haya resuelto vía `resultado/[id]`).
 - [ ] Mobile (Expo) sigue sin desarrollo real — última prioridad.
 - [ ] Seguir la bitácora de bugs de frontend a medida que Renzo reporte nuevos.
 
