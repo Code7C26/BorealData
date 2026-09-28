@@ -499,15 +499,24 @@
   }
 
   /* ── Titular con degradé de aurora: reservado a los h1 de landing ── */
+  /* El degradé se repite mientras se desplaza, así que tiene que cerrar sobre
+     sí mismo: el primer y el último stop son el MISMO color. Con extremos
+     distintos (antes: crema → lila) la costura entre una repetición y la
+     siguiente es un borde duro que cruza el titular.
+     El 200% tampoco es decorativo. La posición porcentual desplaza
+     `p% × (ancho del texto − ancho del degradé)`; con el degradé al 200% eso da
+     −2 anchos de texto, que es exactamente un patrón completo: la vuelta cierra
+     sin saltar. Con 220% daba 1,2 patrones y pegaba un tirón en cada ciclo. */
   .text-aurora {
     background: linear-gradient(
       100deg,
       var(--display) 0%,
-      var(--accent-text) 42%,
-      var(--luz) 70%,
-      var(--accent-text) 100%
+      var(--accent-text) 25%,
+      var(--luz) 50%,
+      var(--accent-text) 75%,
+      var(--display) 100%
     );
-    background-size: 220% auto;
+    background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -736,7 +745,7 @@
 
 @keyframes aurora-shimmer {
   to {
-    background-position: 220% center;
+    background-position: 200% center;
   }
 }
 
