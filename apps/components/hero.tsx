@@ -6,7 +6,12 @@ import { cn } from '@/lib/utils'
 
 const ORDEN: Verdict[] = ['verificado', 'dudoso', 'falso', 'sin-datos']
 
-/** Notas de utilería para el muro del fondo: ancho de las barras + veredicto. */
+/** Notas de utilería para el muro del fondo: ancho de las barras + veredicto.
+ *
+ * Cada columna tiene que medir, ella sola, más que el alto del hero: el loop
+ * desplaza exactamente un juego (-50% de los dos juegos duplicados), así que si
+ * un juego es más corto que la pantalla, a mitad de ciclo se acaban las notas y
+ * queda el hueco. Con dieciséis notas el juego pasa los 1600 px y cubre el hero con margen. */
 const COLUMNAS: { anchos: [string, string]; verdict: Verdict }[][] = [
   [
     { anchos: ['82%', '54%'], verdict: 'falso' },
@@ -14,6 +19,17 @@ const COLUMNAS: { anchos: [string, string]; verdict: Verdict }[][] = [
     { anchos: ['90%', '62%'], verdict: 'dudoso' },
     { anchos: ['64%', '40%'], verdict: 'sin-datos' },
     { anchos: ['86%', '58%'], verdict: 'verificado' },
+    { anchos: ['76%', '52%'], verdict: 'dudoso' },
+    { anchos: ['92%', '44%'], verdict: 'verificado' },
+    { anchos: ['68%', '56%'], verdict: 'falso' },
+    { anchos: ['84%', '48%'], verdict: 'verificado' },
+    { anchos: ['72%', '60%'], verdict: 'sin-datos' },
+    { anchos: ['88%', '50%'], verdict: 'verificado' },
+    { anchos: ['66%', '42%'], verdict: 'dudoso' },
+    { anchos: ['80%', '58%'], verdict: 'verificado' },
+    { anchos: ['94%', '46%'], verdict: 'sin-datos' },
+    { anchos: ['72%', '50%'], verdict: 'falso' },
+    { anchos: ['86%', '62%'], verdict: 'verificado' },
   ],
   [
     { anchos: ['74%', '50%'], verdict: 'dudoso' },
@@ -21,13 +37,29 @@ const COLUMNAS: { anchos: [string, string]; verdict: Verdict }[][] = [
     { anchos: ['66%', '44%'], verdict: 'verificado' },
     { anchos: ['92%', '60%'], verdict: 'sin-datos' },
     { anchos: ['78%', '48%'], verdict: 'dudoso' },
+    { anchos: ['84%', '54%'], verdict: 'verificado' },
+    { anchos: ['70%', '46%'], verdict: 'verificado' },
+    { anchos: ['90%', '62%'], verdict: 'falso' },
+    { anchos: ['64%', '40%'], verdict: 'verificado' },
+    { anchos: ['86%', '56%'], verdict: 'dudoso' },
+    { anchos: ['76%', '44%'], verdict: 'sin-datos' },
+    { anchos: ['82%', '52%'], verdict: 'verificado' },
+    { anchos: ['68%', '48%'], verdict: 'verificado' },
+    { anchos: ['90%', '56%'], verdict: 'dudoso' },
+    { anchos: ['74%', '42%'], verdict: 'verificado' },
+    { anchos: ['88%', '60%'], verdict: 'falso' },
   ],
 ]
 
-/** Solo dos columnas, contra los bordes: enmarcan sin invadir el centro. */
+/** Solo dos columnas, contra los bordes: enmarcan sin invadir el centro.
+ *
+ * Sin altura propia: la columna mide lo que miden sus notas. Si se le pone una
+ * altura estirada (`h-130%`), el -50% del keyframe se calcula sobre esa altura
+ * y no sobre el contenido — la columna se va de largo y deja el hueco. El
+ * desfase entre las dos lo da el delay, no un `top` distinto. */
 const POSICION_COLUMNA = [
-  'left-[2%] top-[-15%] h-[130%] w-[190px] [animation-duration:38s]',
-  'right-[2%] top-[-25%] h-[140%] w-[190px] [animation-duration:32s]',
+  'left-[2%] top-[-12%] w-[190px] [animation-duration:64s]',
+  'right-[2%] top-[-12%] w-[190px] [animation-duration:58s] [animation-delay:-18s]',
 ]
 
 function NotaDeUtileria({ anchos, verdict }: { anchos: [string, string]; verdict: Verdict }) {
@@ -35,7 +67,7 @@ function NotaDeUtileria({ anchos, verdict }: { anchos: [string, string]; verdict
   return (
     <div
       className={cn(
-        'flex flex-col gap-2 rounded-lg border border-border border-t-[3px] bg-surface p-3.5',
+        'mb-4 flex flex-col gap-2 rounded-lg border border-border border-t-[3px] bg-surface p-3.5',
         meta.borderTop,
       )}
     >
@@ -58,12 +90,16 @@ function MuroDeNotas() {
   return (
     <div
       aria-hidden="true"
-      className="absolute inset-0 z-0 opacity-30 [mask-image:radial-gradient(ellipse_70%_62%_at_50%_46%,transparent_42%,black_88%)] [-webkit-mask-image:radial-gradient(ellipse_70%_62%_at_50%_46%,transparent_42%,black_88%)]"
+      className="absolute inset-0 z-0 hidden opacity-30 md:block [mask-image:radial-gradient(ellipse_70%_62%_at_50%_46%,transparent_42%,black_88%)] [-webkit-mask-image:radial-gradient(ellipse_70%_62%_at_50%_46%,transparent_42%,black_88%)]"
     >
       {COLUMNAS.map((notas, columna) => (
         <div
           key={columna}
-          className={cn('absolute flex animate-drift-y flex-col gap-4', POSICION_COLUMNA[columna])}
+          /* El aire entre notas va como margen de cada nota, no como `gap` del
+             contenedor: con `gap`, la altura total es 2 juegos + un gap de más,
+             y el -50% del keyframe se corre por esa diferencia — un saltito en
+             cada vuelta. Con margen, los dos juegos miden exactamente lo mismo. */
+          className={cn('absolute flex animate-drift-y flex-col', POSICION_COLUMNA[columna])}
         >
           {[...notas, ...notas].map((nota, i) => (
             <NotaDeUtileria key={i} anchos={nota.anchos} verdict={nota.verdict} />
