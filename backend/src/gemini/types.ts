@@ -110,4 +110,58 @@ export interface GeminiOptions {
    * (3 min).
    */
   timeoutMs?: number;
+  /**
+   * Qué tipo de contenido se está analizando. Solo cambia la redacción del prompt
+   * (un posteo o una cadena no es un "artículo periodístico"); las reglas de veredicto
+   * son las mismas. Default: "url" (el comportamiento de siempre).
+   */
+  contentKind?: ContentKind;
+}
+
+// ── Contenido que el scraper no puede ver (sep-2026) ────────────────────────
+// La extensión manda evidencia armada dentro de la pestaña del usuario (captura,
+// selección, texto pegado) en vez de una URL que el servidor tendría que ir a buscar.
+// Ver DOCS/BRIEF-captura-contenido-privado.md.
+
+/** De dónde salió el contenido. "url" es el camino clásico (scraper); el resto es evidencia del cliente. */
+export type ContentKind = "url" | "capture" | "selection" | "image" | "text";
+
+/** Solo estos cuatro se aceptan desde el cliente en /analyze/content (nunca "url"). */
+export const CLIENT_CONTENT_KINDS = ["capture", "selection", "image", "text"] as const;
+export type ClientContentKind = (typeof CLIENT_CONTENT_KINDS)[number];
+
+/** Plataformas reconocidas. Lo declara el cliente: es una pista, no un dato confiable. */
+export const KNOWN_PLATFORMS = ["facebook", "instagram", "x", "whatsapp", "tiktok", "otro"] as const;
+export type Platform = (typeof KNOWN_PLATFORMS)[number];
+
+/** Qué tan legible quedó la imagen según el propio modelo lector. */
+export type ReadingConfidence = "alta" | "media" | "baja";
+
+/**
+ * Paso 1 del pipeline de captura: lo que el modelo LEYÓ de la imagen, sin veredicto.
+ * `text` es la transcripción tal cual (el usuario puede corregirla antes del paso 2).
+ */
+export interface CaptureReading {
+  /** Plataforma que el modelo reconoce en la imagen (puede diferir de la pista del cliente). */
+  platform: Platform | null;
+  author: string | null;
+  /** Fecha del posteo tal como aparece (texto libre: "hace 3 h", "12 sep 2026"). */
+  postedAt: string | null;
+  /** Transcripción textual de la publicación, sin resumir ni corregir. */
+  text: string;
+  /** La afirmación central verificable en una oración, o null si no hay ninguna. */
+  mainClaim: string | null;
+  /** Fuente que el propio posteo cita ("según la OMS…"), si cita alguna. */
+  citedSource: string | null;
+  /** false si es un meme, una frase sin afirmación comprobable o una imagen sin texto útil. */
+  hasVerifiableClaim: boolean;
+  readingConfidence: ReadingConfidence;
+}
+
+export interface ReadCaptureResult {
+  success: boolean;
+  reading: CaptureReading | null;
+  error?: string;
+  /** "blocked": el modelo rechazó la imagen por políticas de seguridad. "api": falla técnica. */
+  errorCode?: "blocked" | "unreadable" | "api";
 }

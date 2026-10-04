@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import analyzeRouter from "./routes/analyze.js";
+import analyzeReadRouter from "./routes/analyzeRead.js";
+import analyzeContentRouter from "./routes/analyzeContent.js";
 import analysesRouter from "./routes/analyses.js";
 import historyRouter from "./routes/history.js";
 import meRouter from "./routes/me.js";
@@ -19,9 +21,16 @@ const allowedOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:3000")
   .filter(Boolean);
 
 app.use(cors({ origin: allowedOrigins }));
+
+// /analyze/read recibe imágenes en base64 y lleva su PROPIO parser con límite alto (3 MB),
+// así que tiene que ir ANTES del express.json() global: el default de 100 kB rechazaría el
+// body con 413 antes de que la request llegue a esa ruta. CORS ya corrió arriba (preflight).
+app.use(analyzeReadRouter);
+
 app.use(express.json());
 
 app.use(analyzeRouter);
+app.use(analyzeContentRouter);
 app.use(analysesRouter);
 app.use(historyRouter);
 app.use(meRouter);
@@ -36,4 +45,4 @@ app.get("/", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+});

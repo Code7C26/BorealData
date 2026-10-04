@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.scrapeWithCheerio = scrapeWithCheerio;
 const axios_1 = __importDefault(require("axios"));
 const cheerio = __importStar(require("cheerio"));
+const sanitize_1 = require("../utils/sanitize");
 // Selectores que indican una SPA sin contenido renderizado en el servidor.
 // Estos sitios se consideran "empty" y se rechazan.
 const SPA_ROOT_SELECTORS = ["#root", "#app", "#__next", "[data-reactroot]"];
@@ -61,7 +62,7 @@ function extractCleanText($) {
         .get()
         .filter(Boolean)
         .join("\n");
-    return { title, text };
+    return { title: (0, sanitize_1.stripControlChars)(title), text: (0, sanitize_1.stripControlChars)(text, true) };
 }
 function looksLikeEmptySpa($) {
     // si hay alguno de estos selectores con menos de 50 caracteres es una SPA

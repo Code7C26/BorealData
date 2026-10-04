@@ -6,6 +6,12 @@ const analyzeContent_js_1 = require("../gemini/analyzeContent.js");
 const analysesRepository_js_1 = require("../db/analysesRepository.js");
 const usersRepository_js_1 = require("../db/usersRepository.js");
 const verifyAuth_js_1 = require("../auth/verifyAuth.js");
+const validateUrl_js_1 = require("../utils/validateUrl.js");
+const sanitize_js_1 = require("../utils/sanitize.js");
+const analyzeLimiter_js_1 = require("../utils/analyzeLimiter.js");
+const MAX_URL_LENGTH = 2048;
+// El rate limiter (20 análisis nuevos/hora por usuario) vive en utils/analyzeLimiter.ts y se
+// comparte con /analyze/content: las dos gastan el mismo recurso caro (Gemini con grounding).
 /** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
 function responseFromCached(cached, id = cached.id) {
     return {
@@ -32,9 +38,10 @@ const router = (0, express_1.Router)();
  * Flujo: requireAuth (login obligatorio, corta con 401 si falta o el token es
  * inválido/expiró) -> upsertUser() para resolver el id interno del usuario -> caché por
  * URL exacta (ver getAnalysisForUserByUrl/getLatestAnalysisByUrl más abajo) -> si no hubo
- * cache hit, scrapeUrl() -> analyzeContent() -> guarda en Postgres -> responde con el
- * resultado combinado. Solo se guardan los análisis exitosos (200); si el guardado falla
- * no se rompe la respuesta (ver saveAnalysis).
+ * cache hit, rate limit por uid (ver analyzeRateLimiter, corta con 429 si ya gastó su
+ * cupo de análisis nuevos en la última hora) -> scrapeUrl() -> analyzeContent() -> guarda
+ * en Postgres -> responde con el resultado combinado. Solo se guardan los análisis
+ * exitosos (200); si el guardado falla no se rompe la respuesta (ver saveAnalysis).
  *
  * Caché por URL (10-sep-2026): analizar con Gemini tiene costo real (tokens + tiempo), y
  * antes /analyze repetía todo el flujo aunque la URL ya estuviera analizada — se veían
@@ -60,9 +67,20 @@ const router = (0, express_1.Router)();
  * UX, no seguridad — se puede saltear pegándole directo al backend.
  */
 router.post("/analyze", verifyAuth_js_1.requireAuth, async (req, res) => {
-    const { url } = req.body ?? {};
-    if (!url || typeof url !== "string") {
+    const { url: rawUrl } = req.body ?? {};
+    if (!rawUrl || typeof rawUrl !== "string") {
         return res.status(400).json({ error: "Falta el campo 'url' (string) en el body." });
+    }
+    const url = (0, sanitize_js_1.stripControlChars)(rawUrl);
+    if (url.length === 0) {
+        return res.status(400).json({ error: "Falta el campo 'url' (string) en el body." });
+    }
+    if (url.length > MAX_URL_LENGTH) {
+        return res.status(400).json({ error: "La URL es demasiado larga." });
+    }
+    const urlSafety = await (0, validateUrl_js_1.assertSafeAnalyzeUrl)(url);
+    if (!urlSafety.safe) {
+        return res.status(400).json({ error: urlSafety.reason });
     }
     try {
         // req.user siempre existe acá: requireAuth ya cortó la request con 401 si no.
@@ -79,6 +97,13 @@ router.post("/analyze", verifyAuth_js_1.requireAuth, async (req, res) => {
                 const nuevoId = await (0, analysesRepository_js_1.saveReusedAnalysis)(existingAnalysis, userId);
                 return res.status(200).json(responseFromCached(existingAnalysis, nuevoId));
             }
+        }
+        const rateCheck = analyzeLimiter_js_1.analyzeRateLimiter.consume(req.user.uid);
+        if (!rateCheck.allowed) {
+            res.set("Retry-After", String(rateCheck.retryAfterSeconds));
+            return res.status(429).json({
+                error: `Alcanzaste el límite de ${analyzeLimiter_js_1.ANALYZE_RATE_LIMIT} análisis nuevos por hora. Probá de nuevo en unos minutos.`,
+            });
         }
         const scraped = await (0, scrapeUrl_js_1.scrapeUrl)(url);
         if (!scraped.success) {

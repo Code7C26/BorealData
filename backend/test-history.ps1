@@ -1,8 +1,8 @@
 param(
-    [string]$ApiKey = "<WEB_API_KEY>",
+    [string]$ApiKey = "AIzaSyCxwsBpkPezCKgJkP0Oj51dqjigyrq1kSI",
     [string]$Email = "test@aletheia.com",
     [string]$Password = "test123456",
-    [string]$BaseUrl = "http://localhost:3000"
+    [string]$BaseUrl = "http://localhost:4000"
 )
 
 function Get-ErrorBody($errorRecord) {
