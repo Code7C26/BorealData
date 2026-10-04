@@ -3,7 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const verifyAuth_js_1 = require("../auth/verifyAuth.js");
 const usersRepository_js_1 = require("../db/usersRepository.js");
+const sanitize_js_1 = require("../utils/sanitize.js");
 const router = (0, express_1.Router)();
+const MAX_FULL_NAME_LENGTH = 200;
 /**
  * GET /me
  * Header obligatorio: Authorization: Bearer <Firebase ID token>.
@@ -41,16 +43,25 @@ router.get("/me", verifyAuth_js_1.requireAuth, async (req, res) => {
  * en el momento del login, ya que Firebase no lo persiste solo).
  */
 router.post("/me", verifyAuth_js_1.requireAuth, async (req, res) => {
-    const { fullName } = req.body ?? {};
-    if (!fullName || typeof fullName !== "string" || fullName.trim().length === 0) {
+    const { fullName: rawFullName } = req.body ?? {};
+    if (!rawFullName || typeof rawFullName !== "string") {
         return res.status(400).json({ error: "Falta el campo 'fullName' (string no vacío) en el body." });
     }
+    const fullName = (0, sanitize_js_1.stripControlChars)(rawFullName);
+    if (fullName.length === 0) {
+        return res.status(400).json({ error: "Falta el campo 'fullName' (string no vacío) en el body." });
+    }
+    if (fullName.length > MAX_FULL_NAME_LENGTH) {
+        return res.status(400).json({
+            error: `El campo 'fullName' no puede superar los ${MAX_FULL_NAME_LENGTH} caracteres.`,
+        });
+    }
     try {
-        const userId = await (0, usersRepository_js_1.upsertUser)(req.user.uid, req.user.email, fullName.trim());
+        const userId = await (0, usersRepository_js_1.upsertUser)(req.user.uid, req.user.email, fullName);
         if (!userId) {
             return res.status(500).json({ error: "No se pudo guardar el nombre en la base de datos." });
         }
-        return res.status(200).json({ id: userId, fullName: fullName.trim() });
+        return res.status(200).json({ id: userId, fullName });
     }
     catch (err) {
         return res.status(500).json({

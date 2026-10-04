@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.scrapeWithPuppeteer = scrapeWithPuppeteer;
 const puppeteer_1 = __importDefault(require("puppeteer"));
 const cheerio = __importStar(require("cheerio"));
+const sanitize_1 = require("../utils/sanitize");
 async function scrapeWithPuppeteer(url, options = {}) {
     const { timeoutMs = 20000 } = options;
     let browser;
@@ -69,18 +70,18 @@ async function scrapeWithPuppeteer(url, options = {}) {
         const $ = cheerio.load(html);
         // limpia el HTML
         $("script, style, noscript, iframe, svg, nav, footer, header, form, aside").remove();
-        const title = $("title").first().text().trim() || $("h1").first().text().trim();
+        const title = (0, sanitize_1.stripControlChars)($("title").first().text().trim() || $("h1").first().text().trim());
         const container = $("article").length
             ? $("article")
             : $("main").length
                 ? $("main")
                 : $("body");
-        const text = container
+        const text = (0, sanitize_1.stripControlChars)(container
             .find("p, h1, h2, h3, li")
             .map((_, el) => $(el).text().trim())
             .get()
             .filter(Boolean)
-            .join("\n");
+            .join("\n"), true);
         return {
             url,
             title,

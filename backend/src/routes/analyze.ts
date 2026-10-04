@@ -12,18 +12,12 @@ import { upsertUser } from "../db/usersRepository.js";
 import { requireAuth } from "../auth/verifyAuth.js";
 import { assertSafeAnalyzeUrl } from "../utils/validateUrl.js";
 import { stripControlChars } from "../utils/sanitize.js";
-import { FixedWindowRateLimiter } from "../utils/rateLimiter.js";
+import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
 
 const MAX_URL_LENGTH = 2048;
 
-// Solo cuenta análisis reales (cache miss -> scrape + Gemini), no cache hits: ver el
-// bloque de caché más abajo. Gemini con grounding tiene costo real por llamada, así
-// que este límite protege ese costo, no la ruta en sí (que ya tiene su propio chequeo
-// de auth). 20/hora es holgado para uso normal (nadie analiza 20 noticias distintas
-// por hora a mano) pero frena un script que castigue el endpoint.
-const ANALYZE_RATE_LIMIT = 20;
-const ANALYZE_RATE_WINDOW_MS = 60 * 60 * 1000;
-const analyzeRateLimiter = new FixedWindowRateLimiter(ANALYZE_RATE_LIMIT, ANALYZE_RATE_WINDOW_MS);
+// El rate limiter (20 análisis nuevos/hora por usuario) vive en utils/analyzeLimiter.ts y se
+// comparte con /analyze/content: las dos gastan el mismo recurso caro (Gemini con grounding).
 
 /** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
 function responseFromCached(cached: AnalysisHistoryItem, id: string | null = cached.id) {

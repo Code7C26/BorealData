@@ -7,7 +7,7 @@ exports.getAnalysisById = getAnalysisById;
 exports.getAnalysisForUserByUrl = getAnalysisForUserByUrl;
 exports.getLatestAnalysisByUrl = getLatestAnalysisByUrl;
 exports.getGlobalStats = getGlobalStats;
-const pool_js_1 = require("./pool.js");
+const context_js_1 = require("./context.js");
 const types_js_1 = require("../gemini/types.js");
 /** Un uuid v4 tal como lo genera `gen_random_uuid()`. Cualquier otra cosa ni toca la DB. */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -18,26 +18,30 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
  */
 async function insertAnalysisRow(fields, userId) {
     try {
-        const pool = await (0, pool_js_1.getPool)();
-        const result = await pool.query(`INSERT INTO analyses
-        (url, title, scrape_method, verdict, confidence, headline, lead_text,
-         summary, reasoning, sources, tone_flags, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING id`, [
-            fields.url,
-            fields.title,
-            fields.scrapeMethod,
-            fields.verdict,
-            fields.confidence,
-            fields.headline,
-            fields.lead,
-            fields.summary,
-            JSON.stringify(fields.reasoning),
-            JSON.stringify(fields.sources),
-            JSON.stringify(fields.toneFlags),
-            userId,
-        ]);
-        return result.rows[0]?.id ?? null;
+        return await (0, context_js_1.runInUserTransaction)({ currentUserId: userId }, async (client) => {
+            const result = await client.query(`INSERT INTO analyses
+          (url, title, scrape_method, verdict, confidence, headline, lead_text,
+           summary, reasoning, sources, tone_flags, user_id,
+           source_type, capture_platform)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         RETURNING id`, [
+                fields.url,
+                fields.title,
+                fields.scrapeMethod,
+                fields.verdict,
+                fields.confidence,
+                fields.headline,
+                fields.lead,
+                fields.summary,
+                JSON.stringify(fields.reasoning),
+                JSON.stringify(fields.sources),
+                JSON.stringify(fields.toneFlags),
+                userId,
+                fields.sourceType ?? "url",
+                fields.capturePlatform ?? null,
+            ]);
+            return result.rows[0]?.id ?? null;
+        });
     }
     catch (err) {
         console.error("No se pudo guardar el análisis en la DB:", err instanceof Error ? err.message : err);
@@ -53,7 +57,10 @@ async function insertAnalysisRow(fields, userId) {
  * `userId` es el id interno (uuid, tabla `users`) del usuario autenticado, ya resuelto
  * por upsertUser() en usersRepository.ts — no el uid de Firebase.
  */
-async function saveAnalysis(scraped, analysis, userId = null) {
+async function saveAnalysis(
+// `method` es string (no el union del scraper) para que un contenido del cliente pueda
+// guardarse como "capture" sin pasar por el scraper.
+scraped, analysis, userId = null, meta = {}) {
     return insertAnalysisRow({
         url: scraped.url,
         title: scraped.title,
@@ -66,6 +73,8 @@ async function saveAnalysis(scraped, analysis, userId = null) {
         reasoning: analysis.reasoning,
         sources: analysis.sources,
         toneFlags: analysis.toneFlags,
+        sourceType: meta.sourceType ?? "url",
+        capturePlatform: meta.capturePlatform ?? null,
     }, userId);
 }
 /**
@@ -79,7 +88,7 @@ async function saveReusedAnalysis(cached, userId) {
 /** Las columnas que hace falta leer en todas las queries (nuevas + legacy). */
 const SELECT_COLUMNS = `id, url, title, scrape_method, verdict, confidence, headline,
             lead_text, summary, reasoning, sources, tone_flags, created_at,
-            score, label, explanation, claim_vs_evidence`;
+            source_type, score, label, explanation, claim_vs_evidence`;
 // ─────────────────────────────────────────────────────────────────────────────
 // Compatibilidad con el esquema viejo (score 0-100 + label de 6 valores)
 //
@@ -167,6 +176,10 @@ function mapSources(raw) {
         };
     });
 }
+const SOURCE_TYPES = ["url", "capture", "selection", "image", "text"];
+function isSourceType(value) {
+    return value !== null && SOURCE_TYPES.includes(value);
+}
 // pg devuelve las columnas jsonb ya parseadas (sources/reasoning/tone_flags), no hace
 // falta JSON.parse acá.
 function mapAnalysisRow(row) {
@@ -188,6 +201,7 @@ function mapAnalysisRow(row) {
         ? row.reasoning
         : // Fila vieja: lo más parecido a "pasos" que tenía eran estos dos textos sueltos.
             [row.explanation, row.claim_vs_evidence].filter((paso) => typeof paso === "string" && paso.trim().length > 0);
+    const sourceType = isSourceType(row.source_type) ? row.source_type : "url";
     return {
         id: row.id,
         url: row.url,
@@ -202,6 +216,8 @@ function mapAnalysisRow(row) {
         sources: mapSources(row.sources),
         toneFlags: Array.isArray(row.tone_flags) ? row.tone_flags : [],
         createdAt: row.created_at.toISOString(),
+        sourceType,
+        shareable: sourceType === "url",
     };
 }
 /**
@@ -213,13 +229,14 @@ function mapAnalysisRow(row) {
  * responsable de atajar la excepción y devolver el 500.
  */
 async function getAnalysesByUserId(userId, limit, offset) {
-    const pool = await (0, pool_js_1.getPool)();
-    const result = await pool.query(`SELECT ${SELECT_COLUMNS}
-     FROM analyses
-     WHERE user_id = $1
-     ORDER BY created_at DESC
-     LIMIT $2 OFFSET $3`, [userId, limit, offset]);
-    return result.rows.map(mapAnalysisRow);
+    return (0, context_js_1.runInUserTransaction)({ currentUserId: userId }, async (client) => {
+        const result = await client.query(`SELECT ${SELECT_COLUMNS}
+       FROM analyses
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`, [userId, limit, offset]);
+        return result.rows.map(mapAnalysisRow);
+    });
 }
 /**
  * Un análisis puntual por id, sin filtrar por dueño — a propósito.
@@ -231,14 +248,22 @@ async function getAnalysesByUserId(userId, limit, offset) {
  * un error en vez de un 404 limpio.
  *
  * El error se propaga (como en /history): la ruta decide qué responder.
+ *
+ * `viewerUserId` (opcional): id interno del usuario logueado que abre el link, para que el
+ * dueño de una captura pueda abrir la suya. Ver routes/analyses.ts.
  */
-async function getAnalysisById(id) {
+async function getAnalysisById(id, viewerUserId = null) {
     if (!UUID_PATTERN.test(id))
         return null;
-    const pool = await (0, pool_js_1.getPool)();
-    const result = await pool.query(`SELECT ${SELECT_COLUMNS} FROM analyses WHERE id = $1`, [id]);
-    const row = result.rows[0];
-    return row ? mapAnalysisRow(row) : null;
+    // El bypass del link público solo alcanza a filas 'url' (policy analyses_select_own_or_shared
+    // en schema.sql). El contenido del cliente (capturas, selecciones, texto pegado) puede ser
+    // privado: se lo sirve únicamente a su dueño, por eso acá se pasa también el usuario que mira
+    // (id interno, no el uid de Firebase) cuando hay sesión. Sin sesión, una captura da null.
+    return (0, context_js_1.runInUserTransaction)({ bypassOwnerCheck: true, currentUserId: viewerUserId }, async (client) => {
+        const result = await client.query(`SELECT ${SELECT_COLUMNS} FROM analyses WHERE id = $1`, [id]);
+        const row = result.rows[0];
+        return row ? mapAnalysisRow(row) : null;
+    });
 }
 /**
  * Caché de deduplicación de /analyze (ver routes/analyze.ts). Dos lookups por `url`
@@ -258,32 +283,43 @@ async function getAnalysisById(id) {
  * única fuente del dato como en /history, así que si la DB falla acá /analyze tiene que
  * poder seguir con el flujo normal (scrapear + analizar) en vez de romperse con un 500.
  */
+// IMPORTANTE (contenido del cliente): las dos búsquedas filtran `source_type = 'url'`. Una
+// captura guarda como `url` la página donde estaba (instagram.com/, facebook.com/...), que es
+// la MISMA para posteos distintos: sin el filtro, esta caché le serviría a la persona (o a
+// otra) el análisis de OTRO posteo, y en el caso compartido filtraría un posteo privado.
 async function getAnalysisForUserByUrl(userId, url) {
     try {
-        const pool = await (0, pool_js_1.getPool)();
-        const result = await pool.query(`SELECT ${SELECT_COLUMNS}
-       FROM analyses
-       WHERE user_id = $1 AND url = $2
-       ORDER BY created_at DESC
-       LIMIT 1`, [userId, url]);
-        const row = result.rows[0];
-        return row ? mapAnalysisRow(row) : null;
+        return await (0, context_js_1.runInUserTransaction)({ currentUserId: userId }, async (client) => {
+            const result = await client.query(`SELECT ${SELECT_COLUMNS}
+         FROM analyses
+         WHERE user_id = $1 AND url = $2 AND source_type = 'url'
+         ORDER BY created_at DESC
+         LIMIT 1`, [userId, url]);
+            const row = result.rows[0];
+            return row ? mapAnalysisRow(row) : null;
+        });
     }
     catch (err) {
         console.error("No se pudo buscar el análisis previo del usuario en la DB:", err instanceof Error ? err.message : err);
         return null;
     }
 }
+/**
+ * bypassOwnerCheck: true a propósito (ver policy analyses_select_own_or_shared en
+ * schema.sql) — esta búsqueda es la caché de /analyze que reusa el análisis de
+ * CUALQUIER usuario para la misma URL, para no gastar otra llamada a Gemini.
+ */
 async function getLatestAnalysisByUrl(url) {
     try {
-        const pool = await (0, pool_js_1.getPool)();
-        const result = await pool.query(`SELECT ${SELECT_COLUMNS}
-       FROM analyses
-       WHERE url = $1
-       ORDER BY created_at DESC
-       LIMIT 1`, [url]);
-        const row = result.rows[0];
-        return row ? mapAnalysisRow(row) : null;
+        return await (0, context_js_1.runInUserTransaction)({ bypassOwnerCheck: true }, async (client) => {
+            const result = await client.query(`SELECT ${SELECT_COLUMNS}
+         FROM analyses
+         WHERE url = $1 AND source_type = 'url'
+         ORDER BY created_at DESC
+         LIMIT 1`, [url]);
+            const row = result.rows[0];
+            return row ? mapAnalysisRow(row) : null;
+        });
     }
     catch (err) {
         console.error("No se pudo buscar el análisis previo por URL en la DB:", err instanceof Error ? err.message : err);
@@ -299,67 +335,73 @@ async function getLatestAnalysisByUrl(url) {
  * cambiar el otro. Se resuelve en SQL y no en JS para no traerse la tabla entera solo
  * para contar.
  *
+ * Solo cuenta análisis de URL (`source_type = 'url'`): el contenido del cliente puede ser
+ * privado y no entra al agregado público. La policy de RLS ya lo garantiza para el rol de la
+ * app; el filtro explícito lo hace valer también para quien corra esto como dueño/superusuario.
+ *
  * Igual que getAnalysesByUserId(), el error se propaga: la ruta decide qué responder.
  */
 async function getGlobalStats() {
-    const pool = await (0, pool_js_1.getPool)();
-    const result = await pool.query(`SELECT COALESCE(
-              verdict,
-              CASE label
-                WHEN 'verdadero'            THEN 'verificado'
-                WHEN 'mayormente_verdadero' THEN 'verificado'
-                WHEN 'mixto'                THEN 'dudoso'
-                WHEN 'mayormente_falso'     THEN 'falso'
-                WHEN 'falso'                THEN 'falso'
-                ELSE 'sin-datos'
-              END
-            )                                       AS verdict,
-            COUNT(*)                                AS total,
-            SUM(jsonb_array_length(sources))        AS sources,
-            -- Las filas viejas no tienen confidence (el esquema anterior no medía
-            -- la solidez de la evidencia). Se les asigna acá el mismo mínimo válido
-            -- por veredicto que usa LEGACY_CONFIDENCE al leerlas — si cambia uno hay
-            -- que cambiar el otro. Sin esto el promedio daba 0 mientras no hubiera
-            -- ni un análisis nuevo.
-            SUM(COALESCE(
-              confidence,
-              CASE label
-                WHEN 'verdadero'            THEN 3
-                WHEN 'mayormente_verdadero' THEN 3
-                WHEN 'mixto'                THEN 2
-                WHEN 'mayormente_falso'     THEN 3
-                WHEN 'falso'                THEN 3
-                ELSE 1
-              END
-            ))                                      AS confidence_sum,
-            COUNT(*)                                AS confidence_count
-     FROM analyses
-     GROUP BY 1`);
-    const verdicts = {
-        verificado: 0,
-        dudoso: 0,
-        falso: 0,
-        "sin-datos": 0,
-    };
-    let totalAnalyses = 0;
-    let totalSources = 0;
-    let confidenceSum = 0;
-    let confidenceCount = 0;
-    for (const row of result.rows) {
-        // COUNT/SUM vuelven como string (bigint/numeric) desde pg.
-        const total = Number(row.total);
-        totalAnalyses += total;
-        totalSources += Number(row.sources ?? 0);
-        confidenceSum += Number(row.confidence_sum ?? 0);
-        confidenceCount += Number(row.confidence_count);
-        if (row.verdict in verdicts) {
-            verdicts[row.verdict] += total;
+    return (0, context_js_1.runInUserTransaction)({ bypassOwnerCheck: true }, async (client) => {
+        const result = await client.query(`SELECT COALESCE(
+                verdict,
+                CASE label
+                  WHEN 'verdadero'            THEN 'verificado'
+                  WHEN 'mayormente_verdadero' THEN 'verificado'
+                  WHEN 'mixto'                THEN 'dudoso'
+                  WHEN 'mayormente_falso'     THEN 'falso'
+                  WHEN 'falso'                THEN 'falso'
+                  ELSE 'sin-datos'
+                END
+              )                                       AS verdict,
+              COUNT(*)                                AS total,
+              SUM(jsonb_array_length(sources))        AS sources,
+              -- Las filas viejas no tienen confidence (el esquema anterior no medía
+              -- la solidez de la evidencia). Se les asigna acá el mismo mínimo válido
+              -- por veredicto que usa LEGACY_CONFIDENCE al leerlas — si cambia uno hay
+              -- que cambiar el otro. Sin esto el promedio daba 0 mientras no hubiera
+              -- ni un análisis nuevo.
+              SUM(COALESCE(
+                confidence,
+                CASE label
+                  WHEN 'verdadero'            THEN 3
+                  WHEN 'mayormente_verdadero' THEN 3
+                  WHEN 'mixto'                THEN 2
+                  WHEN 'mayormente_falso'     THEN 3
+                  WHEN 'falso'                THEN 3
+                  ELSE 1
+                END
+              ))                                      AS confidence_sum,
+              COUNT(*)                                AS confidence_count
+       FROM analyses
+       WHERE source_type = 'url'
+       GROUP BY 1`);
+        const verdicts = {
+            verificado: 0,
+            dudoso: 0,
+            falso: 0,
+            "sin-datos": 0,
+        };
+        let totalAnalyses = 0;
+        let totalSources = 0;
+        let confidenceSum = 0;
+        let confidenceCount = 0;
+        for (const row of result.rows) {
+            // COUNT/SUM vuelven como string (bigint/numeric) desde pg.
+            const total = Number(row.total);
+            totalAnalyses += total;
+            totalSources += Number(row.sources ?? 0);
+            confidenceSum += Number(row.confidence_sum ?? 0);
+            confidenceCount += Number(row.confidence_count);
+            if (row.verdict in verdicts) {
+                verdicts[row.verdict] += total;
+            }
         }
-    }
-    return {
-        totalAnalyses,
-        totalSources,
-        averageConfidence: confidenceCount > 0 ? Math.round((confidenceSum / confidenceCount) * 10) / 10 : 0,
-        verdicts,
-    };
+        return {
+            totalAnalyses,
+            totalSources,
+            averageConfidence: confidenceCount > 0 ? Math.round((confidenceSum / confidenceCount) * 10) / 10 : 0,
+            verdicts,
+        };
+    });
 }

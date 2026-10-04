@@ -7,7 +7,14 @@ import {
   type SourceStance,
   type Verdict,
 } from "../gemini/types.js";
-import type { ScrapedContent } from "../scraper/types.js";
+
+/**
+ * De dónde salió un análisis (columna `source_type`, ver schema.sql). 'url' es el camino
+ * clásico (scraper); el resto es contenido que armó el cliente dentro de la pestaña de la
+ * persona (POST /analyze/content) y puede ser PRIVADO: nunca entra a la caché por URL ni al
+ * link público de "Compartir resultado".
+ */
+export type SourceType = "url" | "capture" | "selection" | "image" | "text";
 
 /** Campos de una fila de `analyses`, sin id/user_id/created_at (lo que hace falta para insertarla). */
 interface AnalysisRowFields {
@@ -22,6 +29,9 @@ interface AnalysisRowFields {
   reasoning: string[];
   sources: AnalysisSource[];
   toneFlags: string[];
+  /** Default 'url'. Solo lo informa saveAnalysis(): saveReusedAnalysis() copia siempre filas 'url'. */
+  sourceType?: SourceType;
+  capturePlatform?: string | null;
 }
 
 /** Un uuid v4 tal como lo genera `gen_random_uuid()`. Cualquier otra cosa ni toca la DB. */
@@ -41,8 +51,9 @@ async function insertAnalysisRow(
       const result = await client.query<{ id: string }>(
         `INSERT INTO analyses
           (url, title, scrape_method, verdict, confidence, headline, lead_text,
-           summary, reasoning, sources, tone_flags, user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           summary, reasoning, sources, tone_flags, user_id,
+           source_type, capture_platform)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING id`,
         [
           fields.url,
@@ -57,6 +68,8 @@ async function insertAnalysisRow(
           JSON.stringify(fields.sources),
           JSON.stringify(fields.toneFlags),
           userId,
+          fields.sourceType ?? "url",
+          fields.capturePlatform ?? null,
         ]
       );
       return result.rows[0]?.id ?? null;
@@ -70,6 +83,12 @@ async function insertAnalysisRow(
   }
 }
 
+/** Origen del análisis que se guarda. Sin `meta`, es un análisis de URL (el camino de siempre). */
+export interface SaveAnalysisMeta {
+  sourceType?: SourceType;
+  capturePlatform?: string | null;
+}
+
 /**
  * Guarda el resultado de un análisis exitoso. No propaga errores: si la DB no está
  * configurada o el insert falla, loguea y devuelve false, para no tirar abajo la
@@ -80,9 +99,12 @@ async function insertAnalysisRow(
  * por upsertUser() en usersRepository.ts — no el uid de Firebase.
  */
 export async function saveAnalysis(
-  scraped: Pick<ScrapedContent, "url" | "title" | "method">,
+  // `method` es string (no el union del scraper) para que un contenido del cliente pueda
+  // guardarse como "capture" sin pasar por el scraper.
+  scraped: { url: string; title: string | null; method: string },
   analysis: AnalysisResult,
-  userId: string | null = null
+  userId: string | null = null,
+  meta: SaveAnalysisMeta = {}
 ): Promise<string | null> {
   return insertAnalysisRow(
     {
@@ -97,6 +119,8 @@ export async function saveAnalysis(
       reasoning: analysis.reasoning,
       sources: analysis.sources,
       toneFlags: analysis.toneFlags,
+      sourceType: meta.sourceType ?? "url",
+      capturePlatform: meta.capturePlatform ?? null,
     },
     userId
   );
@@ -129,6 +153,13 @@ export interface AnalysisHistoryItem {
   sources: AnalysisSource[];
   toneFlags: string[];
   createdAt: string;
+  /** De dónde salió. Las filas anteriores a la migración son 'url'. */
+  sourceType: SourceType;
+  /**
+   * false para contenido que armó el cliente (puede ser privado): el front no debe ofrecer
+   * "Compartir resultado", y GET /analyses/:id solo se lo sirve a su dueño.
+   */
+  shareable: boolean;
 }
 
 interface AnalysisRow {
@@ -145,6 +176,7 @@ interface AnalysisRow {
   sources: unknown[] | null;
   tone_flags: string[] | null;
   created_at: Date;
+  source_type: string | null;
   // ── Columnas del esquema viejo, solo para las filas anteriores al rediseño ──
   score: number | null;
   label: string | null;
@@ -155,7 +187,7 @@ interface AnalysisRow {
 /** Las columnas que hace falta leer en todas las queries (nuevas + legacy). */
 const SELECT_COLUMNS = `id, url, title, scrape_method, verdict, confidence, headline,
             lead_text, summary, reasoning, sources, tone_flags, created_at,
-            score, label, explanation, claim_vs_evidence`;
+            source_type, score, label, explanation, claim_vs_evidence`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Compatibilidad con el esquema viejo (score 0-100 + label de 6 valores)
@@ -252,6 +284,12 @@ function mapSources(raw: unknown[] | null): AnalysisSource[] {
     });
 }
 
+const SOURCE_TYPES: readonly string[] = ["url", "capture", "selection", "image", "text"];
+
+function isSourceType(value: string | null): value is SourceType {
+  return value !== null && SOURCE_TYPES.includes(value);
+}
+
 // pg devuelve las columnas jsonb ya parseadas (sources/reasoning/tone_flags), no hace
 // falta JSON.parse acá.
 function mapAnalysisRow(row: AnalysisRow): AnalysisHistoryItem {
@@ -281,6 +319,8 @@ function mapAnalysisRow(row: AnalysisRow): AnalysisHistoryItem {
           (paso): paso is string => typeof paso === "string" && paso.trim().length > 0
         );
 
+  const sourceType: SourceType = isSourceType(row.source_type) ? row.source_type : "url";
+
   return {
     id: row.id,
     url: row.url,
@@ -295,6 +335,8 @@ function mapAnalysisRow(row: AnalysisRow): AnalysisHistoryItem {
     sources: mapSources(row.sources),
     toneFlags: Array.isArray(row.tone_flags) ? row.tone_flags : [],
     createdAt: row.created_at.toISOString(),
+    sourceType,
+    shareable: sourceType === "url",
   };
 }
 
@@ -335,14 +377,30 @@ export async function getAnalysesByUserId(
  * un error en vez de un 404 limpio.
  *
  * El error se propaga (como en /history): la ruta decide qué responder.
+ *
+ * `viewerUserId` (opcional): id interno del usuario logueado que abre el link, para que el
+ * dueño de una captura pueda abrir la suya. Ver routes/analyses.ts.
  */
-export async function getAnalysisById(id: string): Promise<AnalysisHistoryItem | null> {
+export async function getAnalysisById(
+  id: string,
+  viewerUserId: string | null = null
+): Promise<AnalysisHistoryItem | null> {
   if (!UUID_PATTERN.test(id)) return null;
 
-  return runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
+  // El bypass del link público solo alcanza a filas 'url' (policy analyses_select_own_or_shared
+  // en schema.sql). El contenido del cliente (capturas, selecciones, texto pegado) puede ser
+  // privado: se lo sirve únicamente a su dueño, por eso acá se pasa también el usuario que mira
+  // (id interno, no el uid de Firebase) cuando hay sesión. Sin sesión, una captura da null.
+  return runInUserTransaction({ bypassOwnerCheck: true, currentUserId: viewerUserId }, async (client) => {
+    // Filtro EXPLÍCITO además de la policy de RLS: RLS no se aplica al dueño de la tabla ni a
+    // superusuarios (típico en desarrollo local, donde DATABASE_URL usa `postgres`), y ahí el
+    // link público serviría capturas privadas. Una fila que no es 'url' solo la ve su dueño.
     const result = await client.query<AnalysisRow>(
-      `SELECT ${SELECT_COLUMNS} FROM analyses WHERE id = $1`,
-      [id]
+      `SELECT ${SELECT_COLUMNS}
+       FROM analyses
+       WHERE id = $1
+         AND (source_type = 'url' OR user_id = $2::uuid)`,
+      [id, viewerUserId]
     );
 
     const row = result.rows[0];
@@ -368,6 +426,10 @@ export async function getAnalysisById(id: string): Promise<AnalysisHistoryItem |
  * única fuente del dato como en /history, así que si la DB falla acá /analyze tiene que
  * poder seguir con el flujo normal (scrapear + analizar) en vez de romperse con un 500.
  */
+// IMPORTANTE (contenido del cliente): las dos búsquedas filtran `source_type = 'url'`. Una
+// captura guarda como `url` la página donde estaba (instagram.com/, facebook.com/...), que es
+// la MISMA para posteos distintos: sin el filtro, esta caché le serviría a la persona (o a
+// otra) el análisis de OTRO posteo, y en el caso compartido filtraría un posteo privado.
 export async function getAnalysisForUserByUrl(
   userId: string,
   url: string
@@ -377,7 +439,7 @@ export async function getAnalysisForUserByUrl(
       const result = await client.query<AnalysisRow>(
         `SELECT ${SELECT_COLUMNS}
          FROM analyses
-         WHERE user_id = $1 AND url = $2
+         WHERE user_id = $1 AND url = $2 AND source_type = 'url'
          ORDER BY created_at DESC
          LIMIT 1`,
         [userId, url]
@@ -406,7 +468,7 @@ export async function getLatestAnalysisByUrl(url: string): Promise<AnalysisHisto
       const result = await client.query<AnalysisRow>(
         `SELECT ${SELECT_COLUMNS}
          FROM analyses
-         WHERE url = $1
+         WHERE url = $1 AND source_type = 'url'
          ORDER BY created_at DESC
          LIMIT 1`,
         [url]
@@ -448,6 +510,10 @@ export interface GlobalStats {
  * actual, con el mismo mapeo que LEGACY_LABEL_TO_VERDICT — si cambia uno hay que
  * cambiar el otro. Se resuelve en SQL y no en JS para no traerse la tabla entera solo
  * para contar.
+ *
+ * Solo cuenta análisis de URL (`source_type = 'url'`): el contenido del cliente puede ser
+ * privado y no entra al agregado público. La policy de RLS ya lo garantiza para el rol de la
+ * app; el filtro explícito lo hace valer también para quien corra esto como dueño/superusuario.
  *
  * Igual que getAnalysesByUserId(), el error se propaga: la ruta decide qué responder.
  */
@@ -491,6 +557,7 @@ export async function getGlobalStats(): Promise<GlobalStats> {
               ))                                      AS confidence_sum,
               COUNT(*)                                AS confidence_count
        FROM analyses
+       WHERE source_type = 'url'
        GROUP BY 1`
     );
 
