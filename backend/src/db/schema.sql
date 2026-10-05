@@ -193,3 +193,39 @@ CREATE POLICY analyses_insert_own ON analyses
 -- Sin policies de UPDATE/DELETE a propósito: con RLS activado, la ausencia de policy
 -- para un comando lo deniega por completo para aletheia_app — correcto, el backend
 -- nunca actualiza ni borra filas de `analyses`.
+
+-- ── Contenido que el scraper no puede ver (23-sep-2026) ─────────────────────
+-- POST /analyze/content analiza evidencia que arma la extensión dentro de la pestaña de la
+-- persona (captura, selección, texto pegado), no una URL pública. Ese contenido puede ser un
+-- posteo privado, así que NUNCA puede entrar por los caminos que comparten análisis entre
+-- usuarios: la caché por URL de /analyze y el link público de "Compartir resultado".
+--   `source_type`       de dónde salió el análisis. 'url' = camino clásico (scraper), y es el
+--                       default: todas las filas anteriores a este cambio son 'url'.
+--                       El valor lo fija el servidor según el endpoint, nunca el cliente.
+--   `capture_platform`  plataforma declarada por el cliente (facebook/instagram/...), solo
+--                       informativa.
+-- La imagen NO se guarda en ningún lado, y el texto original tampoco: solo queda el análisis.
+ALTER TABLE analyses
+  ADD COLUMN IF NOT EXISTS source_type      text NOT NULL DEFAULT 'url',
+  ADD COLUMN IF NOT EXISTS capture_platform text;
+
+-- (Sin ADD CONSTRAINT IF NOT EXISTS: si ya la corriste, el error "already exists" es ignorable.)
+ALTER TABLE analyses
+  ADD CONSTRAINT analyses_source_type_chk
+  CHECK (source_type IN ('url', 'capture', 'selection', 'image', 'text'));
+
+-- Segunda capa, en la base: el bypass de RLS (link público, caché entre usuarios, /stats)
+-- ahora SOLO alcanza a filas 'url'. Aunque una query futura se olvide del
+-- `AND source_type = 'url'`, el contenido del cliente sigue siendo visible únicamente para
+-- su dueño (user_id = app.current_user_id). Reemplaza la policy de SELECT de más arriba.
+-- Efecto colateral buscado: el agregado público de /stats deja de contar estas filas.
+DROP POLICY IF EXISTS analyses_select_own_or_shared ON analyses;
+CREATE POLICY analyses_select_own_or_shared ON analyses
+  FOR SELECT
+  USING (
+    user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+    OR (
+      current_setting('app.bypass_owner_check', true) = 'true'
+      AND source_type = 'url'
+    )
+  );

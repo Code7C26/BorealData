@@ -10,7 +10,7 @@
  * "AletheIA Sistema · Design System V1.0", secciones 02 y 03.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CONFIDENCE_RANGE = void 0;
+exports.KNOWN_PLATFORMS = exports.CLIENT_CONTENT_KINDS = exports.CONFIDENCE_RANGE = void 0;
 exports.normalizeVerdict = normalizeVerdict;
 /**
  * Rango de confianza válido por veredicto. Regla dura del sistema:
@@ -38,3 +38,7 @@ function normalizeVerdict(verdict, confidence) {
     }
     return { verdict, confidence };
 }
+/** Solo estos cuatro se aceptan desde el cliente en /analyze/content (nunca "url"). */
+exports.CLIENT_CONTENT_KINDS = ["capture", "selection", "image", "text"];
+/** Plataformas reconocidas. Lo declara el cliente: es una pista, no un dato confiable. */
+exports.KNOWN_PLATFORMS = ["facebook", "instagram", "x", "whatsapp", "tiktok", "otro"];
