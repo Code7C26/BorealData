@@ -161,7 +161,12 @@ export function ResultCard({
           {/* En la web el razonamiento no se pide: está ahí. El botón de "ver
               razonamiento completo" quedó solo en la extensión, donde sí lleva
               a otro lado (abre la pestaña de AletheIA). */}
-          <BotonCompartir id={analysis.id} className="md:w-auto" />
+          {/* `shareable: false` lo manda /analyze/content: el análisis existe y
+              tiene id, pero /resultado/:id no lo sirve (salió de algo privado).
+              Ofrecer el botón ahí sería copiar un link roto. */}
+          {analysis.shareable !== false && (
+            <BotonCompartir id={analysis.id} className="md:w-auto" />
+          )}
         </footer>
       )}
     </article>

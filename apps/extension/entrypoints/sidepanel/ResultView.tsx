@@ -4,6 +4,7 @@ import {
   ExternalLink,
   FileText,
   HelpCircle,
+  Lock,
   RotateCcw,
   XCircle,
 } from 'lucide-react';
@@ -52,7 +53,13 @@ interface ResultViewProps {
   analyzedLabel?: string;
   extractionInfo?: ExtractionInfo;
   onReset: () => void;
-  onViewFull: () => void;
+  /**
+   * Sin esto no se dibuja "Ver análisis completo". Es el caso del contenido
+   * que manda el cliente (una captura, una selección): se guarda y tiene id,
+   * pero NO tiene página pública en /resultado/:id, porque el análisis de un
+   * posteo privado no se le sirve a nadie más (ver AnalysisResult.shareable).
+   */
+  onViewFull?: () => void;
 }
 
 // El panel es para un vistazo rápido, no para leer el análisis entero: los
@@ -181,13 +188,21 @@ function ResultView({
           </div>
         )}
 
-        <button className="analyze-btn view-full-btn" onClick={onViewFull}>
-          <span className="view-full-btn-title">
-            <ExternalLink size={14} />
-            Ver análisis completo
-          </span>
-          <span className="view-full-btn-sub">Con todas las fuentes y el razonamiento entero</span>
-        </button>
+        {onViewFull ? (
+          <button className="analyze-btn view-full-btn" onClick={onViewFull}>
+            <span className="view-full-btn-title">
+              <ExternalLink size={14} />
+              Ver análisis completo
+            </span>
+            <span className="view-full-btn-sub">Con todas las fuentes y el razonamiento entero</span>
+          </button>
+        ) : (
+          <p className="private-note">
+            <Lock size={12} />
+            Este análisis salió de algo que viste en tu pantalla: queda en tu historial,
+            pero no tiene página para compartir.
+          </p>
+        )}
       </div>
 
       <button className="reset-btn" onClick={onReset}>

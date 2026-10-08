@@ -429,3 +429,93 @@
   color: var(--text-secondary);
   margin: 0;
 }
+
+/* --- Flujo de contenido: captura, lectura, verificación --- */
+
+/* La segunda puerta de entrada, debajo del campo de URL. No compite con
+   "Analizar": es el camino para lo que un enlace no alcanza a describir. */
+.capture-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.capture-divider::before,
+.capture-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.capture-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 11px 13px;
+  background: var(--bg-elevated);
+  color: var(--text-title);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.capture-btn:hover {
+  background: #171f1e;
+  border-color: var(--accent-text);
+}
+
+.capture-btn-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.capture-btn-sub {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.capture-error {
+  margin-top: 4px;
+}
+
+/* Espera de los dos pasos de red (leer la imagen, verificar el texto). */
+.job-loading {
+  /* .card no es flex: sin esto el spinner y el texto no se centran. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.job-loading-title {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-title);
+}
+
+.job-loading-detail {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}

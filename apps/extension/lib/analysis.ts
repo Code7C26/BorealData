@@ -40,6 +40,14 @@ export interface AnalysisResult {
   /** Los pasos del razonamiento, en orden. */
   reasoning: string[];
   sources: AnalysisSource[];
+  /**
+   * false cuando el análisis NO tiene página pública en /resultado/:id, aunque
+   * haya `id`: es lo que devuelve POST /analyze/content para el contenido que
+   * manda el cliente (una captura privada no se le sirve a nadie más, ver
+   * getAnalysisById en el backend). El panel esconde "Ver análisis completo"
+   * en ese caso: el botón llevaría a una página que no existe.
+   */
+  shareable?: boolean;
 }
 
 /** Respuesta 200 real de POST /analyze (backend/src/routes/analyze.ts). */
@@ -61,6 +69,8 @@ export interface BackendAnalyzeResponse {
     note: string;
   }[];
   toneFlags: string[];
+  /** Solo lo manda POST /analyze/content, siempre en false. Ver AnalysisResult.shareable. */
+  shareable?: boolean;
 }
 
 /**
@@ -103,6 +113,9 @@ export function mapBackendResult(data: BackendAnalyzeResponse): AnalysisResult {
     lead: data.lead,
     summary: data.summary,
     reasoning: data.reasoning ?? [],
+    // Solo /analyze/content manda este campo: si no viene, es un análisis de
+    // URL y sí tiene página pública.
+    shareable: data.shareable !== false,
     sources: (data.sources ?? []).map((source) => ({
       domain: source.domain || source.title,
       title: source.title,
@@ -111,4 +124,84 @@ export function mapBackendResult(data: BackendAnalyzeResponse): AnalysisResult {
       note: source.note,
     })),
   };
+}
+
+// ── Contenido que el scraper no puede ver ──────────────────────────────────
+// Espejo de la sección homónima de backend/src/gemini/types.ts. La extensión
+// manda la evidencia que el usuario ya tiene delante (una captura de su propia
+// pantalla) en vez de una URL que el servidor tendría que ir a buscar y que,
+// si es privada, solo le devolvería el muro de login.
+// Ver DOCS/BRIEF-captura-contenido-privado.md.
+
+/** Plataformas que el backend reconoce (KNOWN_PLATFORMS). */
+export type Platform = 'facebook' | 'instagram' | 'x' | 'whatsapp' | 'tiktok' | 'otro';
+
+/** De dónde salió el contenido. Nunca "url": eso va por POST /analyze. */
+export type ClientContentKind = 'capture' | 'selection' | 'image' | 'text';
+
+/** Qué tan legible quedó la imagen, según el propio modelo lector. */
+export type ReadingConfidence = 'alta' | 'media' | 'baja';
+
+/**
+ * Paso 1 (POST /analyze/read): lo que el modelo LEYÓ de la imagen, sin
+ * veredicto. `text` es la transcripción tal cual — el usuario la corrige
+ * antes del paso 2, que es justamente lo que sube la calidad del veredicto.
+ */
+export interface CaptureReading {
+  platform: Platform | null;
+  author: string | null;
+  /** Fecha tal como aparece en el posteo: texto libre ("hace 3 h"). */
+  postedAt: string | null;
+  text: string;
+  /** La afirmación central verificable, o null si no hay ninguna. */
+  mainClaim: string | null;
+  /** Fuente que el propio posteo cita ("según la OMS…"), si cita alguna. */
+  citedSource: string | null;
+  /** false si es un meme o una frase sin dato comprobable. */
+  hasVerifiableClaim: boolean;
+  readingConfidence: ReadingConfidence;
+}
+
+/** Respuesta 200 de POST /analyze/read. */
+export interface ReadResponse {
+  reading: CaptureReading;
+}
+
+/**
+ * Límites de texto de POST /analyze/content (MIN_TEXT_CHARS / MAX_TEXT_CHARS).
+ * Se repiten acá para avisar en el panel antes de gastar el viaje de red.
+ */
+export const MIN_CONTENT_CHARS = 8;
+export const MAX_CONTENT_CHARS = 12_000;
+
+/**
+ * Estado del flujo de contenido, compartido entre el panel y background.ts.
+ * Vive en background (ver "Análisis de contenido" allá): el panel solo lo
+ * renderiza, así que cerrarlo al cambiar de pestaña no pierde el trabajo.
+ */
+export type ContentJobStatus = 'cropping' | 'reading' | 'review' | 'analyzing' | 'done' | 'error';
+
+export interface ContentJob {
+  /** Cambia en cada job nuevo: le permite al panel descartar mensajes viejos. */
+  id: string;
+  kind: ClientContentKind;
+  status: ContentJobStatus;
+  /** Solo contexto para el veredicto: el backend NUNCA la scrapea. */
+  pageUrl: string | null;
+  /** Pista de plataforma sacada del dominio; el modelo puede corregirla. */
+  platform: Platform | null;
+  /** Etiqueta para el encabezado del panel ("instagram.com"). */
+  originLabel: string;
+  /**
+   * La captura cruda, para previsualizar y recortar. Se borra en cuanto el
+   * paso 1 la leyó (ver arriba): es el dato más sensible de todo el flujo.
+   */
+  captureDataUrl?: string;
+  reading?: CaptureReading;
+  /** Lo que de verdad se mandó a verificar (la transcripción ya corregida). */
+  verifiedText?: string;
+  result?: AnalysisResult;
+  error?: string;
+  /** 'NEEDS_LOGIN' hace que el panel mande a loguearse; el resto solo se muestra. */
+  errorCode?: string;
 }

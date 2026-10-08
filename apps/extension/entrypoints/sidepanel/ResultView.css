@@ -296,3 +296,24 @@ a.source-row:hover {
   border-color: var(--accent-text);
   color: var(--accent-text);
 }
+
+/* Reemplaza a "Ver análisis completo" cuando el análisis no tiene página
+   pública (salió de una captura o una selección). Ver ResultView.onViewFull. */
+.private-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 10px 11px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.private-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}

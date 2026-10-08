@@ -3,10 +3,12 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AnalysisPanel, STEPS } from '@/components/result/analysis-panel'
-import { apiFetch, ApiError, type AnalyzeResponse } from '@/lib/api'
+import { analizarContenido, apiFetch, ApiError, type AnalyzeResponse } from '@/lib/api'
 import {
   guardarResultado,
+  leerContenidoPendiente,
   limpiarBorrador,
+  limpiarContenidoPendiente,
   type ResultadoGuardado,
 } from '@/lib/resultado-storage'
 
@@ -18,7 +20,16 @@ const TICK_MS = 1000
 
 type Paso = 0 | 1 | 2 | 3
 
-function AnalizandoContent({ valor }: { valor: string }) {
+/**
+ * Dos caminos distintos para la misma pantalla.
+ *
+ * `url` es el de siempre: el servidor va a buscar la página y la lee.
+ * `contenido` es para lo que el scraper no puede ver — una imagen que ya se
+ * leyó y se confirmó en el dashboard. Ahí no hay URL que buscar: lo que se
+ * verifica es el texto, que viaja por sessionStorage (ver
+ * leerContenidoPendiente) porque no entra en un query param.
+ */
+function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
   const router = useRouter()
   const [paso, setPaso] = useState<Paso>(0)
   const [segundos, setSegundos] = useState(0)
@@ -32,6 +43,11 @@ function AnalizandoContent({ valor }: { valor: string }) {
   useEffect(() => {
     if (iniciadoRef.current) return
     iniciadoRef.current = true
+
+    if (tipo === 'contenido') {
+      analizarContenidoPendiente()
+      return
+    }
 
     if (!valor) {
       resultadoRef.current = { status: 'error', tipo: 'url', valor }
@@ -70,7 +86,55 @@ function AnalizandoContent({ valor }: { valor: string }) {
         }
       })
       .finally(() => setRespuestaLista(true))
-  }, [valor, router])
+
+    /**
+     * El paso 2 del camino de la imagen. El texto ya lo confirmó la persona en
+     * el dashboard; acá solo se verifica y se guarda el resultado como
+     * cualquier otro, para que /resultado no tenga que saber de dónde vino.
+     */
+    function analizarContenidoPendiente() {
+      const pendiente = leerContenidoPendiente()
+      if (!pendiente) {
+        // Recarga directa de /analizando?tipo=contenido sin nada guardado: no
+        // hay nada que analizar y repetir la lectura costaría otra llamada.
+        resultadoRef.current = { status: 'error', tipo: 'contenido', valor: '' }
+        setRespuestaLista(true)
+        return
+      }
+
+      analizarContenido({
+        kind: pendiente.kind,
+        text: pendiente.text,
+        platform: pendiente.platform,
+        author: pendiente.author,
+      })
+        .then((data) => {
+          resultadoRef.current = {
+            status: 'ok',
+            tipo: pendiente.kind,
+            valor: pendiente.etiqueta,
+            data,
+            fecha: new Date().toISOString(),
+          }
+          // Ya se usó: dejarlo haría que volver atrás reanalice el posteo viejo.
+          limpiarContenidoPendiente()
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 401) {
+            router.replace('/login')
+            return
+          }
+          resultadoRef.current = {
+            status: 'error',
+            tipo: pendiente.kind,
+            valor: pendiente.etiqueta,
+            mensaje: err instanceof Error ? err.message : undefined,
+            codigo: err instanceof ApiError ? `HTTP_${err.status}` : 'NET_UNKNOWN',
+          }
+        })
+        .finally(() => setRespuestaLista(true))
+    }
+  }, [tipo, valor, router])
 
   // Los pasos avanzan solos y se frenan en el último: son los pasos reales del
   // motor, pero el backend no emite progreso, así que la cadencia es local.
@@ -101,7 +165,7 @@ function AnalizandoContent({ valor }: { valor: string }) {
         state={{ kind: 'loading', step: paso, elapsed: segundos, resuelto: respuestaLista }}
       />
       <p className="truncate px-1 font-mono text-micro uppercase text-disabled" title={valor}>
-        {valor.replace(/^https?:\/\//, '')}
+        {tipo === 'contenido' ? valor || 'imagen analizada' : valor.replace(/^https?:\/\//, '')}
       </p>
     </div>
   )
@@ -109,12 +173,13 @@ function AnalizandoContent({ valor }: { valor: string }) {
 
 function AnalizandoWrapper() {
   const searchParams = useSearchParams()
+  const tipo = searchParams.get('tipo') ?? 'url'
   const valor = searchParams.get('valor') ?? ''
 
   // key = searchParams.toString() fuerza un remount completo cada vez que
   // cambia la URL, así el estado de los pasos siempre arranca de cero
   // (Next.js reutiliza el componente si solo cambian los query params).
-  return <AnalizandoContent key={searchParams.toString()} valor={valor} />
+  return <AnalizandoContent key={searchParams.toString()} tipo={tipo} valor={valor} />
 }
 
 export default function AnalizandoPage() {
