@@ -234,11 +234,34 @@ const LEGACY_STANCE_TO_STANCE: Record<string, SourceStance> = {
   neutral_relacionada: "sin-datos",
 };
 
-/** "https://www.uio.no/algo" -> "uio.no". Duplicado chico a propósito: el repo no importa del módulo Gemini. */
+/**
+ * El host del redirect de atribución de Google. Los links que devuelve la búsqueda de
+ * Gemini son todos `https://vertexaisearch.cloud.google.com/grounding-api-redirect/<token>`,
+ * así que derivar el dominio de la URL de una fuente da SIEMPRE este host y nunca el medio.
+ */
+const REDIRECT_HOST = "vertexaisearch.cloud.google.com";
+
+/** ¿Este "dominio" es en realidad el host del redirect de Google y no un medio? */
+function esDominioDeRedireccion(domain: string): boolean {
+  return domain.toLowerCase().endsWith(REDIRECT_HOST);
+}
+
+/**
+ * "https://www.uio.no/algo" -> "uio.no". Duplicado chico a propósito: el repo no importa
+ * del módulo Gemini.
+ *
+ * Devuelve null para los links de redirección: hasta el 8-oct-2026 el dominio se guardaba
+ * derivado de la URL, así que todas las filas viejas tienen `domain` =
+ * "vertexaisearch.cloud.google.com" (medido: 430 de 430 fuentes en la base local). Esas
+ * filas no se tocan —se traducen al leerlas, como el resto del esquema viejo— y devolver
+ * null acá hace que la card muestre el título de la fuente en vez de un host de Google
+ * que no le dice nada a nadie. El link sigue funcionando: el redirect lleva al medio.
+ */
 function domainOf(url: string | null): string | null {
   if (!url) return null;
   try {
     const host = new URL(url).hostname.toLowerCase();
+    if (esDominioDeRedireccion(host)) return null;
     return host.startsWith("www.") ? host.slice(4) : host;
   } catch {
     return null;
@@ -267,13 +290,17 @@ function mapSources(raw: unknown[] | null): AnalysisSource[] {
           ? rawStance
           : LEGACY_STANCE_TO_STANCE[rawStance] ?? "sin-datos";
 
+      const storedDomain = typeof s.domain === "string" ? s.domain : "";
+
       return {
         // Si no hay dominio ni URL de donde sacarlo, queda vacío a propósito y NO
         // se rellena con el título: las fuentes del esquema viejo casi nunca
         // tenían link, y meter el título acá lo hacía ver como un dominio roto
         // (la fila lo muestra en mono). La card decide qué mostrar.
         domain:
-          (typeof s.domain === "string" && s.domain.length > 0 ? s.domain : null) ??
+          (storedDomain.length > 0 && !esDominioDeRedireccion(storedDomain)
+            ? storedDomain
+            : null) ??
           domainOf(url) ??
           "",
         title,
@@ -593,5 +620,47 @@ export async function getGlobalStats(): Promise<GlobalStats> {
         confidenceCount > 0 ? Math.round((confidenceSum / confidenceCount) * 10) / 10 : 0,
       verdicts,
     };
+  });
+}
+/**
+ * Código de error de Postgres cuando al rol le falta un permiso (insufficient_privilege).
+ * Pasa si todavía no corrió `migrate-delete.ts`: el rol de la app arranca con
+ * SELECT/INSERT/UPDATE y sin DELETE. Se distingue a propósito de cualquier otro fallo
+ * para poder responder "falta correr la migración" en vez de un 500 sin explicación —
+ * es el modo de falla que ya nos costó una tarde de debug del front.
+ */
+export const SIN_PERMISO_DELETE = "42501";
+
+/** true si el error de pg es "a este rol le falta el permiso". */
+export function esFaltaDePermiso(err: unknown): boolean {
+  return (err as { code?: string } | null)?.code === SIN_PERMISO_DELETE;
+}
+
+/**
+ * Borra UN análisis del usuario, si es suyo.
+ *
+ * No se pasa `bypassOwnerCheck`: el bypass existe solo para leer (link público y caché
+ * por URL). Acá la policy analyses_delete_own filtra por `user_id`, así que un id de otra
+ * persona simplemente no borra nada y devuelve false — no hay forma de distinguir "no es
+ * tuyo" de "no existe", que además es la respuesta correcta para no filtrar qué ids
+ * existen.
+ */
+export async function deleteAnalysisForUser(id: string, userId: string): Promise<boolean> {
+  if (!UUID_PATTERN.test(id)) return false;
+
+  return runInUserTransaction({ currentUserId: userId }, async (client) => {
+    const result = await client.query(`DELETE FROM analyses WHERE id = $1 AND user_id = $2`, [
+      id,
+      userId,
+    ]);
+    return (result.rowCount ?? 0) > 0;
+  });
+}
+
+/** Borra TODOS los análisis del usuario. Devuelve cuántos borró. */
+export async function deleteAllAnalysesForUser(userId: string): Promise<number> {
+  return runInUserTransaction({ currentUserId: userId }, async (client) => {
+    const result = await client.query(`DELETE FROM analyses WHERE user_id = $1`, [userId]);
+    return result.rowCount ?? 0;
   });
 }

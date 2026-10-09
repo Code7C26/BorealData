@@ -7,6 +7,7 @@ import { upsertUser } from "../db/usersRepository.js";
 import { cleanContentText, cleanInlineText, looksLikeUrl } from "../utils/contentText.js";
 import { sanitizePageUrl } from "../utils/pageUrl.js";
 import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
+import { cronometro, log, mensajeDeError, resumenDeFuentes } from "../utils/logger.js";
 
 /** Mismo tope que maxInputChars de callGemini: rechazar es más honesto que recortar en silencio. */
 const MAX_TEXT_CHARS = 12_000;
@@ -111,12 +112,20 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
         ? `Publicación en ${PLATFORM_LABELS[platform]}`
         : "");
 
+  // El texto NUNCA entra al log (ver logger.ts y la política de privacidad): van el
+  // tipo, la plataforma y el tamaño, que alcanzan para diagnosticar sin guardar
+  // contenido de nadie.
+  const reloj = cronometro();
+  const uid = req.user!.uid;
+  const contexto = { uid, kind: contentKind, platform, chars: text.length };
+
   try {
     const userId = await upsertUser(req.user!.uid, req.user!.email);
 
     const rate = analyzeRateLimiter.consume(req.user!.uid);
     if (!rate.allowed) {
       res.set("Retry-After", String(rate.retryAfterSeconds));
+      log.warn("analyzeContent.rateLimit", { ...contexto, retryAfterS: rate.retryAfterSeconds });
       return res.status(429).json({
         error: `Alcanzaste el límite de ${ANALYZE_RATE_LIMIT} análisis nuevos por hora. Probá de nuevo en unos minutos.`,
       });
@@ -125,6 +134,11 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
     const analysis = await callGemini(title, text, { contentKind });
 
     if (!analysis.success) {
+      log.error("analyzeContent.geminiFallido", {
+        ...contexto,
+        detail: analysis.error,
+        latencyMs: reloj(),
+      });
       return res.status(502).json({
         error: "El análisis con Gemini falló.",
         detail: analysis.error,
@@ -140,6 +154,16 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
         capturePlatform: platform,
       });
     }
+
+    log.info("analyzeContent.ok", {
+      ...contexto,
+      id,
+      guardado: id !== null,
+      verdict: analysis.verdict,
+      confidence: analysis.confidence,
+      ...resumenDeFuentes(analysis.sources),
+      latencyMs: reloj(),
+    });
 
     return res.status(200).json({
       id,
@@ -159,6 +183,11 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
       shareable: false,
     });
   } catch (err) {
+    log.error("analyzeContent.error", {
+      ...contexto,
+      detail: mensajeDeError(err),
+      latencyMs: reloj(),
+    });
     return res.status(500).json({
       error: "Error inesperado en /analyze/content.",
       detail: err instanceof Error ? err.message : "Error desconocido.",

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../auth/verifyAuth.js";
-import { getUserProfile, upsertUser } from "../db/usersRepository.js";
+import { deleteUserAccount, getUserProfile, upsertUser } from "../db/usersRepository.js";
+import { esFaltaDePermiso } from "../db/analysesRepository.js";
 import { stripControlChars } from "../utils/sanitize.js";
 
 const router = Router();
@@ -75,6 +76,46 @@ router.post("/me", requireAuth, async (req: Request, res: Response) => {
   } catch (err) {
     return res.status(500).json({
       error: "Error inesperado al guardar el nombre.",
+      detail: err instanceof Error ? err.message : "Error desconocido.",
+    });
+  }
+});
+
+/**
+ * DELETE /me
+ * Header obligatorio: Authorization: Bearer <Firebase ID token>.
+ *
+ * Borra de Postgres la cuenta del usuario autenticado y todos sus análisis, en una sola
+ * transacción (ver deleteUserAccount).
+ *
+ * NO borra la cuenta de Firebase: eso lo hace el cliente con `deleteUser()` del SDK,
+ * que es el único que tiene las credenciales frescas del usuario. El orden correcto del
+ * lado del front es pegarle a este endpoint PRIMERO (mientras el ID token sigue siendo
+ * válido) y recién después borrar la cuenta de Firebase — al revés, el token deja de
+ * servir y las filas quedarían huérfanas en la base.
+ */
+router.delete("/me", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = await upsertUser(req.user!.uid, req.user!.email);
+
+    if (!userId) {
+      // No hay fila que borrar: la cuenta nunca llegó a existir del lado de Postgres.
+      // Para el cliente es un éxito, que es lo único que le importa saber.
+      return res.status(200).json({ deleted: true, analyses: 0 });
+    }
+
+    const { analyses } = await deleteUserAccount(req.user!.uid, userId);
+    return res.status(200).json({ deleted: true, analyses });
+  } catch (err) {
+    if (esFaltaDePermiso(err)) {
+      return res.status(503).json({
+        error:
+          "El borrado todavía no está habilitado en la base de datos. Falta correr" +
+          " backend/migrate-delete.ts.",
+      });
+    }
+    return res.status(500).json({
+      error: "No se pudo borrar la cuenta.",
       detail: err instanceof Error ? err.message : "Error desconocido.",
     });
   }

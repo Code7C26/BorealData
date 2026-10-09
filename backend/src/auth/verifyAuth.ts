@@ -14,11 +14,11 @@ function extractBearerToken(req: Request): string | null {
  * y, si es válido, adjunta `req.user`. NO bloquea la request si no hay token o si es
  * inválido — deja pasar como anónimo (`req.user` queda `undefined`).
  *
- * Sin uso actualmente (31-ago-2026): /analyze usaba este middleware para que la
- * extensión pudiera analizar sin login, pero se decidió requerir login en todas las
- * rutas (ver "Ruta /analyze — Detalle Técnico" en el contexto del proyecto) y ahora usa
- * `requireAuth`. Se deja este middleware definido por si en el futuro aparece alguna
- * ruta que sí necesite auth opcional.
+ * Lo usa GET /analyses/:id (8-oct-2026), que es justo el caso de auth opcional: sin
+ * sesión sirve el análisis de un enlace público (el link de "Compartir verificación");
+ * con sesión sirve además los análisis propios que no son de un enlace (capturas, texto
+ * pegado), que solo puede ver su dueño. Antes lo usaba /analyze, cuando la extensión
+ * podía analizar sin login; eso cambió el 31-ago-2026 y esa ruta pasó a `requireAuth`.
  */
 export async function attachUserIfPresent(req: Request, _res: Response, next: NextFunction) {
   const token = extractBearerToken(req);
@@ -29,7 +29,7 @@ export async function attachUserIfPresent(req: Request, _res: Response, next: Ne
     req.user = { uid: decoded.uid, email: decoded.email ?? null };
   } catch (err) {
     console.error(
-      "Token de Firebase inválido en /analyze, se ignora y se sigue como anónimo:",
+      "Token de Firebase inválido en una ruta de auth opcional, se sigue como anónimo:",
       err instanceof Error ? err.message : err
     );
   }

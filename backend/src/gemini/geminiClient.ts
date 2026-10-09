@@ -56,17 +56,6 @@ function errorResult(error: string): AnalysisResult {
   };
 }
 
-/** "https://www.uio.no/ritmo/english" -> "uio.no". Devuelve null si no es una URL parseable. */
-export function domainFromUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    return host.startsWith("www.") ? host.slice(4) : host;
-  } catch {
-    return null;
-  }
-}
-
 // El JSON de respuesta se pide envuelto en un bloque de código markdown. Las comillas
 // invertidas van por constante y no inline: el prompt se arma con un template literal,
 // y anidar el fence adentro obligaría a escaparlo en cada edición.
@@ -202,8 +191,34 @@ interface RawSource {
 }
 
 /**
- * Convierte los groundingChunks crudos de la respuesta de Gemini (fuentes reales que
- * Google Search devolvió) a una lista simple de { title, url }, ignorando chunks sin uri.
+ * Un link real de la búsqueda de Google, sacado de un groundingChunk.
+ *
+ * Importante y poco obvio (medido contra la API real, 8-oct-2026): `web.uri` NUNCA es la
+ * URL del medio. Siempre es un redirect de Google con forma
+ * `https://vertexaisearch.cloud.google.com/grounding-api-redirect/<token>`, y el dominio
+ * del medio viene en `web.title` ("indec.gob.ar", "cronista.com"). Google pide usar esas
+ * URLs de redirección para la atribución, así que son las que guardamos como link — pero
+ * el dominio que se MUESTRA tiene que salir de `web.title`, no de la URL.
+ */
+interface GroundingLink {
+  /** Dominio del medio, cuando `web.title` es un dominio (el caso normal). */
+  domain: string | null;
+  /** `web.title` crudo, para cruzar por título cuando no es un dominio. */
+  title: string;
+  /** URL de redirección de Vertex: la única que devuelve la API. */
+  url: string;
+}
+
+/** ¿`web.title` es un dominio ("indec.gob.ar") y no el título de una página? */
+function looksLikeDomain(value: string): boolean {
+  return /^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/i.test(value);
+}
+
+/**
+ * Convierte los groundingChunks crudos de la respuesta de Gemini (las fuentes reales que
+ * devolvió la búsqueda de Google) a `{ title, url }`, ignorando chunks sin uri. Se queda
+ * con la forma literal de la API —`web.title` y `web.uri`— y la interpretación la hace
+ * toGroundingLink(), para que el cruce se pueda testear con lo que la API manda de verdad.
  */
 function extractGroundingLinks(response: {
   candidates?: Array<{
@@ -221,6 +236,19 @@ function extractGroundingLinks(response: {
     .filter((s) => s.url.length > 0);
 }
 
+/**
+ * Interpreta un chunk de grounding: saca el dominio del medio de `web.title`, que es
+ * donde viene (y no de la URL, que es el redirect de Google). Ver GroundingLink.
+ */
+export function toGroundingLink(chunk: { title: string; url: string }): GroundingLink {
+  const title = chunk.title.trim();
+  return {
+    domain: looksLikeDomain(title) ? cleanDomain(title) : null,
+    title,
+    url: chunk.url,
+  };
+}
+
 /** Normaliza lo que el modelo escribió en `domain` para poder compararlo con una URL real. */
 function cleanDomain(raw: string): string {
   return raw
@@ -233,13 +261,20 @@ function cleanDomain(raw: string): string {
 
 /**
  * Cruza las fuentes que Gemini describió (domain/title/stance/note, sin URL) con los links
- * reales de groundingChunks. Matchea por dominio primero (el `title` de un groundingChunk
- * de Google Search suele ser justamente el dominio) y cae al título si no hubo suerte.
- * Sin match — o sin búsqueda — la fuente queda con url: null en vez de inventar un link.
+ * reales de groundingChunks. Sin match — o sin búsqueda — la fuente queda con url: null en
+ * vez de inventar un link.
+ *
+ * Por qué el cruce es por `link.domain` y no por el hostname de `link.url` (8-oct-2026):
+ * `link.url` es siempre un redirect de `vertexaisearch.cloud.google.com`, así que su
+ * hostname es ese para TODAS las fuentes. La versión anterior comparaba justamente eso
+ * contra el dominio que escribía el modelo ("indec.gob.ar"), así que el cruce por dominio
+ * no podía acertar nunca: solo pegaba, de casualidad, el fallback por título. Medido
+ * contra la base real: de 430 fuentes guardadas, 44 tenían link (10%) y las 430 mostraban
+ * "vertexaisearch.cloud.google.com" como dominio. Ver GroundingLink.
  */
 function attachRealUrls(
   rawSources: RawSource[],
-  groundingLinks: Array<{ title: string; url: string }>
+  groundingLinks: GroundingLink[]
 ): AnalysisSource[] {
   const usedUrls = new Set<string>();
 
@@ -257,20 +292,23 @@ function attachRealUrls(
       const claimedTitle = s.title.toLowerCase().trim();
 
       const match =
+        // 1. Por dominio: `web.title` del chunk es el dominio del medio, que es lo
+        //    mismo que el modelo escribe en `domain`. Este es el camino normal.
         groundingLinks.find((link) => {
           if (usedUrls.has(link.url)) return false;
-          const linkDomain = domainFromUrl(link.url);
-          if (claimedDomain.length === 0 || linkDomain === null) return false;
+          if (claimedDomain.length === 0 || link.domain === null) return false;
           return (
-            linkDomain === claimedDomain ||
-            linkDomain.endsWith(`.${claimedDomain}`) ||
-            claimedDomain.endsWith(`.${linkDomain}`)
+            link.domain === claimedDomain ||
+            link.domain.endsWith(`.${claimedDomain}`) ||
+            claimedDomain.endsWith(`.${link.domain}`)
           );
         }) ??
+        // 2. Por título, para los chunks cuyo `web.title` no es un dominio.
         groundingLinks.find((link) => {
           if (usedUrls.has(link.url)) return false;
           const linkTitle = link.title.toLowerCase().trim();
           return (
+            link.domain === null &&
             claimedTitle.length > 0 &&
             linkTitle.length > 0 &&
             (claimedTitle.includes(linkTitle) || linkTitle.includes(claimedTitle))
@@ -282,9 +320,10 @@ function attachRealUrls(
       }
 
       return {
-        // El dominio real de la URL gana sobre el que escribió el modelo: si hubo
-        // match, ese es el único dato que no puede estar alucinado.
-        domain: domainFromUrl(match?.url) ?? claimedDomain,
+        // El dominio del chunk gana sobre el que escribió el modelo: si hubo match, ese
+        // es el único dato que no puede estar alucinado. Nunca se deriva de `match.url`,
+        // que es el redirect de Google y daría "vertexaisearch.cloud.google.com".
+        domain: match?.domain ?? claimedDomain,
         title: s.title,
         url: match?.url ?? null,
         stance: s.stance as SourceStance,
@@ -432,7 +471,7 @@ export function parseGeminiResponse(
     : [];
 
   const rawSources = Array.isArray(obj.sources) ? (obj.sources as RawSource[]) : [];
-  const sources = attachRealUrls(rawSources, groundingLinks);
+  const sources = attachRealUrls(rawSources, groundingLinks.map(toGroundingLink));
 
   if (verdict === null || confidence === null || !headline || lead === null) {
     return errorResult(
