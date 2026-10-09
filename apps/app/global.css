@@ -525,6 +525,45 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   Sidebar colapsable
+   ═══════════════════════════════════════════════════════════════════════════
+
+   El ancho del sidebar y el padding del contenido salen de CSS y no de una clase
+   condicional de React, a propósito.
+
+   El motivo: la preferencia vive en localStorage, así que el servidor no la conoce y
+   mandaba el HTML expandido; el cliente lo corregía al hidratar y eso era un salto de
+   288 px a 76 px que corría el contenido de toda la página. Con el valor en un atributo
+   de <html> —que escribe un script síncrono antes del primer paint, ver
+   SIDEBAR_INIT_SCRIPT en lib/sidebar-colapso.ts— el navegador ya pinta la medida final.
+
+   React sigue teniendo el booleano (useSyncExternalStore sobre ese mismo atributo) para
+   lo que no es ancho: qué logo mostrar, si van las etiquetas de los links, etc.
+
+   Va en plain CSS y no con @apply porque son valores dinámicos vía custom property, y
+   en Tailwind v4 @apply solo acepta utilidades. */
+@layer components {
+  :root {
+    --ancho-sidebar: calc(72 * var(--spacing)); /* = lg:w-72, 288px */
+  }
+
+  :root[data-sidebar='colapsado'] {
+    --ancho-sidebar: 76px;
+  }
+
+  /* Solo desde lg: abajo de eso el sidebar es un drawer y no ocupa lugar. */
+  @media (min-width: 1024px) {
+    .sidebar-panel {
+      width: var(--ancho-sidebar);
+    }
+
+    .sidebar-offset {
+      padding-left: var(--ancho-sidebar);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    Utilidades de ambiente
    ═══════════════════════════════════════════════════════════════════════════ */
 @layer utilities {

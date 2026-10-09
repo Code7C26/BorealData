@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
-import { applyTheme, getStoredTheme, type Theme } from '@/lib/theme'
+import { useTheme } from '@/lib/use-theme'
 import { cn } from '@/lib/utils'
 
 /**
@@ -12,29 +11,18 @@ import { cn } from '@/lib/utils'
  * compartir y usuarios con astigmatismo. Se entrega desde el día uno con la
  * misma cobertura de tokens y contraste AA.
  *
- * El botón arranca en "dark" (el valor del SSR) y se sincroniza en el primer
- * efecto: el script del <head> ya aplicó el modo real antes del paint, así que
- * lo único que puede quedar desalineado por un frame es el ícono.
+ * El modo real lo aplica el script del <head> antes del primer paint; acá solo se
+ * lee (ver useTheme) para dibujar el ícono correcto desde el primer render.
  */
 export function ThemeToggle({ className }: { className?: string }) {
-  const [theme, setTheme] = useState<Theme>('dark')
-
-  useEffect(() => {
-    setTheme(getStoredTheme() ?? (document.documentElement.dataset.theme as Theme) ?? 'dark')
-  }, [])
-
-  const toggle = () => {
-    const siguiente: Theme = theme === 'dark' ? 'light' : 'dark'
-    applyTheme(siguiente)
-    setTheme(siguiente)
-  }
+  const { theme, alternar } = useTheme()
 
   const Icon = theme === 'dark' ? Sun : Moon
 
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={alternar}
       aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
       className={cn(

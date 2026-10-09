@@ -11,5 +11,8 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  // Los tests viven al lado del código que prueban (src/**/*.test.ts) pero no se
+  // compilan: `npm run build` produce lo que corre en producción, y los tests no van
+  // ahí. Vitest los resuelve por su cuenta (ver vitest.config.mts), sin pasar por tsc.
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
 }

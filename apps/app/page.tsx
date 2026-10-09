@@ -26,8 +26,12 @@ export default function Page() {
             pieza, no la promete. */}
         <AnalisisDemo />
         <StatsBar />
-        <QuizDeteccion />
+        {/* La extensión va antes del quiz: analizar lo que no tiene enlace (una
+            captura, una cadena de WhatsApp) es lo que diferencia a AletheIA de un
+            chat al que le pegás un texto. El quiz entretiene, pero no explica el
+            producto, así que no puede estar delante de lo que sí. */}
         <ExtensionSection />
+        <QuizDeteccion />
         <QuienesSomos />
         <Faq />
         <CtaFinal />

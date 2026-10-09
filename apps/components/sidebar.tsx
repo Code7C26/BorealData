@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { ChevronLeft, ChevronRight, History, Mail, Menu, Plus, Settings, X } from 'lucide-react'
 import { CieloEstrellado } from '@/components/cielo-estrellado'
 import { Logo, LogoMark } from '@/components/logo'
@@ -10,7 +10,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { useAuth } from '@/lib/auth-context'
 import { iniciales } from '@/lib/usuario'
 import { apiFetch, type HistoryItem } from '@/lib/api'
-import { guardarResultadoDesdeHistorial } from '@/lib/resultado-storage'
+import { escribirColapso, leerColapso, suscribirAlColapso } from '@/lib/sidebar-colapso'
 import { normalize, VERDICT } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
 
@@ -20,8 +20,6 @@ const NAV_INFERIOR = [
   { href: '/configuracion', label: 'Configuración', icon: Settings },
   { href: '/contacto', label: 'Contacto', icon: Mail },
 ]
-
-const COLAPSO_STORAGE_KEY = 'aletheia_sidebar_colapsada'
 
 /** Cuántos análisis se muestran en "Recientes". El listado completo vive en /historial. */
 const CANTIDAD_RECIENTES = 5
@@ -40,15 +38,6 @@ function ContenidoSidebar({
   onNavigate?: () => void
 }) {
   const pathname = usePathname()
-  const router = useRouter()
-
-  const abrirReciente = (item: HistoryItem) => {
-    guardarResultadoDesdeHistorial(item)
-    onNavigate?.()
-    // El id en la URL fuerza a /resultado a releer sessionStorage aunque ya
-    // estés parado ahí (ver comentario en app/(autenticado)/resultado/page.tsx).
-    router.push(`/resultado?item=${item.id}`)
-  }
 
   return (
     <div className="flex h-full flex-col">
@@ -109,9 +98,13 @@ function ContenidoSidebar({
               recientes.map((item) => {
                 const { verdict } = normalize(item.verdict, item.confidence)
                 return (
-                  <button
+                  // Un enlace de verdad a la URL del análisis: se puede abrir en otra
+                  // pestaña y el navegador lo marca como visitado. Antes era un botón
+                  // que guardaba el item en sessionStorage y navegaba por JS.
+                  <Link
                     key={item.id}
-                    onClick={() => abrirReciente(item)}
+                    href={`/resultado/${item.id}`}
+                    onClick={onNavigate}
                     title={item.headline || item.title || item.url}
                     className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-body-sm text-muted transition-colors duration-150 ease-boreal hover:bg-surface hover:text-ink"
                   >
@@ -121,7 +114,7 @@ function ContenidoSidebar({
                       className={cn('size-2 shrink-0 rounded-sm', VERDICT[verdict].bg)}
                     />
                     <span className="truncate">{item.title || item.headline || item.url}</span>
-                  </button>
+                  </Link>
                 )
               })
             )}
@@ -176,24 +169,33 @@ function ContenidoSidebar({
 
 export function Sidebar({ children }: { children: React.ReactNode }) {
   const [mobileAbierto, setMobileAbierto] = useState(false)
-  const [colapsada, setColapsada] = useState(false)
-  const [listo, setListo] = useState(false)
   const [recientes, setRecientes] = useState<HistoryItem[]>([])
   const pathname = usePathname()
   const { user, profile } = useAuth()
 
+  /**
+   * La preferencia de colapso vive afuera de React (en el atributo de <html> que deja el
+   * script del arranque), así que se lee con useSyncExternalStore y no copiándola a
+   * estado desde un efecto.
+   *
+   * El ANCHO no depende de este booleano: sale de CSS, porque el servidor no conoce la
+   * preferencia y si dependiera de React habría un salto al hidratar. Esto es para lo
+   * demás — qué logo va, si se muestran las etiquetas — que sí puede acomodarse un
+   * instante después sin mover el layout. Ver lib/sidebar-colapso.ts.
+   */
+  const colapsada = useSyncExternalStore(suscribirAlColapso, leerColapso, () => false)
+
   const nombre = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Usuario'
   const email = user?.email ?? ''
 
-  // Carga preferencia de colapso una vez montado (localStorage es client-only)
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(COLAPSO_STORAGE_KEY) === 'true') setColapsada(true)
-    } catch {
-      // Storage bloqueado: arranca expandida, que es el default razonable.
-    }
-    setListo(true)
-  }, [])
+  // El menú mobile se cierra al navegar. Va como ajuste durante el render (el patrón
+  // de React para "corregir estado cuando cambia una prop") y no en un efecto: en un
+  // efecto el menú quedaba un render abierto sobre la pantalla nueva.
+  const [pathnamePrevio, setPathnamePrevio] = useState(pathname)
+  if (pathname !== pathnamePrevio) {
+    setPathnamePrevio(pathname)
+    setMobileAbierto(false)
+  }
 
   // Se recarga en cada navegación y no solo al montar: el layout de
   // (autenticado) mantiene este Sidebar montado toda la sesión, así que con
@@ -206,26 +208,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
       .catch(() => setRecientes([]))
   }, [pathname])
 
-  useEffect(() => {
-    setMobileAbierto(false)
-  }, [pathname])
-
-  const alternarColapso = () => {
-    setColapsada((prev) => {
-      const nuevo = !prev
-      try {
-        window.localStorage.setItem(COLAPSO_STORAGE_KEY, String(nuevo))
-      } catch {
-        // idem
-      }
-      return nuevo
-    })
-  }
-
-  // Evita un flash de contenido incorrecto mientras se lee localStorage
-  if (!listo) {
-    return <div className="min-h-screen bg-bg" />
-  }
+  const alternarColapso = () => escribirColapso(!colapsada)
 
   return (
     /* `isolate` es necesario: sin eso, el fondo opaco de este mismo contenedor
@@ -263,7 +246,9 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
           'isolate hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:flex-col',
           'lg:border-r lg:border-border lg:bg-surface-sunk/85 lg:backdrop-blur-2xl',
           'lg:transition-[width] lg:duration-200 lg:ease-boreal',
-          colapsada ? 'lg:w-[76px]' : 'lg:w-72',
+          // El ancho sale de CSS (ver "Sidebar colapsable" en global.css), no de una
+          // clase condicional: así el primer paint ya tiene la medida final.
+          'sidebar-panel',
         )}
       >
         {/* Capa decorativa. Va en su propio contenedor con overflow-hidden para
@@ -322,7 +307,8 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
       <main
         className={cn(
           'relative min-h-screen transition-[padding] duration-200 ease-boreal',
-          colapsada ? 'lg:pl-[76px]' : 'lg:pl-72',
+          // Idem: el hueco que deja el sidebar sale del mismo custom property.
+          'sidebar-offset',
         )}
       >
         {children}

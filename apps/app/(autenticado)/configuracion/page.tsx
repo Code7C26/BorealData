@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Bell, Globe, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { CerrarSesionBoton } from '@/components/cerrar-sesion-boton'
-import { applyTheme, getStoredTheme, type Theme } from '@/lib/theme'
+import { useTheme } from '@/lib/use-theme'
 import { cn } from '@/lib/utils'
 
 function ToggleSwitch({
@@ -60,16 +60,9 @@ function ToggleSwitch({
  * desde el ícono del sidebar.
  */
 function SelectorDeModo() {
-  const [theme, setTheme] = useState<Theme>('dark')
-
-  useEffect(() => {
-    setTheme(getStoredTheme() ?? (document.documentElement.dataset.theme as Theme) ?? 'dark')
-  }, [])
-
-  const elegir = (t: Theme) => {
-    applyTheme(t)
-    setTheme(t)
-  }
+  // Mismo hook que el toggle de la barra: antes acá estaba el mismo useState +
+  // useEffect copiado, y los dos controles podían quedar diciendo cosas distintas.
+  const { theme, setTheme: elegir } = useTheme()
 
   return (
     <div className="flex items-center justify-between gap-4 py-4">

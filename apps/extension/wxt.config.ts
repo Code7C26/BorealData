@@ -25,10 +25,36 @@ export default defineConfig({
       // Para guardar/leer la sesión sincronizada desde la web (ver
       // entrypoints/background.ts).
       'storage',
+      // "Analizar con AletheIA" con clic derecho sobre una imagen, una
+      // selección o la página (ver crearMenuContextual en background.ts).
+      // Bonus técnico: un clic en un ítem de menú contextual GARANTIZA el
+      // permiso activeTab sobre esa pestaña, que es justo lo que necesita
+      // tabs.captureVisibleTab.
+      'contextMenus',
     ],
     // Sin esto, el fetch del popup/background contra el backend y contra el
     // endpoint de refresh de Firebase quedaría sujeto a CORS del browser.
-    host_permissions: [`${API_URL}/*`, 'https://securetoken.googleapis.com/*'],
+    //
+    // Los dominios sociales van declarados de entrada porque son el caso que
+    // justifica la captura (el scraper del servidor solo ve el muro de login)
+    // y así capturar ahí no dispara ningún diálogo de permiso. Tienen que
+    // coincidir con PLATAFORMAS_POR_DOMINIO en lib/platform.ts.
+    host_permissions: [
+      `${API_URL}/*`,
+      'https://securetoken.googleapis.com/*',
+      '*://*.facebook.com/*',
+      '*://*.instagram.com/*',
+      '*://*.x.com/*',
+      '*://*.twitter.com/*',
+      '*://web.whatsapp.com/*',
+      '*://*.tiktok.com/*',
+    ],
+    // El resto de la web se pide EN EL MOMENTO, con el clic del usuario sobre
+    // "Analizar lo que estás viendo" (ver asegurarPermisoDeCaptura en el
+    // panel). Pedir `*://*/*` de entrada asusta al instalar y complica la
+    // revisión de la Web Store; como permiso opcional, el usuario lo concede
+    // para el sitio donde realmente lo necesita. Ver sección 6 del brief.
+    optional_host_permissions: ['*://*/*'],
   },
   dev: {
     server: {

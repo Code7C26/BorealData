@@ -1,121 +1,99 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { AnalysisPanel, type AnalysisState } from '@/components/result/analysis-panel'
-import { ResultCard } from '@/components/result/result-card'
-import type { AnalyzeResponse } from '@/lib/api'
-import { leerResultado, type ResultadoGuardado } from '@/lib/resultado-storage'
-import { cn } from '@/lib/utils'
+import { ResultadoCompleto } from '@/components/result/resultado-completo'
+import { leerResultadoEstable, sinSuscripcion } from '@/lib/resultado-storage'
 
 /**
- * La pantalla de resultado.
+ * El resultado que NO tiene id, leído de sessionStorage.
  *
- * A 1280 la página es una grilla de minmax(0,720px) + 380 con gap 32 dentro del
- * shell de 1120: la card se queda en 720 y el razonamiento entero va al panel
- * lateral. La card queda sticky mientras se scrollea el panel. Por debajo de
- * 1280 el panel cae abajo, apilado.
+ * Desde el 8-oct-2026 esta pantalla es la excepción, no el camino normal. Un análisis
+ * guardado vive en su propia URL (`/resultado/:id`), que se puede recargar, guardar en
+ * favoritos y compartir; `/analizando` redirige ahí en cuanto el backend devuelve un id.
  *
- * El panel se muestra SIEMPRE, sin botón de por medio: mostrar el trabajo es el
- * producto, no un extra que haya que pedir. (El botón "ver razonamiento
- * completo" sobrevive solo en la extensión, donde sí lleva a otro lado.) Como
- * el panel ya lista los pasos, la card no repite su resumen.
+ * Acá quedan los dos casos que no tienen a dónde redirigir:
+ *
+ *  - **El análisis falló** (el scraper no pudo leer la nota, se cortó la red, el motor
+ *    devolvió un error). No hay fila en la base, así que no hay URL posible.
+ *  - **El guardado falló** aunque el análisis salió bien (la base no estaba disponible).
+ *    El resultado existe en memoria y sería una lástima tirarlo, así que se muestra —
+ *    sin link para compartir, porque no hay nada a dónde apuntar.
+ *
+ * Que esto sea la excepción es lo que arregla el problema de fondo: antes TODO resultado
+ * vivía en sessionStorage, así que recargar la pantalla de resultado te devolvía al
+ * dashboard y el link de compartir apuntaba a una página que solo funcionaba en tu
+ * propio navegador.
  */
-function VistaResultado({ resultado }: { resultado: AnalyzeResponse & { fecha?: string } }) {
-  return (
-    <div
-      className={cn(
-        'mx-auto grid w-full max-w-shell gap-8 px-gutter py-12 md:px-6 md:py-16',
-        'xl:grid-cols-[minmax(0,720px)_380px] xl:items-start',
-      )}
-    >
-      <div className="xl:sticky xl:top-24">
-        <ResultCard analysis={resultado} fecha={resultado.fecha} razonamientoAparte />
-      </div>
+function ResultadoSinIdContent() {
+  const router = useRouter()
 
-      <PanelRazonamiento analysis={resultado} />
+  // sessionStorage es un dato de afuera de React: se lee con useSyncExternalStore en vez
+  // de copiarlo a estado desde un efecto. En el servidor devuelve null (no existe), y en
+  // el cliente el primer render ya tiene el resultado.
+  const resultado = useSyncExternalStore(sinSuscripcion, leerResultadoEstable, () => null)
+
+  // Las dos salidas de esta pantalla son navegaciones, no cambios de estado, así que sí
+  // van en un efecto: redirigir durante el render es un efecto secundario.
+  const destino =
+    resultado === null
+      ? // Se entró directo a /resultado sin pasar por /analizando: no hay nada que mostrar.
+        '/dashboard'
+      : // Si el análisis sí se guardó, su lugar es su propia URL.
+        resultado.status === 'ok' && resultado.data?.id
+        ? `/resultado/${resultado.data.id}`
+        : null
+
+  useEffect(() => {
+    // `replace` y no `push`: esta pantalla no tiene que quedar en el medio del botón
+    // "atrás" del navegador.
+    if (destino) router.replace(destino)
+  }, [destino, router])
+
+  if (!resultado || destino) return null
+
+  if (resultado.status === 'ok' && resultado.data) {
+    return (
+      <div className="min-h-screen">
+        <ResultadoCompleto
+          analysis={resultado.data}
+          fecha={resultado.fecha}
+          acciones={<AvisoNoGuardado />}
+        />
+      </div>
+    )
+  }
+
+  const estado: AnalysisState =
+    resultado.status === 'insuficiente'
+      ? { kind: 'error-content', value: resultado.valor }
+      : { kind: 'error-network', attempt: 1, code: resultado.codigo ?? 'NET_UNKNOWN' }
+
+  return (
+    <div className="min-h-screen">
+      <VistaError estado={estado} valor={resultado.valor} />
     </div>
   )
 }
 
 /**
- * El contenido que no entra en la card: de qué trata la nota, las señales de
- * tono y el razonamiento entero sin recortar. La card nunca crece — a partir de
- * 720 px el contenido extra va acá, no al ancho.
+ * El análisis salió bien pero no se pudo guardar. Se dice, en vez de dejar que la
+ * persona descubra sola que al recargar no está: es el único resultado del producto que
+ * desaparece al cerrar la pestaña.
  */
-function PanelRazonamiento({ analysis }: { analysis: AnalyzeResponse }) {
+function AvisoNoGuardado() {
   return (
-    <aside className="flex animate-rise flex-col gap-6 xl:max-w-panel" aria-label="Razonamiento completo">
-      <section className="panel flex flex-col gap-4">
-        <h2 className="font-mono text-caption uppercase text-subtle">De qué trata la nota</h2>
-        <p className="text-body-sm text-muted">
-          {analysis.summary || 'El motor no dejó un resumen del contenido para este análisis.'}
-        </p>
-        {analysis.title && (
-          <p className="border-t border-border pt-4 font-display text-body-sm font-semibold text-display">
-            {analysis.title}
-          </p>
-        )}
-      </section>
-
-      {analysis.reasoning.length > 0 && (
-        <section className="panel flex flex-col gap-4">
-          <h2 className="font-mono text-caption uppercase text-subtle">Razonamiento completo</h2>
-          <ol className="flex flex-col gap-4">
-            {analysis.reasoning.map((paso, i) => (
-              <li key={i} className="flex items-start gap-3.5">
-                <span
-                  aria-hidden="true"
-                  className="w-5 shrink-0 pt-1 font-mono text-caption tracking-normal text-accent-text"
-                >
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <p className="text-body-sm text-ink">{paso}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      {analysis.toneFlags.length > 0 && (
-        <section className="panel flex flex-col gap-4">
-          <h2 className="font-mono text-caption uppercase text-subtle">Señales de redacción</h2>
-          <p className="text-caption tracking-normal text-subtle">
-            Cómo está escrita la nota. Es una señal de contexto, no parte del veredicto.
-          </p>
-          <ul className="flex flex-wrap gap-2">
-            {analysis.toneFlags.map((flag) => (
-              <li
-                key={flag}
-                className="rounded-pill border border-border px-3 py-1 font-mono text-micro uppercase text-subtle"
-              >
-                {flag}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <p className="px-1 text-caption tracking-normal text-disabled">
-        Esta verificación se apoya en la evidencia disponible al momento del análisis. Las fuentes
-        están listadas con su postura para que puedas revisarlas vos.
+    <div className="flex flex-col gap-3">
+      <p className="rounded-lg border border-verdict-dudoso/30 bg-verdict-dudoso/10 p-3.5 text-caption tracking-normal text-verdict-dudoso">
+        Este análisis no llegó a guardarse, así que no va a quedar en tu historial ni se
+        puede compartir. Si cerrás la pestaña se pierde.
       </p>
-    </aside>
-  )
-}
-
-/** Volver al historial, solo cuando se llegó desde ahí. */
-function VolverAlHistorial() {
-  return (
-    <div className="mx-auto w-full max-w-shell px-gutter pt-6 md:px-6">
-      <Link
-        href="/historial"
-        className="sticky top-4 z-10 inline-flex w-fit items-center gap-2 rounded-pill border border-border bg-surface/90 px-4 py-2 font-display text-body-sm font-medium text-ink shadow-md backdrop-blur-md transition-colors duration-150 ease-boreal hover:border-accent-text hover:text-accent-text"
-      >
-        <ArrowLeft aria-hidden="true" size={16} />
-        Volver al historial
+      <Link href="/dashboard" className="btn-secondary self-start">
+        <RotateCcw aria-hidden="true" size={16} />
+        Analizar otra nota
       </Link>
     </div>
   )
@@ -143,60 +121,13 @@ function VistaError({ estado, valor }: { estado: AnalysisState; valor: string })
   )
 }
 
-function ResultadoContent({ desdeHistorial }: { desdeHistorial: boolean }) {
-  const router = useRouter()
-  const [resultado, setResultado] = useState<ResultadoGuardado | null>()
-
-  useEffect(() => {
-    const guardado = leerResultado()
-    if (!guardado) {
-      // No hay ningún análisis para mostrar (ej. se entró directo a /resultado
-      // sin pasar por /analizando ni por el historial) — no hay nada que
-      // renderizar acá.
-      router.replace('/dashboard')
-      return
-    }
-    setResultado(guardado)
-  }, [router])
-
-  if (!resultado) return null
-
-  if (resultado.status === 'ok' && resultado.data) {
-    return (
-      <div className="min-h-screen">
-        {desdeHistorial && <VolverAlHistorial />}
-        <VistaResultado resultado={{ ...resultado.data, fecha: resultado.fecha }} />
-      </div>
-    )
-  }
-
-  const estado: AnalysisState =
-    resultado.status === 'insuficiente'
-      ? { kind: 'error-content', value: resultado.valor }
-      : { kind: 'error-network', attempt: 1, code: resultado.codigo ?? 'NET_UNKNOWN' }
-
-  return (
-    <div className="min-h-screen">
-      {desdeHistorial && <VolverAlHistorial />}
-      <VistaError estado={estado} valor={resultado.valor} />
-    </div>
-  )
-}
-
 function ResultadoWrapper() {
   const searchParams = useSearchParams()
 
   // key = searchParams.toString() fuerza un remount cada vez que cambia el
-  // identificador en la URL (ver sidebar/historial), aunque la ruta en sí
-  // sea siempre "/resultado" — sin esto, abrir un segundo análisis reciente
-  // mientras ya estás en /resultado no releía sessionStorage (Next no
-  // remonta si el pathname no cambia).
-  return (
-    <ResultadoContent
-      key={searchParams.toString()}
-      desdeHistorial={searchParams.get('from') === 'historial'}
-    />
-  )
+  // identificador en la URL — sin esto, Next no remonta si el pathname no cambia y no se
+  // vuelve a leer sessionStorage.
+  return <ResultadoSinIdContent key={searchParams.toString()} />
 }
 
 export default function ResultadoPage() {

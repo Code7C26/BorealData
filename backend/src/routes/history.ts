@@ -1,7 +1,11 @@
 import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../auth/verifyAuth.js";
 import { upsertUser } from "../db/usersRepository.js";
-import { getAnalysesByUserId } from "../db/analysesRepository.js";
+import {
+  deleteAllAnalysesForUser,
+  esFaltaDePermiso,
+  getAnalysesByUserId,
+} from "../db/analysesRepository.js";
 
 const router = Router();
 
@@ -51,6 +55,45 @@ router.get("/history", requireAuth, async (req: Request, res: Response) => {
   } catch (err) {
     return res.status(500).json({
       error: "No se pudo obtener el historial.",
+      detail: err instanceof Error ? err.message : "Error desconocido.",
+    });
+  }
+});
+
+/**
+ * DELETE /history
+ * Header obligatorio: Authorization: Bearer <Firebase ID token>.
+ *
+ * Borra TODOS los análisis del usuario autenticado y devuelve cuántos borró. No toca la
+ * cuenta (para eso está DELETE /me) ni los análisis de nadie más: la policy
+ * analyses_delete_own filtra por user_id.
+ *
+ * Existe porque la política de privacidad promete que se pueden borrar los datos, y una
+ * promesa de privacidad que depende de que nosotros contestemos un mail no es una
+ * promesa. Ver también DELETE /analyses/:id para borrar de a uno.
+ */
+router.delete("/history", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = await upsertUser(req.user!.uid, req.user!.email);
+
+    if (!userId) {
+      return res.status(500).json({
+        error: "No se pudo resolver el usuario en la base de datos.",
+      });
+    }
+
+    const borrados = await deleteAllAnalysesForUser(userId);
+    return res.status(200).json({ deleted: borrados });
+  } catch (err) {
+    if (esFaltaDePermiso(err)) {
+      return res.status(503).json({
+        error:
+          "El borrado todavía no está habilitado en la base de datos. Falta correr" +
+          " backend/migrate-delete.ts.",
+      });
+    }
+    return res.status(500).json({
+      error: "No se pudo borrar el historial.",
       detail: err instanceof Error ? err.message : "Error desconocido.",
     });
   }

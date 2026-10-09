@@ -86,3 +86,30 @@ export async function getUserProfile(firebaseUid: string): Promise<UserProfile |
     };
   });
 }
+
+/**
+ * Borra la cuenta: primero los análisis del usuario, después su fila de `users`.
+ *
+ * El orden importa y no es por prolijidad: `analyses.user_id` tiene una FK a `users.id`
+ * sin ON DELETE CASCADE, así que borrar el usuario primero falla por violación de clave
+ * ajena. Las dos operaciones van en la MISMA transacción (un solo runInUserTransaction):
+ * si algo falla a mitad de camino, no queda una cuenta sin análisis ni análisis
+ * huérfanos.
+ *
+ * No borra la cuenta de Firebase: eso lo tiene que hacer el cliente con el usuario
+ * logueado (deleteUser del SDK), porque es el único que tiene sus credenciales frescas.
+ * El backend borra lo que es suyo: las filas de Postgres.
+ */
+export async function deleteUserAccount(
+  firebaseUid: string,
+  userId: string
+): Promise<{ analyses: number }> {
+  return runInUserTransaction({ firebaseUid, currentUserId: userId }, async (client) => {
+    const analyses = await client.query(`DELETE FROM analyses WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM users WHERE id = $1 AND firebase_uid = $2`, [
+      userId,
+      firebaseUid,
+    ]);
+    return { analyses: analyses.rowCount ?? 0 };
+  });
+}

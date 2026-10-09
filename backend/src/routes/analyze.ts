@@ -13,6 +13,7 @@ import { requireAuth } from "../auth/verifyAuth.js";
 import { assertSafeAnalyzeUrl } from "../utils/validateUrl.js";
 import { stripControlChars } from "../utils/sanitize.js";
 import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
+import { cronometro, log, mensajeDeError, resumenDeFuentes } from "../utils/logger.js";
 
 const MAX_URL_LENGTH = 2048;
 
@@ -76,6 +77,8 @@ const router = Router();
  * UX, no seguridad — se puede saltear pegándole directo al backend.
  */
 router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
+  const reloj = cronometro();
+  const uid = req.user!.uid;
   const { url: rawUrl } = req.body ?? {};
 
   if (!rawUrl || typeof rawUrl !== "string") {
@@ -104,6 +107,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     if (userId) {
       const ownAnalysis = await getAnalysisForUserByUrl(userId, url);
       if (ownAnalysis) {
+        log.info("analyze.cache", { uid, url, cache: "propia", latencyMs: reloj() });
         return res.status(200).json(responseFromCached(ownAnalysis));
       }
 
@@ -112,6 +116,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
         // La fila nueva es la de ESTE usuario: el link para compartir tiene que
         // apuntar a esa y no a la del usuario que lo analizo primero.
         const nuevoId = await saveReusedAnalysis(existingAnalysis, userId);
+        log.info("analyze.cache", { uid, url, cache: "compartida", latencyMs: reloj() });
         return res.status(200).json(responseFromCached(existingAnalysis, nuevoId));
       }
     }
@@ -119,6 +124,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     const rateCheck = analyzeRateLimiter.consume(req.user!.uid);
     if (!rateCheck.allowed) {
       res.set("Retry-After", String(rateCheck.retryAfterSeconds));
+      log.warn("analyze.rateLimit", { uid, url, retryAfterS: rateCheck.retryAfterSeconds });
       return res.status(429).json({
         error: `Alcanzaste el límite de ${ANALYZE_RATE_LIMIT} análisis nuevos por hora. Probá de nuevo en unos minutos.`,
       });
@@ -127,6 +133,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     const scraped = await scrapeUrl(url);
 
     if (!scraped.success) {
+      log.warn("analyze.scrapeFallido", { uid, url, latencyMs: reloj() });
       return res.status(422).json({
         error: "No se pudo extraer contenido de la URL.",
         scraped,
@@ -136,6 +143,13 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     const analysis = await analyzeContent(scraped);
 
     if (!analysis.success) {
+      log.error("analyze.geminiFallido", {
+        uid,
+        url,
+        scrapeMethod: scraped.method,
+        detail: analysis.error,
+        latencyMs: reloj(),
+      });
       return res.status(502).json({
         error: "El análisis con Gemini falló.",
         detail: analysis.error,
@@ -153,6 +167,18 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     // "Compartir resultado" cuando no hay id.
     const id = await saveAnalysis(scraped, analysis, userId);
 
+    log.info("analyze.ok", {
+      uid,
+      url,
+      id,
+      guardado: id !== null,
+      scrapeMethod: scraped.method,
+      verdict: analysis.verdict,
+      confidence: analysis.confidence,
+      ...resumenDeFuentes(analysis.sources),
+      latencyMs: reloj(),
+    });
+
     return res.status(200).json({
       id,
       url: scraped.url,
@@ -168,6 +194,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       toneFlags: analysis.toneFlags,
     });
   } catch (err) {
+    log.error("analyze.error", { uid, url, detail: mensajeDeError(err), latencyMs: reloj() });
     return res.status(500).json({
       error: "Error inesperado en /analyze.",
       detail: err instanceof Error ? err.message : "Error desconocido.",

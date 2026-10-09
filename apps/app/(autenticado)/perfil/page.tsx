@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AlertTriangle, Check, Eye, EyeOff } from 'lucide-react'
 import {
   EmailAuthProvider,
@@ -39,7 +39,6 @@ function Aviso({ texto }: { texto: string }) {
 
 export default function PerfilPage() {
   const { user, profile, refreshProfile } = useAuth()
-  const [nombre, setNombre] = useState('')
   const [guardado, setGuardado] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [errorInfo, setErrorInfo] = useState('')
@@ -47,9 +46,19 @@ export default function PerfilPage() {
   const email = user?.email ?? ''
   const nombreMostrado = profile?.fullName || user?.displayName || email
 
-  useEffect(() => {
-    setNombre(profile?.fullName || user?.displayName || '')
-  }, [profile, user])
+  /**
+   * El campo no copia el nombre del perfil a un estado propio: muestra lo que la persona
+   * escribió, y si no escribió nada todavía, lo que dice el perfil. Antes eso se hacía
+   * con un efecto que pisaba el estado cada vez que cambiaba `profile`, lo que además
+   * tenía un problema real: al guardar, `refreshProfile()` disparaba el efecto y podía
+   * sobrescribir lo que estabas tipeando.
+   *
+   * `null` significa "sin editar": después de guardar se vuelve a null para que el campo
+   * siga al perfil ya actualizado.
+   */
+  const nombreDelPerfil = profile?.fullName || user?.displayName || ''
+  const [nombreEditado, setNombreEditado] = useState<string | null>(null)
+  const nombre = nombreEditado ?? nombreDelPerfil
 
   const handleGuardarInfo = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,6 +71,8 @@ export default function PerfilPage() {
       await apiFetch('/me', { method: 'POST', body: { fullName: nombreLimpio } })
       if (user) await updateProfile(user, { displayName: nombreLimpio })
       await refreshProfile()
+      // Vuelve a "sin editar": el campo pasa a seguir el perfil ya actualizado.
+      setNombreEditado(null)
       setGuardado(true)
       setTimeout(() => setGuardado(false), FEEDBACK_MS)
     } catch (err) {
@@ -152,7 +163,7 @@ export default function PerfilPage() {
               id="nombre"
               type="text"
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              onChange={(e) => setNombreEditado(e.target.value)}
               className="field-input"
             />
           </Campo>

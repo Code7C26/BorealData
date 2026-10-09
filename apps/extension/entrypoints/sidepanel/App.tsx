@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Lightbulb, Loader2, LogIn, ShieldCheck } from 'lucide-react';
+import { Camera, Lightbulb, Loader2, LogIn, ScanText, ShieldCheck } from 'lucide-react';
 import ResultView from './ResultView';
-import type { AnalysisResult } from '@/lib/analysis';
+import CropPreview from './CropPreview';
+import ReadingReview from './ReadingReview';
+import type { AnalysisResult, ContentJob } from '@/lib/analysis';
+import type { CropRect } from '@/lib/capture';
+import { patronDePermiso } from '@/lib/platform';
 import { getAnalyzedLabel } from './utils';
 import './App.css';
 
@@ -17,6 +21,7 @@ type CacheState =
   | { status: 'done'; result: AnalysisResult }
   | { status: 'loading' }
   | { status: 'none' };
+type StartCaptureResponse = { ok: true } | { error: string };
 
 // Mismo ambiente animado que la web (ver global.css: .glow-blob + .animate-float) —
 // se mantiene en todas las pantallas para que el panel no se sienta como un popup plano.
@@ -62,6 +67,47 @@ async function pedirEstadoCache(url: string): Promise<CacheState> {
   return (await browser.runtime.sendMessage({ type: 'GET_CACHE_STATE', url })) as CacheState;
 }
 
+/**
+ * Flujo de contenido (captura / imagen / selección)
+ * --------------------------------------------------
+ * Todo el estado vive en background.ts (ver "Análisis de contenido" allá) y
+ * este panel solo lo renderiza. No es por prolijidad: el panel se cierra solo
+ * al cambiar de pestaña, y un flujo de tres pasos (captura → lectura →
+ * verificación) guardado acá se perdería a mitad de camino. Así, al reabrirlo,
+ * GET_CONTENT_JOB devuelve el job tal como está y retoma la pantalla justa.
+ */
+async function pedirJob(): Promise<ContentJob | null> {
+  return (await browser.runtime.sendMessage({ type: 'GET_CONTENT_JOB' })) as ContentJob | null;
+}
+
+/**
+ * Para capturar hace falta permiso de host sobre esa pestaña. Los dominios
+ * sociales ya lo tienen declarado (wxt.config.ts); para el resto se pide en el
+ * momento, y por eso esto se resuelve ANTES del clic: `permissions.request()`
+ * exige un gesto del usuario, y cualquier await previo dentro del handler lo
+ * pierde. El panel precalcula el patrón y si ya está concedido (ver el efecto
+ * que sincroniza con la pestaña activa).
+ */
+async function tienePermisoDeCaptura(patron: string | null): Promise<boolean> {
+  if (!patron) return false;
+  try {
+    return await browser.permissions.contains({ origins: [patron] });
+  } catch {
+    return false;
+  }
+}
+
+/** Pantalla de espera de los dos pasos de red del flujo de contenido. */
+function PantallaCargando({ titulo, detalle }: { titulo: string; detalle: string }) {
+  return (
+    <div className="card job-loading">
+      <Loader2 className="spin" size={22} />
+      <p className="job-loading-title">{titulo}</p>
+      <p className="job-loading-detail">{detalle}</p>
+    </div>
+  );
+}
+
 function App() {
   const [status, setStatus] = useState<Status>('checking-auth');
   const [idToken, setIdToken] = useState<string | null>(null);
@@ -69,6 +115,14 @@ function App() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [analyzedInput, setAnalyzedInput] = useState('');
   const [tabUrlMissing, setTabUrlMissing] = useState(false);
+
+  // Flujo de contenido. `job` es el espejo de lo que tiene background.ts.
+  const [job, setJob] = useState<ContentJob | null>(null);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  // Precalculados contra la pestaña activa para que el clic de "Analizar lo
+  // que estás viendo" no tenga que esperar nada antes de pedir el permiso.
+  const [patronPermiso, setPatronPermiso] = useState<string | null>(null);
+  const [permisoConcedido, setPermisoConcedido] = useState(false);
 
   // El side panel, a diferencia del popup viejo, no se cierra al cambiar de
   // pestaña — los listeners de abajo necesitan el status actual pero no
@@ -114,6 +168,12 @@ function App() {
 
           const url = tab?.url && tab.url.startsWith('http') ? tab.url : null;
           currentUrlRef.current = url;
+
+          // El permiso de captura se resuelve acá, fuera del clic (ver
+          // tienePermisoDeCaptura): después ya es tarde para pedirlo.
+          const patron = patronDePermiso(tab?.url);
+          setPatronPermiso(patron);
+          setPermisoConcedido(await tienePermisoDeCaptura(patron));
 
           if (url) {
             setInput(url);
@@ -208,6 +268,80 @@ function App() {
     return () => browser.runtime.onMessage.removeListener(alTerminarEnBackground);
   }, []);
 
+  // Al abrir el panel puede haber un flujo de contenido ya empezado desde el
+  // menú contextual (o uno que quedó a mitad de camino porque el panel se
+  // cerró al cambiar de pestaña): se retoma donde estaba.
+  useEffect(() => {
+    pedirJob()
+      .then((actual) => {
+        if (actual) setJob(actual);
+      })
+      .catch(() => {});
+
+    const alCambiarElJob = (message: { type?: string; job?: ContentJob | null }) => {
+      if (message?.type === 'CONTENT_JOB') setJob(message.job ?? null);
+    };
+    browser.runtime.onMessage.addListener(alCambiarElJob);
+    return () => browser.runtime.onMessage.removeListener(alCambiarElJob);
+  }, []);
+
+  const iniciarCaptura = () => {
+    setCaptureError(null);
+    browser.runtime
+      .sendMessage({ type: 'START_CAPTURE' })
+      .then((res: StartCaptureResponse) => {
+        if (res && 'error' in res) setCaptureError(res.error);
+      })
+      .catch(() => setCaptureError('No pudimos capturar esta pantalla.'));
+  };
+
+  /**
+   * OJO con el orden: si falta el permiso, `permissions.request()` tiene que
+   * ser la PRIMERA cosa que corra en el handler. Un await antes (una query de
+   * pestañas, por ejemplo) consume el gesto del usuario y Chrome rechaza el
+   * pedido sin mostrar el diálogo.
+   */
+  const handleCapture = () => {
+    if (permisoConcedido || !patronPermiso) {
+      iniciarCaptura();
+      return;
+    }
+    browser.permissions
+      .request({ origins: [patronPermiso] })
+      .then((concedido) => {
+        if (!concedido) {
+          setCaptureError('Sin permiso sobre esta página no podemos leer lo que estás viendo.');
+          return;
+        }
+        setPermisoConcedido(true);
+        iniciarCaptura();
+      })
+      .catch((err: unknown) => {
+        // El motivo importa y hay que mostrarlo: el caso más probable es que
+        // Chrome tenga cargado un manifest viejo (la extensión no se recargó
+        // después de que cambiaran los permisos), y ahí rechaza el pedido
+        // porque todavía no conoce `optional_host_permissions`. Sin el texto
+        // real del error, eso se ve igual que "el usuario dijo que no".
+        const motivo = err instanceof Error ? ` (${err.message})` : '';
+        setCaptureError(
+          `No pudimos pedir permiso para capturar esta página.${motivo} Si acabás de actualizar la extensión, recargala en chrome://extensions.`,
+        );
+      });
+  };
+
+  const confirmarRecorte = (crop: CropRect) => {
+    browser.runtime.sendMessage({ type: 'READ_JOB', crop }).catch(() => {});
+  };
+
+  const verificarLectura = (text: string) => {
+    browser.runtime.sendMessage({ type: 'VERIFY_JOB', text }).catch(() => {});
+  };
+
+  const cancelarJob = () => {
+    setJob(null);
+    browser.runtime.sendMessage({ type: 'CANCEL_JOB' }).catch(() => {});
+  };
+
   const canAnalyze = input.trim().length > 0 && status !== 'loading';
 
   const handleAnalyze = async () => {
@@ -256,6 +390,12 @@ function App() {
     browser.tabs.create({ url });
   };
 
+  /** Lo mismo para un resultado del flujo de contenido (ver la rama de `job`). */
+  const handleViewFullJob = () => {
+    const id = job?.result?.id;
+    browser.tabs.create({ url: id ? `${WEB_ORIGIN}/resultado/${id}` : `${WEB_ORIGIN}/historial` });
+  };
+
   if (status === 'checking-auth') {
     return (
       <div className="app">
@@ -287,6 +427,108 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  // El flujo de contenido manda sobre el de URL: si hay un job, es lo que el
+  // usuario está haciendo ahora mismo.
+  if (job) {
+    const etiquetaOrigen =
+      job.kind === 'selection'
+        ? `selección en ${job.originLabel}`
+        : `captura de ${job.originLabel}`;
+
+    if (job.status === 'cropping' && job.captureDataUrl) {
+      return (
+        <div className="app">
+          <Blobs />
+          <CropPreview
+            dataUrl={job.captureDataUrl}
+            originLabel={job.originLabel}
+            onConfirm={confirmarRecorte}
+            onCancel={cancelarJob}
+          />
+        </div>
+      );
+    }
+
+    if (job.status === 'reading') {
+      return (
+        <div className="app">
+          <Blobs />
+          <Brand />
+          <PantallaCargando
+            titulo="Leyendo la imagen"
+            detalle="Transcribimos lo que dice la publicación. Todavía no hay veredicto: primero lo vas a poder revisar."
+          />
+        </div>
+      );
+    }
+
+    if (job.status === 'review' && job.reading) {
+      return (
+        <div className="app">
+          <Blobs />
+          <ReadingReview
+            reading={job.reading}
+            originLabel={job.originLabel}
+            onVerify={verificarLectura}
+            onCancel={cancelarJob}
+          />
+        </div>
+      );
+    }
+
+    if (job.status === 'analyzing') {
+      return (
+        <div className="app">
+          <Blobs />
+          <Brand />
+          <PantallaCargando
+            titulo="Verificando"
+            detalle="Buscamos la fuente primaria y la cruzamos con verificadores independientes."
+          />
+        </div>
+      );
+    }
+
+    if (job.status === 'done' && job.result) {
+      return (
+        <div className="app">
+          <Blobs />
+          <ResultView
+            result={job.result}
+            analyzedLabel={etiquetaOrigen}
+            onReset={cancelarJob}
+            // Sin onViewFull no se dibuja el botón: un análisis de contenido
+            // privado no tiene página pública en /resultado/:id aunque tenga
+            // id (ver AnalysisResult.shareable).
+            onViewFull={job.result.shareable ? handleViewFullJob : undefined}
+          />
+        </div>
+      );
+    }
+
+    if (job.status === 'error') {
+      return (
+        <div className="app">
+          <Blobs />
+          <Brand />
+          <div className="card">
+            <p className="result-error">{job.error ?? 'No pudimos completar el análisis.'}</p>
+            {job.errorCode === 'NEEDS_LOGIN' ? (
+              <button className="analyze-btn" onClick={handleLogin}>
+                <LogIn size={16} />
+                Iniciar sesión
+              </button>
+            ) : (
+              <button className="analyze-btn" onClick={cancelarJob}>
+                Volver
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
   }
 
   if (status === 'done' && result) {
@@ -351,6 +593,30 @@ function App() {
               Reintentar
             </button>
           </div>
+        )}
+
+        {/* La segunda puerta de entrada. Es el camino para todo lo que la URL
+            no alcanza a describir: un posteo de Facebook, una historia de
+            Instagram, una cadena de WhatsApp. El servidor no puede verlas
+            (solo vería el muro de login), pero esta pantalla sí. */}
+        <div className="capture-divider">
+          <span>o</span>
+        </div>
+
+        <button className="capture-btn" onClick={handleCapture}>
+          <span className="capture-btn-title">
+            <Camera size={15} />
+            Analizar lo que estás viendo
+          </span>
+          <span className="capture-btn-sub">
+            Para posteos privados o historias, que no se pueden leer por su enlace
+          </span>
+        </button>
+
+        {captureError && (
+          <p className="result-error capture-error" role="alert">
+            {captureError}
+          </p>
         )}
       </div>
 

@@ -1,0 +1,163 @@
+/* "Esto es lo que leímos". Los tokens (--bg, --accent, etc.) los define App.css. */
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.review-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.review-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.review-close:hover {
+  color: var(--text-title);
+  border-color: var(--border-strong);
+}
+
+.review-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.review-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.review-chip {
+  padding: 3px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* El aviso usa el color de "dudoso": es el mismo significado (algo acá no
+   está firme) y el sistema no inventa un color nuevo para cada mensaje. */
+.review-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 10px;
+  background: rgba(233, 169, 60, 0.1);
+  border: 1px solid rgba(233, 169, 60, 0.3);
+  border-radius: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--dudoso);
+}
+
+.review-warning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.review-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Hereda de .input (App.css) y solo cambia lo del texto largo: esto se lee y
+   se corrige, no es un campo de una línea. */
+.review-textarea {
+  min-height: 150px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.review-counter {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.review-counter-bad {
+  color: var(--falso);
+}
+
+.review-claim {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 11px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent-text);
+  border-radius: 8px;
+}
+
+.review-claim-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-title);
+}
+
+.review-cited {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.review-cited svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.review-privacy {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

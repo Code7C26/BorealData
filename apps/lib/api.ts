@@ -47,6 +47,13 @@ export interface AnalyzeResponse {
   reasoning: string[]
   sources: AnalysisSource[]
   toneFlags: string[]
+  /**
+   * false cuando el análisis NO tiene página pública en /resultado/:id, aunque
+   * tenga `id`. Lo manda POST /analyze/content: el análisis de una imagen que
+   * subió una persona no se le sirve a otra (ver getAnalysisById en el
+   * backend), así que ofrecer "Compartir verificación" ahí daría un link roto.
+   */
+  shareable?: boolean
 }
 
 /** Item de GET /history (backend/src/db/analysesRepository.ts::AnalysisHistoryItem). */
@@ -131,4 +138,83 @@ export async function apiFetch<T>(
   }
 
   return data as T
+}
+
+// ── Contenido que el scraper no puede ver ───────────────────────────────
+// Espejo de la sección homónima de backend/src/gemini/types.ts. Una captura de
+// un posteo privado no tiene URL que el servidor pueda ir a buscar: lo que se
+// manda es la evidencia que la persona ya tiene. Ver
+// DOCS/BRIEF-captura-contenido-privado.md.
+
+/** Plataformas que el backend reconoce (KNOWN_PLATFORMS). */
+export type Platform = 'facebook' | 'instagram' | 'x' | 'whatsapp' | 'tiktok' | 'otro'
+
+/** De dónde salió el contenido. Nunca "url": eso va por POST /analyze. */
+export type ClientContentKind = 'capture' | 'selection' | 'image' | 'text'
+
+/** Qué tan legible quedó la imagen, según el propio modelo lector. */
+export type ReadingConfidence = 'alta' | 'media' | 'baja'
+
+/**
+ * Paso 1 (POST /analyze/read): lo que el modelo LEYÓ de la imagen, sin
+ * veredicto. `text` es la transcripción tal cual — la persona la corrige antes
+ * del paso 2, que es lo que más sube la calidad del veredicto.
+ */
+export interface CaptureReading {
+  platform: Platform | null
+  author: string | null
+  /** Fecha tal como aparece en el posteo: texto libre ("hace 3 h"). */
+  postedAt: string | null
+  text: string
+  /** La afirmación central verificable, o null si no hay ninguna. */
+  mainClaim: string | null
+  /** Fuente que el propio posteo cita ("según la OMS…"), si cita alguna. */
+  citedSource: string | null
+  /** false si es un meme o una frase sin dato comprobable. */
+  hasVerifiableClaim: boolean
+  readingConfidence: ReadingConfidence
+}
+
+/**
+ * Límites de texto de POST /analyze/content (MIN_TEXT_CHARS / MAX_TEXT_CHARS).
+ * Se repiten acá para avisar antes de gastar el viaje de red.
+ */
+export const MIN_CONTENT_CHARS = 8
+export const MAX_CONTENT_CHARS = 12_000
+
+/**
+ * Paso 1: transcribe la imagen. No devuelve veredicto a propósito — el
+ * veredicto sale del paso 2, sobre el texto que la persona confirmó.
+ */
+export async function leerImagen(imagenes: { mimeType: string; dataBase64: string }[]) {
+  const { reading } = await apiFetch<{ reading: CaptureReading }>('/analyze/read', {
+    method: 'POST',
+    body: { images: imagenes },
+  })
+  return reading
+}
+
+/** Paso 2: verifica el texto ya confirmado. Devuelve lo mismo que POST /analyze. */
+export async function analizarContenido(entrada: {
+  kind: ClientContentKind
+  text: string
+  platform?: Platform | null
+  author?: string | null
+  pageUrl?: string | null
+}) {
+  return apiFetch<AnalyzeResponse>('/analyze/content', {
+    method: 'POST',
+    body: {
+      source: {
+        kind: entrada.kind,
+        platform: entrada.platform ?? null,
+        pageUrl: entrada.pageUrl ?? null,
+        capturedAt: new Date().toISOString(),
+      },
+      content: {
+        text: entrada.text,
+        author: entrada.author ?? undefined,
+      },
+    },
+  })
 }

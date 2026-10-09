@@ -1,4 +1,4 @@
-import type { AnalyzeResponse, HistoryItem } from '@/lib/api'
+import type { AnalyzeResponse, ClientContentKind, HistoryItem, Platform } from '@/lib/api'
 
 const STORAGE_KEY = 'aletheia_last_result'
 /** El input jamás se pierde ante un error: sobrevive acá y se repone al volver. */
@@ -42,6 +42,45 @@ export function leerResultado(): ResultadoGuardado | null {
   } catch {
     return null
   }
+}
+
+/**
+ * Lo mismo que leerResultado(), pero devolviendo SIEMPRE el mismo objeto mientras el
+ * texto guardado no cambie.
+ *
+ * Existe para poder leerlo con `useSyncExternalStore`, que compara snapshots por
+ * identidad: `leerResultado()` parsea el JSON en cada llamada y devuelve un objeto nuevo
+ * cada vez, así que usarlo directo haría que React re-renderice para siempre.
+ */
+let crudoCacheado: string | null = null
+let resultadoCacheado: ResultadoGuardado | null = null
+
+export function leerResultadoEstable(): ResultadoGuardado | null {
+  if (typeof window === 'undefined') return null
+  let raw: string | null = null
+  try {
+    raw = window.sessionStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+  if (raw !== crudoCacheado) {
+    crudoCacheado = raw
+    try {
+      resultadoCacheado = raw ? (JSON.parse(raw) as ResultadoGuardado) : null
+    } catch {
+      resultadoCacheado = null
+    }
+  }
+  return resultadoCacheado
+}
+
+/**
+ * sessionStorage no emite eventos para la propia pestaña, y estas pantallas lo leen una
+ * sola vez al abrirse: no hay nada a qué suscribirse. La función existe porque
+ * useSyncExternalStore la pide.
+ */
+export function sinSuscripcion(): () => void {
+  return () => {}
 }
 
 /**
@@ -97,13 +136,50 @@ export function historyItemToAnalyzeResponse(item: HistoryItem): AnalyzeResponse
   }
 }
 
-/** Reabre un análisis ya guardado (de /historial o del sidebar) en /resultado, sin re-consultar el backend. */
-export function guardarResultadoDesdeHistorial(item: HistoryItem) {
-  guardarResultado({
-    status: 'ok',
-    tipo: 'url',
-    valor: item.url,
-    fecha: item.createdAt,
-    data: historyItemToAnalyzeResponse(item),
-  })
+/**
+ * Lo que /analizando necesita para verificar contenido que no es una URL (una
+ * imagen que alguien subió o pegó, ya leída y confirmada en el dashboard).
+ *
+ * Va por sessionStorage y no por query params por lo obvio: el texto de una
+ * publicación no entra en una URL, y además no tiene por qué quedar escrito en
+ * el historial del navegador. La imagen NO viaja acá — para esta altura ya se
+ * descartó; lo único que sigue vivo es la transcripción.
+ */
+export interface ContenidoPendiente {
+  kind: ClientContentKind
+  text: string
+  platform: Platform | null
+  author: string | null
+  /** Etiqueta corta de dónde salió, para mostrar mientras analiza. */
+  etiqueta: string
+}
+
+const CONTENIDO_KEY = 'aletheia_contenido_pendiente'
+
+export function guardarContenidoPendiente(contenido: ContenidoPendiente) {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(CONTENIDO_KEY, JSON.stringify(contenido))
+  } catch {
+    // Storage bloqueado o lleno: se pierde el pase a /analizando, no la sesión.
+  }
+}
+
+export function leerContenidoPendiente(): ContenidoPendiente | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(CONTENIDO_KEY)
+    return raw ? (JSON.parse(raw) as ContenidoPendiente) : null
+  } catch {
+    return null
+  }
+}
+
+export function limpiarContenidoPendiente() {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(CONTENIDO_KEY)
+  } catch {
+    // idem
+  }
 }

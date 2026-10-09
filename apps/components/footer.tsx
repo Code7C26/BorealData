@@ -6,6 +6,8 @@ const LINKS = [
   { href: '/contacto', label: 'Contacto' },
   { href: '#faq', label: 'Preguntas' },
   { href: '#boreal-data', label: 'Quiénes somos' },
+  { href: '/privacidad', label: 'Privacidad' },
+  { href: '/terminos', label: 'Términos' },
 ]
 
 export function Footer() {
