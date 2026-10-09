@@ -20,18 +20,44 @@ function isPrivateIPv4(ip: string): boolean {
   return false;
 }
 
-/** Rangos de IPv6 privados/internos (loopback, link-local, unique local). */
+/**
+ * Devuelve la IPv4 embebida en una IPv6 mapeada (`::ffff:…`) en notación decimal, o null
+ * si no es una de esas.
+ *
+ * Hay que entender las DOS formas porque la API de URL normaliza la dirección: lo que el
+ * cliente escribe como `[::ffff:127.0.0.1]` llega acá como `::ffff:7f00:1`, en
+ * hexadecimal. La versión anterior solo miraba la forma con puntos, así que
+ * `http://[::ffff:127.0.0.1]/` se colaba como pública y el servidor terminaba pegándole a
+ * su propio loopback (lo agarró el test de validateUrl.test.ts).
+ */
+function mappedIPv4(ip: string): string | null {
+  const resto = /^::ffff:(.+)$/.exec(ip)?.[1];
+  if (resto === undefined) return null;
+  if (resto.includes(".")) return resto;
+
+  const grupos = resto.split(":");
+  if (grupos.length > 2) return null;
+  const [altoRaw, bajoRaw] = grupos.length === 2 ? grupos : ["0", grupos[0]];
+
+  const alto = Number.parseInt(altoRaw, 16);
+  const bajo = Number.parseInt(bajoRaw, 16);
+  if (!Number.isInteger(alto) || !Number.isInteger(bajo)) return null;
+  if (alto < 0 || alto > 0xffff || bajo < 0 || bajo > 0xffff) return null;
+
+  return [alto >> 8, alto & 0xff, bajo >> 8, bajo & 0xff].join(".");
+}
+
+/** Rangos de IPv6 privados/internos (loopback, link-local, unique local, IPv4 mapeada). */
 function isPrivateIPv6(ip: string): boolean {
   const normalized = ip.toLowerCase();
   if (normalized === "::1" || normalized === "::") return true;
   if (normalized.startsWith("fe80:")) return true; // link-local
   if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true; // fc00::/7 (unique local)
 
-  // IPv4 mapeada en IPv6 (::ffff:127.0.0.1)
-  if (normalized.startsWith("::ffff:")) {
-    const ipv4Part = normalized.split(":").pop()!;
-    if (ipv4Part.includes(".")) return isPrivateIPv4(ipv4Part);
-  }
+  // IPv4 mapeada en IPv6 (::ffff:127.0.0.1 y su forma normalizada ::ffff:7f00:1).
+  const embebida = mappedIPv4(normalized);
+  if (embebida !== null) return isPrivateIPv4(embebida);
+
   return false;
 }
 
@@ -69,7 +95,11 @@ export async function assertSafeAnalyzeUrl(rawUrl: string): Promise<UrlSafetyRes
     return { safe: false, reason: "Solo se permiten URLs http o https." };
   }
 
-  const hostname = parsed.hostname.toLowerCase();
+  // Un host IPv6 viene entre corchetes en `hostname` ("[::1]"), y net.isIP() no los
+  // acepta: sin sacarlos, una IPv6 interna se escapaba del chequeo de IP literal y
+  // terminaba bloqueada de rebote, porque "[::1]" no resuelve por DNS. Funcionaba, pero
+  // por el camino equivocado: acá se decide por la IP, que es lo que corresponde.
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[(.+)\]$/, "$1");
   if (hostname === "localhost") {
     return { safe: false, reason: "No se permiten URLs a localhost." };
   }
