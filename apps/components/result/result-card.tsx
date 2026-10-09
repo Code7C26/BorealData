@@ -28,6 +28,23 @@ const PASOS_VISIBLES_MOBILE = 2
  * La card nunca crece: a partir de 720 px el contenido extra va al panel
  * lateral, no al ancho (el layout de 1280 vive en la página, no acá).
  */
+/**
+ * La URL de la nota, solo si hay uno al que se pueda ir de verdad.
+ *
+ * No alcanza con `url && ...`: los análisis de contenido guardan `url` como cadena vacía
+ * cuando no hubo página de origen (una imagen subida desde el dashboard), y los del
+ * esquema viejo pueden traer cualquier cosa. Devuelve null salvo que sea http(s).
+ */
+function enlaceDeLaNota(url: string | null | undefined): string | null {
+  if (!url) return null
+  try {
+    const { protocol } = new URL(url)
+    return protocol === 'http:' || protocol === 'https:' ? url : null
+  } catch {
+    return null
+  }
+}
+
 export function ResultCard({
   analysis,
   fecha,
@@ -55,6 +72,7 @@ export function ResultCard({
 
   const pasos = analysis.reasoning
   const hayPasosOcultos = pasos.length > PASOS_VISIBLES_MOBILE
+  const enlace = enlaceDeLaNota(analysis.url)
 
   return (
     <article
@@ -91,16 +109,28 @@ export function ResultCard({
           {analysis.headline}
         </h2>
         {analysis.lead && <p className="text-muted">{analysis.lead}</p>}
-        <a
-          href={analysis.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={analysis.url}
-          className="group flex items-center gap-2 truncate rounded-lg bg-surface-sunk px-3.5 py-2.5 font-mono text-caption tracking-normal text-subtle transition-colors duration-150 ease-boreal hover:text-accent-text"
-        >
-          <span className="truncate">{analysis.url.replace(/^https?:\/\//, '')}</span>
-          <ExternalLink aria-hidden="true" size={13} className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
-        </a>
+
+        {/* Solo si hay una página a la que ir. Un análisis de imagen subida desde el
+            dashboard no tiene URL (`url` llega como ""), y antes el chip se dibujaba
+            igual: quedaba una caja vacía que además era un <a href="">, o sea un enlace
+            que recargaba la página actual. Una captura hecha desde la extensión sí
+            suele traer la dirección de dónde salió, y ahí el chip corresponde. */}
+        {enlace && (
+          <a
+            href={enlace}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={enlace}
+            className="group flex items-center gap-2 truncate rounded-lg bg-surface-sunk px-3.5 py-2.5 font-mono text-caption tracking-normal text-subtle transition-colors duration-150 ease-boreal hover:text-accent-text"
+          >
+            <span className="truncate">{enlace.replace(/^https?:\/\//, '')}</span>
+            <ExternalLink
+              aria-hidden="true"
+              size={13}
+              className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+            />
+          </a>
+        )}
       </div>
 
       {/* 3 · confianza */}

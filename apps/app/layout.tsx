@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import { AuthProvider } from '@/lib/auth-context'
+import { SIDEBAR_INIT_SCRIPT } from '@/lib/sidebar-colapso'
 import { THEME_INIT_SCRIPT } from '@/lib/theme'
 import './global.css'
 
@@ -68,6 +69,10 @@ export default function RootLayout({
             el App Router el <head> lo arma Next a partir de la Metadata API, y
             agregarle etiquetas a mano es justamente lo que la doc desaconseja. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* Mismo motivo que el de arriba, para el ancho del sidebar: sin esto el
+            servidor lo manda expandido y el cliente lo corrige al hidratar, con un
+            salto de 288 px a 76 px que corre el contenido de la página. */}
+        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

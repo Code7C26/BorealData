@@ -33,25 +33,29 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
   const router = useRouter()
   const [paso, setPaso] = useState<Paso>(0)
   const [segundos, setSegundos] = useState(0)
-  const [respuestaLista, setRespuestaLista] = useState(false)
-  const resultadoRef = useRef<ResultadoGuardado | null>(null)
+  /**
+   * Llegar acá sin nada que analizar (una URL vacía) se sabe desde el primer render, así
+   * que el estado arranca resuelto en vez de corregirse en el efecto. El componente se
+   * remonta por `key` cada vez que cambian los query params, así que derivar el estado
+   * inicial de las props es seguro.
+   */
+  const sinNadaQueAnalizar = tipo !== 'contenido' && !valor
+
+  const [respuestaLista, setRespuestaLista] = useState(sinNadaQueAnalizar)
+  const resultadoRef = useRef<ResultadoGuardado | null>(
+    sinNadaQueAnalizar ? { status: 'error', tipo: 'url', valor } : null,
+  )
   const iniciadoRef = useRef(false)
 
   // Dispara el análisis real una única vez (el ref evita el doble fetch que
   // provoca React Strict Mode en dev al montar el efecto dos veces — acá
   // importa de verdad porque cada llamada gasta una consulta real a Gemini).
   useEffect(() => {
-    if (iniciadoRef.current) return
+    if (iniciadoRef.current || sinNadaQueAnalizar) return
     iniciadoRef.current = true
 
     if (tipo === 'contenido') {
       analizarContenidoPendiente()
-      return
-    }
-
-    if (!valor) {
-      resultadoRef.current = { status: 'error', tipo: 'url', valor }
-      setRespuestaLista(true)
       return
     }
 
@@ -134,7 +138,7 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
         })
         .finally(() => setRespuestaLista(true))
     }
-  }, [tipo, valor, router])
+  }, [tipo, valor, router, sinNadaQueAnalizar])
 
   // Los pasos avanzan solos y se frenan en el último: son los pasos reales del
   // motor, pero el backend no emite progreso, así que la cadencia es local.
@@ -152,10 +156,23 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
 
   // Recién navega cuando llegó la respuesta real Y el último paso estuvo un
   // instante marcado: el corte seco desde el primer paso se lee como un bug.
+  //
+  // A dónde navega depende de si el análisis se guardó: con id va a su propia URL
+  // (`/resultado/:id`), que se puede recargar y compartir; sin id —análisis fallido, o
+  // guardado que no funcionó— cae a `/resultado`, que lee sessionStorage. Por eso el
+  // guardado en sessionStorage queda, pero solo lo usa el segundo camino.
+  //
+  // `replace` y no `push`: volver atrás desde el resultado tiene que llevar al
+  // formulario, no a la pantalla de "analizando", que volvería a dispararse.
   useEffect(() => {
     if (!respuestaLista || !resultadoRef.current) return
-    guardarResultado(resultadoRef.current)
-    const t = setTimeout(() => router.push('/resultado'), 600)
+    const resultado = resultadoRef.current
+    guardarResultado(resultado)
+    const destino =
+      resultado.status === 'ok' && resultado.data?.id
+        ? `/resultado/${resultado.data.id}`
+        : '/resultado'
+    const t = setTimeout(() => router.replace(destino), 600)
     return () => clearTimeout(t)
   }, [respuestaLista, router])
 

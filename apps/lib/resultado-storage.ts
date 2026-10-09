@@ -45,6 +45,45 @@ export function leerResultado(): ResultadoGuardado | null {
 }
 
 /**
+ * Lo mismo que leerResultado(), pero devolviendo SIEMPRE el mismo objeto mientras el
+ * texto guardado no cambie.
+ *
+ * Existe para poder leerlo con `useSyncExternalStore`, que compara snapshots por
+ * identidad: `leerResultado()` parsea el JSON en cada llamada y devuelve un objeto nuevo
+ * cada vez, así que usarlo directo haría que React re-renderice para siempre.
+ */
+let crudoCacheado: string | null = null
+let resultadoCacheado: ResultadoGuardado | null = null
+
+export function leerResultadoEstable(): ResultadoGuardado | null {
+  if (typeof window === 'undefined') return null
+  let raw: string | null = null
+  try {
+    raw = window.sessionStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+  if (raw !== crudoCacheado) {
+    crudoCacheado = raw
+    try {
+      resultadoCacheado = raw ? (JSON.parse(raw) as ResultadoGuardado) : null
+    } catch {
+      resultadoCacheado = null
+    }
+  }
+  return resultadoCacheado
+}
+
+/**
+ * sessionStorage no emite eventos para la propia pestaña, y estas pantallas lo leen una
+ * sola vez al abrirse: no hay nada a qué suscribirse. La función existe porque
+ * useSyncExternalStore la pide.
+ */
+export function sinSuscripcion(): () => void {
+  return () => {}
+}
+
+/**
  * Lo que el usuario pegó, guardado aparte del resultado. Regla del sistema: el
  * input nunca se vacía ante un error — "guardamos lo que pegaste" tiene que ser
  * verdad, incluso si se cortó la conexión o recargó la página.
@@ -95,17 +134,6 @@ export function historyItemToAnalyzeResponse(item: HistoryItem): AnalyzeResponse
     sources: item.sources,
     toneFlags: item.toneFlags,
   }
-}
-
-/** Reabre un análisis ya guardado (de /historial o del sidebar) en /resultado, sin re-consultar el backend. */
-export function guardarResultadoDesdeHistorial(item: HistoryItem) {
-  guardarResultado({
-    status: 'ok',
-    tipo: 'url',
-    valor: item.url,
-    fecha: item.createdAt,
-    data: historyItemToAnalyzeResponse(item),
-  })
 }
 
 /**

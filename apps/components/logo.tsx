@@ -1,3 +1,4 @@
+import { LogoBorealData } from '@/components/logo-boreal'
 import { cn } from '@/lib/utils'
 
 /**
@@ -76,9 +77,17 @@ export function Logo({
         <span className="font-display text-[1.375rem] font-bold tracking-[-0.02em] text-display">
           Alethe<span className="text-accent-text">IA</span>
         </span>
-        {showParent && (
-          <span className="mt-1 font-mono text-micro uppercase text-subtle">Boreal Data</span>
-        )}
+        {/* La firma de la casa va con su logotipo, no escrita a mano en mono:
+            antes acá decía "Boreal Data" como texto suelto en versalitas, que
+            es justo lo que la marca 4d no es (el corte de peso Boreal/Data ES
+            la marca). Sin bajada, como en cualquier tamaño chico.
+
+            0.9rem está elegido por altura, no por ancho: deja la caja en 15.3 px
+            contra los 15.2 del texto que reemplaza, así la navbar no cambia de
+            alto. Igualar el ancho hubiera pedido 1.1rem (18.7 px de alto) y el
+            lockup le hubiera empezado a competir al nombre del producto, que
+            va arriba en 1.375rem. */}
+        {showParent && <LogoBorealData bajada={false} className="mt-1 text-[0.9rem]" />}
       </span>
     </span>
   )

@@ -1,4 +1,21 @@
+import type { Metadata } from 'next'
 import { Clock, Mail, MessageCircle } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Contacto — AletheIA',
+  description:
+    'Escribinos por una duda, una sugerencia, o un análisis que salió raro. Contestamos dentro de 1 a 2 días hábiles.',
+}
+
+/**
+ * Contacto.
+ *
+ * Vive en (info) y no en (autenticado): quien quiere escribirnos por algo que
+ * no funciona es, muy posiblemente, alguien que todavía no pudo crear una
+ * cuenta. Antes estaba detrás del guard de auth y el enlace del pie de la
+ * landing lo mandaba al login. El layout del grupo le pone el sidebar si hay
+ * sesión, así que para alguien logueado se ve igual que antes.
+ */
 
 const NOTAS = [
   {
@@ -15,8 +32,11 @@ const NOTAS = [
 ]
 
 export default function ContactoPage() {
+  // Sin contenedor propio: el ancho, el gutter y el aire los pone el layout del grupo
+  // (ver CONTENEDOR en ../layout.tsx), igual que en privacidad y términos. Tenerlo acá
+  // además del layout duplicaba el padding horizontal.
   return (
-    <div className="mx-auto flex w-full max-w-card flex-col gap-6 px-gutter py-12 md:px-6 md:py-16">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-3">
         <p className="eyebrow">Contacto</p>
         <h1 className="font-display text-h2-fluid text-display">Escribinos</h1>

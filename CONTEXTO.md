@@ -2,7 +2,7 @@
 
 > Documento de continuidad. Se actualiza a medida que avanza el proyecto para no perder contexto entre sesiones.
 
-**Última actualización:** 23 de septiembre de 2026 (sin commits nuevos desde el 14-sep; esta pasada corrige desactualización de `design/DESIGN_SYSTEM.md` y `apps/extension/README.md`, que habían quedado con contenido viejo)
+**Última actualización:** 8 de octubre de 2026 (pasada de calidad de producto: privacidad y páginas legales, fix del cruce de fuentes con grounding, borrado de datos, resultado por URL, primeros tests, limpieza de código muerto — ver sección 13)
 
 ---
 
@@ -156,8 +156,9 @@ Se hizo una pasada de seguridad completa sobre el backend:
 - **Bug de sesión al usar la extensión (resuelto):** el login usaba persistencia por pestaña (`browserSessionPersistence`) por defecto, y una pestaña nueva sin sesión disparaba un logout que además le borraba la sesión a la extensión. Fix en el checkbox de "recordarme" (default `true`) y en `extension-bridge.ts` (solo desloguea la extensión ante una transición real usuario→null).
 - Filas viejas de análisis perdían el razonamiento por un `DEFAULT '[]'` mal puesto en la migración; y `averageConfidence` daba 0 por no contemplar filas viejas sin `confidence` — ambos corregidos.
 
-### Bug de backend pendiente de decisión (no de frontend)
-Solo la primera fuente de cada análisis es clickeable: Gemini devuelve `sources[].title` sin URL real, y el sistema intenta cruzarla contra `groundingChunks` por texto — ese cruce casi nunca encuentra match salvo en el índice 0. Medido contra la DB real: de 8 análisis, solo 2 tuvieron alguna fuente con url, y en ambos casos únicamente la primera. El frontend ya renderiza bien (link si hay `url`, texto plano si no). Falta que Renzo decida: mejorar el matching, reconstruir la lista solo con fuentes que sí tengan link real (bajaría mucho la cantidad mostrada), o dejarlo para un chat de backend dedicado.
+### Bug de las fuentes no clickeables — RESUELTO (8-oct-2026)
+La causa no era que el cruce fuera flojo: era que comparaba contra el hostname de una URL
+de redirección que es igual para todas las fuentes. Ver sección 13.
 
 ---
 
@@ -219,9 +220,114 @@ La extensión corre con `npm run dev` (WXT) desde la misma carpeta y se carga "u
 
 ## 12. Pendientes inmediatos
 
-- [ ] Decidir cómo resolver el bug de fuentes no clickeables (backend/Gemini) — ver sección 8.
-- [ ] Mobile (Expo) sigue sin desarrollo real — última prioridad.
+- [ ] **Correr `backend/migrate-delete.ts`** — sin eso, borrar un análisis o la cuenta
+      responde 503. Ver sección 13.
+- [ ] **Nada está deployado todavía.** No hay Dockerfile, ni `firebase.json`, ni CI, y
+      `NEXT_PUBLIC_API_URL` apunta a `localhost:4000`. Es el pendiente más grande: la
+      presentación es en diciembre y hoy el producto solo corre en la máquina de Renzo.
+- [ ] Mobile (Expo) sigue sin desarrollo real — última prioridad. Alternativa más barata
+      y más demostrable: PWA + `share_target`, para que AletheIA aparezca en el menú
+      "Compartir" de Android. Requiere HTTPS, así que depende del deploy.
 - [ ] Seguir la bitácora de bugs de frontend a medida que Renzo reporte nuevos.
+
+---
+
+## 13. Pasada de calidad de producto (8-oct-2026)
+
+### Privacidad y legales
+- `apps/components/analisis-input.tsx` decía **"No guardamos lo que analizás"** y era
+  falso: los análisis se guardan en el historial y los de enlaces se reusan entre
+  cuentas. Ahora dice lo que el backend hace de verdad y linkea al detalle.
+- Nuevas páginas públicas **`/privacidad`** y **`/terminos`**, escritas contra el código
+  (qué se guarda, qué no, que el contenido viaja a Gemini, qué ve un tercero con el link
+  de compartir). Linkeadas desde el pie y desde el registro. Las pedían Firebase Auth y
+  la Chrome Web Store, y no existían.
+- **`/contacto` dejó de estar detrás del login.** Estaba en `(autenticado)/` y el pie de
+  la landing linkeaba ahí, así que a un visitante lo rebotaba a `/login`. Vive en el
+  grupo nuevo `app/(info)/`, cuyo layout pone el sidebar si hay sesión.
+
+### Borrado de datos (hace verdadera la política)
+- `DELETE /analyses/:id`, `DELETE /history` y `DELETE /me` (cuenta + análisis, en una
+  transacción). Botón de borrar en cada fila del historial y en la pantalla de resultado.
+- **Requiere `backend/migrate-delete.ts`:** el rol `aletheia_app` arrancaba con
+  SELECT/INSERT/UPDATE y sin DELETE. La migración agrega el GRANT y las policies
+  `analyses_delete_own` / `users_delete_own`. Hay que correrla con el DUEÑO de las tablas
+  (no con el rol de la app), y acepta `MIGRATION_DATABASE_URL` para no tener que editar
+  el `.env`. Mientras no corra, los tres endpoints responden **503 con el mensaje que lo
+  dice**, no un 500 sin explicación.
+
+### El cruce de fuentes con grounding (el bug de "solo la primera fuente es clickeable")
+Causa raíz, medida contra la API real: **`groundingChunks[].web.uri` es SIEMPRE un
+redirect de `vertexaisearch.cloud.google.com`, y el dominio del medio viene en
+`web.title`.** El código comparaba el dominio que escribía el modelo contra el hostname
+de esa URL, que es el mismo para todas las fuentes, así que el cruce por dominio no podía
+acertar nunca — solo pegaba de casualidad el fallback por título. Y cuando pegaba,
+mostraba `vertexaisearch.cloud.google.com` como dominio de la fuente.
+
+Medido en la base local: de **430 fuentes guardadas, 44 tenían link (10%)** y las 430
+mostraban el host de redirección como dominio.
+
+- El cruce ahora va contra `web.title` y el dominio que se muestra sale de ahí
+  (`toGroundingLink` en `geminiClient.ts`). La URL sigue siendo el redirect: es la única
+  que da Google y es la que pide para la atribución.
+- Las filas viejas se traducen al leerlas (`analysesRepository.ts`): un dominio
+  `vertexaisearch…` se descarta y la card cae al título de la fuente.
+- Verificado end-to-end contra Gemini: **6 de 9 fuentes con link, 0 con dominio basura.**
+
+### El resultado vive en una URL
+`/analizando` guardaba en `sessionStorage` y navegaba a `/resultado`: recargar perdía el
+análisis y el link de compartir solo funcionaba en el propio navegador. Además había dos
+vistas distintas para lo mismo, y la del link compartido mostraba solo la card.
+
+- `GET /analyses/:id` pasó a **auth opcional** (`attachUserIfPresent`): sin sesión sirve
+  el análisis de un enlace público; con sesión sirve además los propios que salieron de
+  una captura, que solo ve su dueño.
+- `/resultado/:id` es ahora la pantalla de resultado del producto, con sidebar si hay
+  sesión y encabezado público si no. La vista completa se extrajo a
+  `components/result/resultado-completo.tsx`, así que **el que recibe un link compartido
+  ve el razonamiento entero**, no solo el veredicto.
+- `/resultado` (sessionStorage) quedó solo para lo que no tiene id: análisis fallidos y
+  el caso raro de un análisis que no se pudo guardar (que ahora lo avisa).
+- El historial y los "recientes" del sidebar son enlaces de verdad (`<a href>`), así que
+  se abren en otra pestaña y el navegador los marca como visitados.
+
+### Tests (no había ninguno)
+**69 tests** con Vitest: 57 en `backend/` (`npm test`) y 12 en `apps/`. Cubren lo que no
+se puede verificar a ojo: la tabla veredicto × confianza en las dos puntas,
+`parseGeminiResponse` (con fixtures que replican la forma real de los groundingChunks),
+la defensa de SSRF, y la limpieza de texto/URLs.
+
+**El test de SSRF encontró un agujero real al escribirlo:** `http://[::ffff:127.0.0.1]/`
+pasaba como pública. La API de URL normaliza esa dirección a `::ffff:7f00:1` en
+hexadecimal y el chequeo de IPv4 mapeada solo entendía la forma con puntos. Corregido en
+`validateUrl.ts`.
+
+### Logging estructurado
+`backend/src/utils/logger.ts`: una línea de JSON por evento, con las claves que espera
+Cloud Logging (`severity`/`message`). Instrumentado en `/analyze` y `/analyze/content`
+con latencia, veredicto, método de scrape, si fue cache hit y **cuántas fuentes quedaron
+con link** — la métrica que habría hecho visible el bug de grounding. El contenido que la
+persona analiza nunca entra al log, igual que promete la política de privacidad.
+
+### Limpieza
+- Borrados: `apps/entrypoints/popup/` y `apps/wxt.config.ts` (la extensión vieja, muerta
+  desde que vive en `apps/extension/`), `apps/extension/.../pageExtractor.ts` (definido y
+  nunca importado), `apps/lib/Descargas - Acceso directo.lnk`, `backend/captura.png`,
+  `backend/test-*.ps1`, `backend/test-parse.ts`.
+- `backend/dist/` salió del repositorio (estaban commiteados 30 `.js` compilados que se
+  desincronizaban del `.ts`). Se regenera con `npm run build`.
+- Nuevos `.env.example` en `apps/`, `apps/extension/` y `backend/`: antes no había forma
+  de saber qué variables hacen falta para levantar el proyecto.
+- En el home, la sección de la extensión va antes del quiz: lo que diferencia al producto
+  antes de lo que entretiene.
+
+### Lo que NO se tocó, a propósito
+- **9 errores de `react-hooks/set-state-in-effect`** hacen fallar `npm run lint` en
+  `apps/`. Son previos, todos el mismo patrón (hidratar estado del browser en un efecto)
+  y sensibles a hidratación: arreglarlos bien es una pasada propia.
+- **Rate limiter en memoria.** Está documentado en `rateLimiter.ts`. En Cloud Run con
+  autoescalado, el límite de 20/hora se multiplica por instancia. Al deployar: o
+  `max-instances=1`, o mover el conteo a Postgres (no hace falta Redis).
 
 ---
 

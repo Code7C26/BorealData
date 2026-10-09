@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ImagePlus, Loader2, Search, Sparkles } from 'lucide-react'
 import { AnalysisPanel, MAX_CHARS, type AnalysisState } from '@/components/result/analysis-panel'
@@ -12,6 +13,7 @@ import {
   guardarBorrador,
   guardarContenidoPendiente,
   leerBorrador,
+  sinSuscripcion,
 } from '@/lib/resultado-storage'
 import { cn } from '@/lib/utils'
 
@@ -41,7 +43,22 @@ type EstadoImagen =
 
 export function AnalisisInput({ className }: { className?: string }) {
   const router = useRouter()
-  const [valor, setValor] = useState('')
+  /**
+   * El input jamás se pierde: si volviste acá después de un error (o recargaste), se
+   * repone lo que habías pegado.
+   *
+   * El borrador vive en sessionStorage, o sea afuera de React: se lee con
+   * `useSyncExternalStore` en vez de copiarlo a estado desde un efecto, que renderizaba
+   * una vez con el campo vacío y lo corregía después. El snapshot es un string, así que
+   * la comparación por identidad del hook alcanza.
+   *
+   * `null` en `editado` significa "todavía no tocó el campo": ahí manda el borrador.
+   */
+  const borrador = useSyncExternalStore(sinSuscripcion, leerBorrador, () => '')
+  const [editado, setEditado] = useState<string | null>(null)
+  const valor = editado ?? borrador
+  const setValor = setEditado
+
   const [estado, setEstado] = useState<AnalysisState>({ kind: 'idle' })
   const [imagen, setImagen] = useState<EstadoImagen | null>(null)
   const [errorImagen, setErrorImagen] = useState<string | null>(null)
@@ -50,13 +67,6 @@ export function AnalisisInput({ className }: { className?: string }) {
   // El object URL hay que revocarlo a mano o el blob queda retenido hasta que
   // se cierre la pestaña, y acá son capturas de pantalla enteras.
   const srcRef = useRef<string | null>(null)
-
-  // El input jamás se pierde: si volvió acá después de un error (o recargó),
-  // reponemos lo que había pegado.
-  useEffect(() => {
-    const borrador = leerBorrador()
-    if (borrador) setValor(borrador)
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -315,8 +325,18 @@ export function AnalisisInput({ className }: { className?: string }) {
 
       {errorImagen && <ErrorImagen mensaje={errorImagen} />}
 
-      {/* La promesa de privacidad va en micro, abajo, sin ícono de candado. */}
-      <p className="font-mono text-micro uppercase text-disabled">No guardamos lo que analizás</p>
+      {/* La nota de privacidad va en micro, abajo, sin ícono de candado.
+          Decía "No guardamos lo que analizás" y era falso: los análisis se
+          guardan en tu historial, y los de enlaces se reusan entre cuentas. En
+          un producto cuyo argumento es la honestidad, la línea de privacidad es
+          el último lugar donde se puede prometer de más — ahora dice lo que el
+          backend hace de verdad y linkea al detalle completo. */}
+      <p className="font-mono text-micro uppercase text-disabled">
+        Las imágenes no se guardan ·{' '}
+        <Link href="/privacidad" className="underline hover:text-accent-text">
+          Qué hacemos con tus datos
+        </Link>
+      </p>
     </form>
   )
 }
