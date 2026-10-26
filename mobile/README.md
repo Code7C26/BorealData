@@ -3,9 +3,60 @@
 La tercera superficie de AletheIA, además de la web y la extensión de Chrome.
 Expo SDK 58 (React Native 0.88, Expo Router 58, React 19.3), TypeScript.
 
+> **Se abre con Expo Go, sin compilar nada.** El changelog de SDK 58 decía que
+> el Expo Go de esa versión llegaría "en unas semanas", y eso mandó al equipo a
+> pelearse medio día con un *development build* de EAS (814 MB de subida que la
+> conexión no bancaba). Falso: el Expo Go de SDK 58 ya estaba en las tiendas.
+> **Antes de dar por imposible Expo Go, probalo**: `npx.cmd expo start` y mirá
+> si dice "Using Expo Go". Si dice "Using development build" es porque está
+> instalado `expo-dev-client` — sacalo, o apretá `s` para cambiar de modo.
+>
+> De paso quedó comprobado que bajar a SDK 57 y volver a 58 **no requiere ni un
+> cambio de código**: solo versiones de dependencias.
+
 Pega contra el **mismo backend** que la web (`backend/`) y usa el **mismo
 proyecto de Firebase**: la cuenta que creaste en la web entra en la app, y los
 análisis que hacés acá aparecen en el historial de la web.
+
+---
+
+## Guía rápida (los comandos que vas a necesitar)
+
+```bash
+# Abrirla en el telefono con Expo Go: escanear el QR que imprime este comando.
+# El telefono y la PC tienen que estar en el mismo WiFi, y conviene no tener
+# VPN activa en ninguno de los dos (rompe el ruteo de la red local).
+npx.cmd expo start
+```
+
+```bash
+# Verla en el navegador del celular, sin instalar Expo Go (tampoco usa
+# internet). Despues abri http://<IP-de-tu-PC>:8082/demo en el celular.
+npx.cmd expo start --web --port 8082
+```
+
+```bash
+# Arrancar el emulador de Android (no necesita internet ni celular)
+C:\Users\Usuario\AppData\Local\Android\Sdk\emulator\emulator.exe -avd aletheia
+```
+
+```bash
+# Compilar el APK de desarrollo en la nube (hacelo con buena conexion y sin VPN)
+npx.cmd eas-cli@latest build --profile development --platform android --no-wait
+```
+
+```bash
+# Bajar el ultimo APK compilado e instalarlo en el emulador que este corriendo
+npx.cmd eas-cli@latest build:run -p android --latest
+```
+
+En PowerShell va `npx.cmd` y no `npx`: con la política de ejecución de scripts
+en su valor por defecto, el wrapper `.ps1` falla.
+
+**La subida del build pesa ~814 MB** (esta versión de EAS empaqueta
+`node_modules` y no hay forma de excluirlo; ver `.easignore` en la raíz del
+repo). Con una conexión lenta o detrás de una VPN se corta sola con
+`ECONNRESET`. Conviene lanzarla desde una conexión buena y sin VPN.
 
 ---
 
@@ -31,15 +82,27 @@ deduce la URL del backend del host de Metro: si el teléfono ve a tu PC en
 tienen que estar en la misma red. La pantalla de Perfil muestra abajo contra qué
 URL está pegando, que es lo primero que hay que mirar cuando "no anda".
 
-### 3. En el teléfono: hace falta un *development build*
-
-El Expo Go de la tienda todavía no soporta SDK 58 (sale "en unas semanas" desde
-el 15-oct-2026), así que la app necesita su propio build. Se compila en la nube,
-no hace falta Android Studio:
+### 3. En el teléfono: Expo Go
 
 ```bash
-npx eas-cli@latest login     # cuenta gratis de Expo
-npx eas-cli@latest init      # crea el proyecto y escribe el projectId en app.json
+npx.cmd expo start
+```
+
+Escaneás el QR que aparece en la terminal (con la cámara del iPhone o desde el
+propio Expo Go en Android) y la app abre. No hay que compilar nada ni instalar
+nada más que Expo Go, que está gratis en las dos tiendas.
+
+Requisitos: el teléfono y la PC en el **mismo WiFi**, y **sin VPN** en ninguno
+de los dos — un túnel suele romper el ruteo de la red local, que es por donde
+el teléfono busca a la PC.
+
+### Si alguna vez hace falta un *development build*
+
+Solo cuando se agregue una librería con código nativo que Expo Go no traiga, o
+cuando haya que volver a SDK 58:
+
+```bash
+npx.cmd expo install expo-dev-client   # se saco al bajar a SDK 57
 npx eas-cli@latest build --profile development --platform android
 ```
 
@@ -99,21 +162,15 @@ configurar.
 
 ### iPhone
 
-La app está escrita para las dos plataformas (no hay nada específico de Android
-en el código), pero **probarla en un iPhone es más caro que en Android**:
+El iPhone se resuelve igual que Android: **Expo Go y el QR**, gratis y sin Mac.
+La app no usa ningún módulo nativo fuera de los que Expo Go ya trae
+(router, reanimated, svg, image-picker, async-storage, gradient, clipboard,
+haptics; Firebase es JavaScript puro), así que corre tal cual.
 
-| Camino | Qué hace falta | Costo |
-|---|---|---|
-| **Esperar el Expo Go de SDK 58** | Nada: se escanea el QR | Gratis |
-| EAS Build en un iPhone propio | Apple Developer Program | USD 99/año |
-| Xcode con un Apple ID gratis | Una Mac, cable, y recompilar cada 7 días | Gratis, pero necesita Mac |
-| Simulador de iOS | Una Mac con Xcode | Gratis, pero necesita Mac |
-
-**El primero es el que conviene.** La app no usa ningún módulo nativo fuera de
-los que Expo Go ya trae (router, reanimated, svg, image-picker, async-storage,
-gradient, clipboard, haptics; Firebase es JavaScript puro), así que en cuanto
-salga el Expo Go de SDK 58 debería correr ahí tal cual, en iPhone y en Android,
-sin compilar nada.
+Si en algún momento hace falta un build propio para iPhone, ahí sí se pone
+caro: EAS Build en un iPhone necesita el Apple Developer Program (USD 99/año),
+y la alternativa gratis (Xcode con un Apple ID común, perfil que vence cada 7
+días) necesita una Mac.
 
 ---
 

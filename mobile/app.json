@@ -46,7 +46,11 @@
         {
           "photosPermission": "AletheIA necesita acceso a tus fotos para leer la captura que querés verificar."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

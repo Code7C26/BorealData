@@ -20,8 +20,25 @@
 /assets/
 /package-lock.json
 
-# Sin barra inicial: así matchea a cualquier profundidad. Medido: con
-# `/mobile/node_modules/` (anclado) NO lo excluía y el paquete seguía en 813 MB.
+# OJO: esto NO funciona, y queda escrito para que nadie lo vuelva a intentar.
+#
+# Medido el 26-oct-2026 contra eas-cli 18, seis variantes, mismo resultado:
+#   sin .easignore ................................. 1,2 GB
+#   .easignore dentro de mobile/ ................... 1,2 GB
+#   acá, `/mobile/node_modules/` (anclado) ........... 813 MB
+#   acá, `node_modules/` (sin ancla) ................. 813 MB
+#   con mobile/ ya commiteada ........................ 814 MB
+#   EAS_NO_VCS=1 + `node_modules` sin barra final .... 809 MB
+#
+# Los patrones de primer nivel (como `/apps/` acá arriba) SÍ se aplican: por eso
+# el paquete bajó de 1,2 GB a 813 MB. Lo que nunca se excluye es
+# `mobile/node_modules`, que son 753 de los 809 MB que quedan.
+#
+# Si alguna vez hace falta subir rápido: sacar `mobile/node_modules` de la
+# carpeta mientras dura la subida y devolverlo después (EAS reinstala las
+# dependencias de su lado desde el package-lock.json, no las necesita). Para eso
+# no puede haber un Metro corriendo, porque tiene la carpeta tomada y Windows no
+# deja renombrarla.
 node_modules/
 
 # ── Secretos, en cualquier carpeta ───────────────────────────────────────────

@@ -163,9 +163,9 @@ npm start             # servidor de Expo
 ```
 
 No hace falta configurar la IP del backend: la app la deduce del host de Metro, así que
-alcanza con que el teléfono y la PC estén en la misma red. Para verla en un teléfono hace
-falta un *development build* (`eas build --profile development`), porque el Expo Go de las
-tiendas todavía no soporta SDK 58. Detalle completo en [`mobile/README.md`](mobile/README.md).
+alcanza con que el teléfono y la PC estén en la misma red. Para verla en un teléfono se
+escanea el QR con **Expo Go** — no hay que compilar nada. Detalle completo en
+[`mobile/README.md`](mobile/README.md).
 
 ---
 

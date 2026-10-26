@@ -2,7 +2,7 @@
 
 > Documento de continuidad. Se actualiza a medida que avanza el proyecto para no perder contexto entre sesiones.
 
-**Última actualización:** 26 de octubre de 2026 (arranca la app móvil de verdad: `mobile/` con Expo SDK 58 — ver sección 14)
+**Última actualización:** 26 de octubre de 2026 (arranca la app móvil de verdad: `mobile/` con Expo SDK 58, abierta con Expo Go — ver sección 14)
 
 ---
 
@@ -231,9 +231,9 @@ La extensión corre con `npm run dev` (WXT) desde la misma carpeta y se carga "u
 - [ ] **Nada está deployado todavía.** No hay Dockerfile, ni `firebase.json`, ni CI, y
       `NEXT_PUBLIC_API_URL` apunta a `localhost:4000`. Es el pendiente más grande: la
       presentación es en diciembre y hoy el producto solo corre en la máquina de Renzo.
-- [ ] **Compilar el dev build de la app móvil** con EAS (`eas build --profile
-      development --platform android`). Hasta entonces la app solo corre en el emulador
-      o compilando local: el Expo Go de la tienda todavía no soporta SDK 58. Ver sección 14.
+- [ ] El `development` de `eas.json` quedó sin `expo-dev-client` (se sacó al probar
+      SDK 57 y no se repuso). Si alguna vez hace falta un build propio:
+      `npx.cmd expo install expo-dev-client` antes de compilar.
 - [ ] En la app móvil falta recibir el "Compartir" de otras apps (intent `ACTION_SEND`),
       que es lo que la hace más útil que la web en el teléfono.
 - [ ] Seguir la bitácora de bugs de frontend a medida que Renzo reporte nuevos.
@@ -348,11 +348,19 @@ pelean por el mismo `node_modules` y el mismo `tsconfig`.
 Expo **SDK 58** (salió el 15-oct-2026) con React Native 0.88, Expo Router 58, React 19.3,
 React Compiler activado y la New Architecture por default. Firebase 13.
 
-**Consecuencia de ir al SDK más nuevo:** el Expo Go de la tienda todavía no soporta 58, así
-que para verla en un teléfono hace falta un *development build* (`eas build --profile
-development`, se compila en la nube, no necesita Android Studio). Se instala una sola vez;
-después el hot reload funciona igual que con Expo Go. A cambio, no hay que migrar 57 → 58
-antes de la presentación, que este ciclo tocó el núcleo de Expo Router.
+**Se abre con Expo Go**, escaneando el QR de `npx.cmd expo start`. No hace falta compilar
+nada.
+
+Esto costó medio día de rodeo y vale la pena dejarlo escrito: el changelog de SDK 58 decía
+que el Expo Go de esa versión llegaría "en unas semanas", y sobre esa frase se armó todo un
+camino de *development build* con EAS — cuenta de Expo, keystore, y una subida de 814 MB
+que la conexión del colegio cortaba con `ECONNRESET` una y otra vez. El Expo Go de SDK 58
+**ya estaba publicado**. La lección: antes de dar Expo Go por imposible, correr
+`expo start` y mirar si dice "Using Expo Go". Si dice "Using development build" es porque
+está instalado `expo-dev-client`, que fuerza ese modo.
+
+De paso quedó comprobado que bajar a 57 y volver a 58 **no requiere ni un cambio de
+código**: solo versiones de dependencias, y el typecheck pasa limpio en las dos.
 
 ### Qué comparte con el resto del producto
 Mismo backend y mismo proyecto de Firebase: la cuenta de la web entra en la app y los
