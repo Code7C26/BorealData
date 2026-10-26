@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import { AuthProvider } from '@/lib/auth-context'
+import { traducciones } from '@/lib/idioma'
+import { leerIdioma } from '@/lib/idioma-servidor'
+import { IdiomaProvider } from '@/lib/use-idioma'
 import { SIDEBAR_INIT_SCRIPT } from '@/lib/sidebar-colapso'
 import { THEME_INIT_SCRIPT } from '@/lib/theme'
 import './global.css'
@@ -8,7 +11,8 @@ import './global.css'
 /**
  * latin-ext es obligatorio en las tres: sin ese subset la ñ y las vocales
  * acentuadas caen al fallback del sistema y se rompe el ritmo del texto en
- * español — que es el único idioma en el que se lee esta app.
+ * español — el idioma canónico de la app. En inglés también hacen falta: los
+ * nombres propios de las notas traen acentos igual.
  */
 const archivo = Archivo({
   subsets: ['latin', 'latin-ext'],
@@ -34,10 +38,21 @@ const plexMono = IBM_Plex_Mono({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: 'AletheIA — Verificación que se deja auditar | Boreal Data',
-  description:
-    'Pegá un enlace o el texto de una nota y AletheIA te muestra el camino completo hasta el veredicto: qué fuentes consultó, cuál es su postura y cómo lo razonó. No un puntaje.',
+const METADATA = traducciones<Metadata>({
+  es: {
+    title: 'AletheIA — Verificación que se deja auditar | Boreal Data',
+    description:
+      'Pegá un enlace o el texto de una nota y AletheIA te muestra el camino completo hasta el veredicto: qué fuentes consultó, cuál es su postura y cómo lo razonó. No un puntaje.',
+  },
+  en: {
+    title: 'AletheIA — Fact-checking you can audit | Boreal Data',
+    description:
+      'Paste a link or the text of an article and AletheIA shows you the full path to the verdict: which sources it checked, where each one stands and how it reasoned. Not a score.',
+  },
+})
+
+export async function generateMetadata(): Promise<Metadata> {
+  return METADATA[await leerIdioma()]
 }
 
 export const viewport: Viewport = {
@@ -48,14 +63,16 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const idioma = await leerIdioma()
+
   return (
     <html
-      lang="es"
+      lang={idioma}
       data-theme="dark"
       suppressHydrationWarning
       className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable}`}
@@ -73,7 +90,9 @@ export default function RootLayout({
             servidor lo manda expandido y el cliente lo corrige al hidratar, con un
             salto de 288 px a 76 px que corre el contenido de la página. */}
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
-        <AuthProvider>{children}</AuthProvider>
+        <IdiomaProvider idioma={idioma}>
+          <AuthProvider>{children}</AuthProvider>
+        </IdiomaProvider>
       </body>
     </html>
   )

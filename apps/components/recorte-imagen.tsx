@@ -2,8 +2,41 @@
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Crop, Maximize2, ScanText, X } from 'lucide-react'
+import { traducciones } from '@/lib/idioma'
 import { RECORTE_COMPLETO, type Recorte } from '@/lib/imagen'
+import { useTextos } from '@/lib/use-idioma'
 import { cn } from '@/lib/utils'
+
+const TEXTOS = traducciones({
+  es: {
+    eyebrow: 'Esto es lo que vamos a leer',
+    tituloCompleto: 'Quedate solo con la publicación',
+    tituloRecorte: 'Ajustá el recorte',
+    descartar: 'Descartar esta imagen',
+    ayudaCompleto:
+      'Arrastrá sobre la imagen para marcar solo la publicación. Si hay varios posteos a la vista, recortar cambia el veredicto.',
+    ayudaRecorte: 'Movelo, o estiralo de las esquinas. Hacé clic en el fondo para empezar de nuevo.',
+    alt: (etiqueta: string) => `Imagen a analizar: ${etiqueta}`,
+    esquina: (id: string) => `Ajustar la esquina ${id}`,
+    leer: 'Leer esta imagen',
+    completa: 'Usar la imagen completa',
+    privacidad: 'La imagen se usa solo para leerla y no se guarda',
+  },
+  en: {
+    eyebrow: 'This is what we are going to read',
+    tituloCompleto: 'Keep only the post',
+    tituloRecorte: 'Adjust the crop',
+    descartar: 'Discard this image',
+    ayudaCompleto:
+      'Drag over the image to mark only the post. If there are several posts in view, cropping changes the verdict.',
+    ayudaRecorte: 'Move it, or stretch it from the corners. Click the background to start over.',
+    alt: (etiqueta: string) => `Image to analyze: ${etiqueta}`,
+    esquina: (id: string) => `Adjust the ${id} corner`,
+    leer: 'Read this image',
+    completa: 'Use the full image',
+    privacidad: 'The image is only used to read it and is not stored',
+  },
+})
 
 /**
  * "Esto es lo que vamos a leer": la imagen, con un marco que se ajusta antes de
@@ -62,6 +95,7 @@ export function RecorteImagen({
   onCancelar,
   className,
 }: RecorteImagenProps) {
+  const t = useTextos(TEXTOS)
   const [recorte, setRecorte] = useState<Recorte>(RECORTE_COMPLETO)
   // Tamaño real en píxeles: solo para mostrar cuánto se está mandando.
   const [natural, setNatural] = useState<{ width: number; height: number } | null>(null)
@@ -185,16 +219,16 @@ export function RecorteImagen({
         <div className="flex flex-col gap-1">
           <p className="flex items-center gap-2 font-mono text-micro uppercase text-accent-text">
             <Crop aria-hidden="true" size={13} />
-            Esto es lo que vamos a leer
+            {t.eyebrow}
           </p>
           <h2 id="recorte-title" className="font-display text-h3 font-semibold text-display">
-            {recorteCompleto ? 'Quedate solo con la publicación' : 'Ajustá el recorte'}
+            {recorteCompleto ? t.tituloCompleto : t.tituloRecorte}
           </h2>
         </div>
         <button
           type="button"
           onClick={onCancelar}
-          aria-label="Descartar esta imagen"
+          aria-label={t.descartar}
           className="rounded-pill border border-border p-2 text-subtle transition-colors duration-150 hover:border-border-strong hover:text-ink"
         >
           <X aria-hidden="true" size={16} />
@@ -202,9 +236,7 @@ export function RecorteImagen({
       </div>
 
       <p className="text-body-sm text-muted">
-        {recorteCompleto
-          ? 'Arrastrá sobre la imagen para marcar solo la publicación. Si hay varios posteos a la vista, recortar cambia el veredicto.'
-          : 'Movelo, o estiralo de las esquinas. Hacé clic en el fondo para empezar de nuevo.'}
+        {recorteCompleto ? t.ayudaCompleto : t.ayudaRecorte}
       </p>
 
       {/* touch-action-none: sin eso, arrastrar con el dedo scrollea la página
@@ -220,7 +252,7 @@ export function RecorteImagen({
             dimensiones que recién se conocen al cargarla. */}
         <img
           src={src}
-          alt={`Imagen a analizar: ${etiqueta}`}
+          alt={t.alt(etiqueta)}
           draggable={false}
           onLoad={(e) =>
             setNatural({
@@ -254,7 +286,7 @@ export function RecorteImagen({
               key={id}
               type="button"
               tabIndex={-1}
-              aria-label={`Ajustar la esquina ${id}`}
+              aria-label={t.esquina(id)}
               onPointerDown={(e) => {
                 e.stopPropagation()
                 iniciarArrastre({ modo: 'redimensionar', esquina: id, inicial: recorte })
@@ -286,7 +318,7 @@ export function RecorteImagen({
           className="btn-primary w-full md:w-auto"
         >
           <ScanText aria-hidden="true" size={16} />
-          Leer esta imagen
+          {t.leer}
         </button>
         {!recorteCompleto && (
           <button
@@ -295,13 +327,13 @@ export function RecorteImagen({
             className="btn-secondary w-full md:w-auto"
           >
             <Maximize2 aria-hidden="true" size={16} />
-            Usar la imagen completa
+            {t.completa}
           </button>
         )}
       </div>
 
       <p className="font-mono text-micro uppercase text-disabled">
-        La imagen se usa solo para leerla y no se guarda
+        {t.privacidad}
       </p>
     </section>
   )

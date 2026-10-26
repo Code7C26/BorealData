@@ -2,7 +2,36 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { Crop, Maximize2, ScanText, X } from 'lucide-react';
 import type { CropRect } from '@/lib/capture';
 import { CROP_COMPLETO } from '@/lib/capture';
+import { traducciones } from '@/lib/idioma';
+import { useTextos } from './use-idioma';
 import './CropPreview.css';
+
+const TEXTOS = traducciones({
+  es: {
+    eyebrow: 'Esto es lo que vamos a leer',
+    cancelar: 'Cancelar la captura',
+    ayudaCompleta:
+      'Arrastrá sobre la captura para quedarte solo con la publicación. Si hay varios posteos a la vista, recortar cambia el veredicto.',
+    ayudaRecorte: 'Movelo, o estiralo de las esquinas. Tocá el fondo para empezar de nuevo.',
+    alt: (origen: string) => `Captura de ${origen}`,
+    esquina: (id: string) => `Ajustar la esquina ${id}`,
+    leer: 'Leer esta imagen',
+    completa: 'Usar la captura completa',
+    privacidad: 'La imagen se usa solo para leerla y no se guarda en ningún lado.',
+  },
+  en: {
+    eyebrow: 'This is what we are going to read',
+    cancelar: 'Cancel the capture',
+    ayudaCompleta:
+      'Drag over the capture to keep only the post. If there are several posts in view, cropping changes the verdict.',
+    ayudaRecorte: 'Move it, or stretch it from the corners. Tap the background to start over.',
+    alt: (origen: string) => `Capture of ${origen}`,
+    esquina: (id: string) => `Adjust the ${id} corner`,
+    leer: 'Read this image',
+    completa: 'Use the full capture',
+    privacidad: 'The image is only used to read it and is not stored anywhere.',
+  },
+});
 
 /**
  * "Esto es lo que vamos a leer": la captura, con un marco que el usuario
@@ -47,6 +76,7 @@ function clamp01(valor: number): number {
 }
 
 function CropPreview({ dataUrl, originLabel, onConfirm, onCancel }: CropPreviewProps) {
+  const t = useTextos(TEXTOS);
   const [crop, setCrop] = useState<CropRect>(CROP_COMPLETO);
   // Tamaño real de la captura en píxeles: se usa solo para mostrarle al
   // usuario cuánto está mandando. Llega con el onLoad de la imagen.
@@ -178,18 +208,14 @@ function CropPreview({ dataUrl, originLabel, onConfirm, onCancel }: CropPreviewP
       <div className="crop-head">
         <span className="crop-eyebrow">
           <Crop size={13} />
-          Esto es lo que vamos a leer
+          {t.eyebrow}
         </span>
-        <button className="crop-close" onClick={onCancel} aria-label="Cancelar la captura">
+        <button className="crop-close" onClick={onCancel} aria-label={t.cancelar}>
           <X size={15} />
         </button>
       </div>
 
-      <p className="crop-hint">
-        {recorteCompleto
-          ? 'Arrastrá sobre la captura para quedarte solo con la publicación. Si hay varios posteos a la vista, recortar cambia el veredicto.'
-          : 'Movelo, o estiralo de las esquinas. Tocá el fondo para empezar de nuevo.'}
-      </p>
+      <p className="crop-hint">{recorteCompleto ? t.ayudaCompleta : t.ayudaRecorte}</p>
 
       {/* touch-action: none va en el CSS — sin eso, arrastrar con el dedo
           scrollea el panel en vez de mover el marco. */}
@@ -202,7 +228,7 @@ function CropPreview({ dataUrl, originLabel, onConfirm, onCancel }: CropPreviewP
         <img
           className="crop-img"
           src={dataUrl}
-          alt={`Captura de ${originLabel}`}
+          alt={t.alt(originLabel)}
           draggable={false}
           onLoad={(e) =>
             setNatural({
@@ -229,7 +255,7 @@ function CropPreview({ dataUrl, originLabel, onConfirm, onCancel }: CropPreviewP
               type="button"
               className={`crop-handle crop-handle-${esquina}`}
               onPointerDown={(e) => alApoyarEnEsquina(e, esquina)}
-              aria-label={`Ajustar la esquina ${esquina}`}
+              aria-label={t.esquina(esquina)}
               tabIndex={-1}
             />
           ))}
@@ -248,19 +274,17 @@ function CropPreview({ dataUrl, originLabel, onConfirm, onCancel }: CropPreviewP
       <div className="crop-actions">
         <button className="analyze-btn" onClick={() => onConfirm(crop)}>
           <ScanText size={16} />
-          Leer esta imagen
+          {t.leer}
         </button>
         {!recorteCompleto && (
           <button className="crop-secondary" onClick={() => setCrop(CROP_COMPLETO)}>
             <Maximize2 size={14} />
-            Usar la captura completa
+            {t.completa}
           </button>
         )}
       </div>
 
-      <p className="crop-privacy">
-        La imagen se usa solo para leerla y no se guarda en ningún lado.
-      </p>
+      <p className="crop-privacy">{t.privacidad}</p>
     </div>
   );
 }

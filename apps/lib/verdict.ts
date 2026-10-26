@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, HelpCircle, XCircle, type LucideIcon } from 'lucide-react'
+import { traducciones } from '@/lib/idioma'
 
 /**
  * Vocabulario del veredicto — la única fuente de verdad del front.
@@ -174,3 +175,54 @@ export const STANCE: Record<SourceStance, StanceMeta> = {
   'sin-datos': { label: 'Sin datos', text: 'text-verdict-sindatos' },
   origen: { label: 'Origen', text: 'text-accent-text' },
 }
+
+/**
+ * El mismo vocabulario en inglés. Solo cambian las palabras: las clases y los íconos se
+ * heredan del español con el spread, así siguen escritos una sola vez (y enteros, que es
+ * lo que necesita Tailwind para generarlos).
+ *
+ * "Questionable" y no "Misleading" para `dudoso`: el estado también cubre afirmaciones
+ * que no tienen respaldo suficiente, no solo las que engañan.
+ */
+const VERDICT_EN: Record<Verdict, VerdictMeta> = {
+  verificado: { ...VERDICT.verificado, label: 'Verified', meaning: 'Primary sources agree.' },
+  dudoso: {
+    ...VERDICT.dudoso,
+    label: 'Questionable',
+    meaning: 'A mix of accurate and out-of-context facts.',
+  },
+  falso: {
+    ...VERDICT.falso,
+    label: 'False',
+    meaning: 'The evidence contradicts the central claim.',
+  },
+  'sin-datos': {
+    ...VERDICT['sin-datos'],
+    label: 'Not enough data',
+    meaning: 'Not knowing is not an error.',
+  },
+}
+
+const CONFIDENCE_EN: Record<Confidence, ConfidenceMeta> = {
+  1: { label: 'Very low', note: 'A single secondary source, with no independent confirmation.' },
+  2: { label: 'Low', note: 'There are signs, but the primary source is missing.' },
+  3: { label: 'Medium', note: 'Primary source located; some context remains unverified.' },
+  4: { label: 'High', note: 'Primary source confirmed and fact-checkers agree.' },
+  5: {
+    label: 'Very high',
+    note: 'Primary source, independent fact-checkers and full traceability.',
+  },
+}
+
+const STANCE_EN: Record<SourceStance, StanceMeta> = {
+  confirma: { ...STANCE.confirma, label: 'Confirms' },
+  contradice: { ...STANCE.contradice, label: 'Contradicts' },
+  'sin-datos': { ...STANCE['sin-datos'], label: 'No data' },
+  origen: { ...STANCE.origen, label: 'Origin' },
+}
+
+/** El vocabulario por idioma. En componentes se lee con `useVocabulario()`. */
+export const VOCABULARIO = traducciones({
+  es: { VERDICT, CONFIDENCE, STANCE },
+  en: { VERDICT: VERDICT_EN, CONFIDENCE: CONFIDENCE_EN, STANCE: STANCE_EN },
+})

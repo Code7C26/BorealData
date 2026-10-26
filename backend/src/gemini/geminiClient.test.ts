@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parseGeminiResponse, toGroundingLink } from "./geminiClient.js";
+import { buildPrompt, parseGeminiResponse, toGroundingLink } from "./geminiClient.js";
+import { buildReadPrompt } from "./readCapture.js";
+import { parseLanguage } from "./types.js";
 
 /**
  * Chunks de grounding con la forma REAL de la API de Gemini, medida contra ella el
@@ -258,5 +260,115 @@ describe("parseGeminiResponse — contrato del análisis", () => {
     expect(parseGeminiResponse(respuestaCon({ ...BASE, confidence: 9 }), CHUNKS).success).toBe(
       false
     );
+  });
+});
+
+describe("buildPrompt — idioma", () => {
+  const TITULO = "Sube la inflación";
+  const CUERPO = "El INDEC informó 1,7% en agosto.";
+
+  it("en castellano mantiene la regla rioplatense y no pide inglés", () => {
+    const prompt = buildPrompt(TITULO, CUERPO, "url", "es");
+    expect(prompt).toContain("Español rioplatense neutro");
+    expect(prompt).not.toMatch(/in English/i);
+  });
+
+  it("sin idioma usa castellano (el comportamiento de siempre, el de la extensión)", () => {
+    expect(buildPrompt(TITULO, CUERPO)).toBe(buildPrompt(TITULO, CUERPO, "url", "es"));
+  });
+
+  it("en inglés cambia la regla de tono y fija el idioma de cada campo de texto", () => {
+    const prompt = buildPrompt(TITULO, CUERPO, "url", "en");
+    expect(prompt).not.toContain("rioplatense");
+    expect(prompt).toContain("Write every text field in English");
+    for (const campo of ["headline", "lead", "summary", "reasoning", "note", "toneFlags"]) {
+      expect(prompt).toContain(`"${campo}"`);
+    }
+  });
+
+  /**
+   * verdict/stance son claves que parseGeminiResponse valida contra VALID_VERDICTS y
+   * VALID_STANCES: si el modelo las traduce ("false", "confirms"), el análisis entero se
+   * descarta (verdict) o la fuente desaparece (stance). El prompt tiene que decirlo.
+   */
+  it("en inglés pide NO traducir los valores de verdict y stance", () => {
+    const prompt = buildPrompt(TITULO, CUERPO, "url", "en");
+    expect(prompt).toMatch(/"verdict" and "stance" are NOT translated/);
+    expect(prompt).toContain('"verdict": "<una de: verificado | dudoso | falso | sin-datos>"');
+    expect(prompt).toContain('"stance": "<una de: confirma | contradice | sin-datos | origen>"');
+  });
+
+  /**
+   * Regresión medida contra la API real (22-oct-2026): con solo la regla general, el
+   * modelo escribía summary/reasoning/note en inglés pero headline y lead en castellano.
+   */
+  it("en inglés marca headline y lead en el formato y cierra con un recordatorio", () => {
+    const prompt = buildPrompt(TITULO, CUERPO, "url", "en");
+    expect(prompt).toContain('"headline": "<IN ENGLISH, even if the article is in Spanish — ');
+    expect(prompt).toContain('"lead": "<IN ENGLISH, even if the article is in Spanish — ');
+    expect(prompt.trimEnd().endsWith('"verdict" and "stance" keep the Spanish tokens.')).toBe(true);
+    expect(buildPrompt(TITULO, CUERPO, "url", "es")).not.toContain("IN ENGLISH");
+  });
+
+  /**
+   * Regresión medida contra la API real (22-oct-2026): con los ejemplos de toneFlags en
+   * castellano, un análisis en inglés devolvió "apelación emocional" copiado del ejemplo.
+   */
+  it("en inglés los ejemplos de toneFlags van en inglés", () => {
+    const en = buildPrompt(TITULO, CUERPO, "url", "en");
+    expect(en).toContain('"toneFlags": ["<IN ENGLISH — tone signals');
+    expect(en).toContain("emotional appeal");
+    expect(en).not.toContain("apelación emocional");
+    expect(en).toContain('"attempt to manipulate the analysis"');
+
+    // El castellano queda exactamente como estaba.
+    expect(buildPrompt(TITULO, CUERPO, "url", "es")).toContain(
+      '"toneFlags": ["<señales de tono detectadas en el artículo: sensacionalismo'
+    );
+  });
+
+  it("el idioma también aplica al contenido del cliente", () => {
+    const prompt = buildPrompt(TITULO, CUERPO, "capture", "en");
+    expect(prompt).toContain("Write every text field in English");
+    expect(prompt).toContain("CONTEXTO DEL CONTENIDO");
+  });
+
+  it("el bloque de idioma va antes del contenido a analizar, no adentro", () => {
+    const prompt = buildPrompt(TITULO, CUERPO, "url", "en");
+    expect(prompt.indexOf("IDIOMA DE LA RESPUESTA")).toBeLessThan(
+      // lastIndexOf: la etiqueta también aparece, citada, en la guarda contra inyección.
+      prompt.lastIndexOf("<contenido_a_analizar>")
+    );
+  });
+});
+
+describe("buildReadPrompt — idioma", () => {
+  it("en inglés pide mainClaim en inglés y deja la transcripción en su idioma", () => {
+    const prompt = buildReadPrompt("en");
+    expect(prompt).toContain('write "mainClaim" in English');
+    expect(prompt).toContain("original language");
+  });
+
+  it("en castellano (y por default) no agrega nada", () => {
+    expect(buildReadPrompt()).toBe(buildReadPrompt("es"));
+    expect(buildReadPrompt("es")).not.toMatch(/English/);
+  });
+});
+
+describe("parseLanguage", () => {
+  it("sin el campo es castellano: la extensión todavía no lo manda", () => {
+    expect(parseLanguage(undefined)).toBe("es");
+    expect(parseLanguage(null)).toBe("es");
+  });
+
+  it("acepta es y en", () => {
+    expect(parseLanguage("es")).toBe("es");
+    expect(parseLanguage("en")).toBe("en");
+  });
+
+  it("rechaza cualquier otra cosa (la ruta responde 400)", () => {
+    for (const malo of ["EN", "en-US", "fr", "", " en", 1, true, {}, ["en"]]) {
+      expect(parseLanguage(malo)).toBe(null);
+    }
   });
 });

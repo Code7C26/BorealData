@@ -1,5 +1,6 @@
 import { auth } from '@/lib/firebase'
 import type { Confidence, SourceStance, Verdict } from '@/lib/verdict'
+import type { Idioma } from '@/lib/idioma'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
@@ -54,6 +55,12 @@ export interface AnalyzeResponse {
    * backend), así que ofrecer "Compartir verificación" ahí daría un link roto.
    */
   shareable?: boolean
+  /**
+   * Idioma en que escribió Gemini. Falta en el ejemplo precargado y en resultados viejos
+   * guardados en sessionStorage; el backend lo manda siempre ('es' para todo lo anterior
+   * a oct-2026).
+   */
+  language?: Idioma
 }
 
 /** Item de GET /history (backend/src/db/analysesRepository.ts::AnalysisHistoryItem). */
@@ -185,13 +192,28 @@ export const MAX_CONTENT_CHARS = 12_000
 /**
  * Paso 1: transcribe la imagen. No devuelve veredicto a propósito — el
  * veredicto sale del paso 2, sobre el texto que la persona confirmó.
+ *
+ * `idioma` solo cambia `mainClaim` (lo único que el modelo escribe con palabras
+ * propias): la transcripción queda siempre en el idioma del posteo.
  */
-export async function leerImagen(imagenes: { mimeType: string; dataBase64: string }[]) {
+export async function leerImagen(imagenes: { mimeType: string; dataBase64: string }[], idioma: Idioma) {
   const { reading } = await apiFetch<{ reading: CaptureReading }>('/analyze/read', {
     method: 'POST',
-    body: { images: imagenes },
+    body: { images: imagenes, language: idioma },
   })
   return reading
+}
+
+/**
+ * Analiza una URL. `idioma` es el de la interfaz: Gemini escribe el análisis en ese
+ * idioma, y la caché del backend matchea por (url, idioma), así que nunca devuelve un
+ * análisis en castellano a quien usa la web en inglés.
+ */
+export async function analizarUrl(url: string, idioma: Idioma) {
+  return apiFetch<AnalyzeResponse>('/analyze', {
+    method: 'POST',
+    body: { url, language: idioma },
+  })
 }
 
 /** Paso 2: verifica el texto ya confirmado. Devuelve lo mismo que POST /analyze. */
@@ -201,10 +223,12 @@ export async function analizarContenido(entrada: {
   platform?: Platform | null
   author?: string | null
   pageUrl?: string | null
+  idioma: Idioma
 }) {
   return apiFetch<AnalyzeResponse>('/analyze/content', {
     method: 'POST',
     body: {
+      language: entrada.idioma,
       source: {
         kind: entrada.kind,
         platform: entrada.platform ?? null,

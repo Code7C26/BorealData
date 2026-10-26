@@ -3,9 +3,29 @@
 import { useState } from 'react'
 import { Check, ExternalLink, Share2 } from 'lucide-react'
 import type { AnalysisSource, AnalyzeResponse } from '@/lib/api'
-import { normalize, STANCE, VERDICT } from '@/lib/verdict'
+import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
+import { useVocabulario } from '@/lib/use-vocabulario'
+import { normalize } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
 import { ConfidenceMeter } from './confidence-meter'
+
+const TEXTOS = traducciones({
+  es: {
+    fuentes: 'Fuentes consultadas',
+    razonamiento: 'Razonamiento resumido',
+    verPasos: (n: number) => `Ver los ${n} pasos`,
+    copiado: 'Enlace copiado',
+    compartir: 'Compartir verificación',
+  },
+  en: {
+    fuentes: 'Sources checked',
+    razonamiento: 'Reasoning summary',
+    verPasos: (n: number) => `See all ${n} steps`,
+    copiado: 'Link copied',
+    compartir: 'Share this check',
+  },
+})
 
 /** Cuánto se muestra el estado "copiado" antes de volver al botón normal. */
 const FEEDBACK_COPIADO_MS = 2000
@@ -65,6 +85,9 @@ export function ResultCard({
   showActions?: boolean
   className?: string
 }) {
+  const t = useTextos(TEXTOS)
+  const { idioma } = useIdioma()
+  const { VERDICT } = useVocabulario()
   const { verdict, confidence } = normalize(analysis.verdict, analysis.confidence)
   const meta = VERDICT[verdict]
   const Icon = meta.icon
@@ -87,7 +110,7 @@ export function ResultCard({
         </p>
         {fecha && (
           <time dateTime={fecha} className="pt-1.5 font-mono text-micro uppercase text-subtle">
-            {new Intl.DateTimeFormat('es-AR', {
+            {new Intl.DateTimeFormat(TAG_IDIOMA[idioma], {
               dateStyle: 'medium',
               timeStyle: 'short',
             }).format(new Date(fecha))}
@@ -140,7 +163,7 @@ export function ResultCard({
       {analysis.sources.length > 0 && (
         <section className="card-block gap-3.5">
           <div className="flex items-baseline justify-between gap-4">
-            <h3 className="font-mono text-caption uppercase text-subtle">Fuentes consultadas</h3>
+            <h3 className="font-mono text-caption uppercase text-subtle">{t.fuentes}</h3>
             <span className="font-mono text-caption text-subtle">{analysis.sources.length}</span>
           </div>
           <ul className="flex flex-col gap-2.5">
@@ -154,7 +177,7 @@ export function ResultCard({
       {/* 5 · razonamiento */}
       {pasos.length > 0 && !razonamientoAparte && (
         <section className="card-block gap-4">
-          <h3 className="font-mono text-caption uppercase text-subtle">Razonamiento resumido</h3>
+          <h3 className="font-mono text-caption uppercase text-subtle">{t.razonamiento}</h3>
           <ol className="flex flex-col gap-3.5">
             {pasos.map((paso, i) => (
               <li
@@ -179,7 +202,7 @@ export function ResultCard({
               onClick={() => setPasosExpandidos(true)}
               className="self-start font-mono text-caption text-accent-text underline-offset-4 hover:underline md:hidden"
             >
-              Ver los {pasos.length} pasos
+              {t.verPasos(pasos.length)}
             </button>
           )}
         </section>
@@ -212,6 +235,7 @@ export function ResultCard({
  * queda como <div> en vez de inventar un link.
  */
 function SourceRow({ source }: { source: AnalysisSource }) {
+  const { STANCE } = useVocabulario()
   const stance = STANCE[source.stance] ?? STANCE['sin-datos']
 
   // El dominio es un dato y va en mono; cuando la fuente no tiene dominio —los
@@ -280,6 +304,7 @@ function SourceRow({ source }: { source: AnalysisSource }) {
  */
 function BotonCompartir({ id, className }: { id?: string | null; className?: string }) {
   const [copiado, setCopiado] = useState(false)
+  const t = useTextos(TEXTOS)
 
   const compartir = async () => {
     if (typeof window === 'undefined') return
@@ -299,12 +324,12 @@ function BotonCompartir({ id, className }: { id?: string | null; className?: str
       {copiado ? (
         <>
           <Check aria-hidden="true" size={16} className="text-verdict-verificado" />
-          Enlace copiado
+          {t.copiado}
         </>
       ) : (
         <>
           <Share2 aria-hidden="true" size={16} />
-          Compartir verificación
+          {t.compartir}
         </>
       )}
     </button>

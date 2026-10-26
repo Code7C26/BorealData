@@ -12,6 +12,24 @@
  * ahorrar cuarenta líneas que casi no cambian.
  */
 
+import { traducciones, type Idioma } from '@/lib/idioma'
+
+/** Los errores de acá llegan tal cual a la pantalla (vía `err.message`). */
+const MENSAJES = traducciones({
+  es: {
+    noComprime: 'No se pudo comprimir la imagen.',
+    noAbre:
+      'No pudimos abrir esa imagen. Probá con un JPG, PNG o WebP (las fotos HEIC del iPhone no se pueden leer acá).',
+    noPrepara: 'No se pudo preparar la imagen para analizarla.',
+  },
+  en: {
+    noComprime: "The image couldn't be compressed.",
+    noAbre:
+      "We couldn't open that image. Try a JPG, PNG or WebP (iPhone HEIC photos can't be read here).",
+    noPrepara: "The image couldn't be prepared for analysis.",
+  },
+})
+
 /** Máximo de imágenes por lectura (MAX_IMAGES del backend). */
 export const MAX_IMAGES = 3
 /** Tope por imagen ya decodificada (MAX_IMAGE_BYTES del backend). */
@@ -81,10 +99,10 @@ function aBase64(buffer: ArrayBuffer): string {
   return btoa(binario)
 }
 
-function aBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+function aBlob(canvas: HTMLCanvasElement, quality: number, mensajeError: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('No se pudo comprimir la imagen.'))),
+      (blob) => (blob ? resolve(blob) : reject(new Error(mensajeError))),
       'image/jpeg',
       quality,
     )
@@ -102,16 +120,16 @@ function aBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
 export async function prepararImagen(
   archivo: Blob,
   recorte: Recorte = RECORTE_COMPLETO,
+  idioma: Idioma = 'es',
 ): Promise<ImagenPreparada> {
+  const m = MENSAJES[idioma]
   let bitmap: ImageBitmap
   try {
     bitmap = await createImageBitmap(archivo)
   } catch {
     // Pasa con formatos que el navegador no decodifica (HEIC de iPhone es el
     // caso real) y con archivos corruptos. El mensaje tiene que decir qué hacer.
-    throw new Error(
-      'No pudimos abrir esa imagen. Probá con un JPG, PNG o WebP (las fotos HEIC del iPhone no se pueden leer acá).',
-    )
+    throw new Error(m.noAbre)
   }
 
   try {
@@ -136,11 +154,11 @@ export async function prepararImagen(
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('No se pudo preparar la imagen para analizarla.')
+    if (!ctx) throw new Error(m.noPrepara)
     ctx.drawImage(bitmap, sx, sy, anchoRecorte, altoRecorte, 0, 0, width, height)
 
     for (const quality of CALIDADES) {
-      const jpeg = await aBlob(canvas, quality)
+      const jpeg = await aBlob(canvas, quality, m.noComprime)
       if (jpeg.size <= MAX_IMAGE_BYTES || quality === CALIDADES[CALIDADES.length - 1]) {
         return {
           image: { mimeType: 'image/jpeg', dataBase64: aBase64(await jpeg.arrayBuffer()) },
@@ -152,7 +170,7 @@ export async function prepararImagen(
     }
 
     // Inalcanzable: el for de arriba siempre devuelve en la última calidad.
-    throw new Error('No se pudo comprimir la imagen.')
+    throw new Error(m.noComprime)
   } finally {
     // Sin esto el bitmap queda ocupando memoria hasta el GC, y acá se manejan
     // capturas de pantalla enteras.

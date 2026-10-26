@@ -1,15 +1,29 @@
 import type { Metadata } from 'next'
 import type { HistoryItem } from '@/lib/api'
-import { VERDICT } from '@/lib/verdict'
+import { traducciones } from '@/lib/idioma'
+import { leerIdioma } from '@/lib/idioma-servidor'
+import { VOCABULARIO } from '@/lib/verdict'
 import { ResultadoCompartidoView } from './resultado-compartido-view'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
-const METADATA_GENERICA = {
-  title: 'Verificación compartida | AletheIA',
-  description:
-    'Alguien te compartió una verificación hecha con AletheIA — el detector de noticias falsas de Boreal Data.',
-} as const
+/**
+ * Los crawlers de redes no mandan la cookie de idioma, así que la preview que ve
+ * WhatsApp sale siempre en castellano. El inglés solo aplica cuando el link lo abre en
+ * el navegador alguien que eligió inglés (el `<title>` de la pestaña).
+ */
+const METADATA_GENERICA = traducciones({
+  es: {
+    title: 'Verificación compartida | AletheIA',
+    description:
+      'Alguien te compartió una verificación hecha con AletheIA — el detector de noticias falsas de Boreal Data.',
+  },
+  en: {
+    title: 'Shared check | AletheIA',
+    description:
+      "Someone shared a check made with AletheIA — Boreal Data's fake news detector.",
+  },
+})
 
 /**
  * Preview del link (WhatsApp, Twitter/X, Facebook, etc.) para un análisis
@@ -28,15 +42,17 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
+  const idioma = await leerIdioma()
+  const generica = METADATA_GENERICA[idioma]
 
   try {
     const res = await fetch(`${API_URL}/analyses/${id}`, { cache: 'no-store' })
-    if (!res.ok) return METADATA_GENERICA
+    if (!res.ok) return generica
 
     const analysis = (await res.json()) as HistoryItem
-    const { label } = VERDICT[analysis.verdict]
+    const { label } = VOCABULARIO[idioma].VERDICT[analysis.verdict]
     const titulo = `${label}: ${analysis.headline}`
-    const descripcion = analysis.lead || METADATA_GENERICA.description
+    const descripcion = analysis.lead || generica.description
 
     return {
       title: `${titulo} | AletheIA`,
@@ -54,7 +70,7 @@ export async function generateMetadata({
       },
     }
   } catch {
-    return METADATA_GENERICA
+    return generica
   }
 }
 

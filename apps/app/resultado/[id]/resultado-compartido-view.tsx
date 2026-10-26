@@ -6,12 +6,53 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Search, SearchX, Trash2 } from 'lucide-react'
 import { Aurora } from '@/components/aurora'
 import { Logo } from '@/components/logo'
+import { SelectorIdioma } from '@/components/selector-idioma'
 import { Sidebar } from '@/components/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ResultadoCompleto } from '@/components/result/resultado-completo'
-import { apiFetch, ApiError, type HistoryItem } from '@/lib/api'
+import { apiFetch, type HistoryItem } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { mensajeDeError } from '@/lib/errores-api'
+import { traducciones } from '@/lib/idioma'
 import { historyItemToAnalyzeResponse } from '@/lib/resultado-storage'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
+
+const TEXTOS = traducciones({
+  es: {
+    inicio: 'AletheIA — inicio',
+    firma: 'Verificación hecha con AletheIA — Boreal Data',
+    noEncontrado: 'No encontrado',
+    noEncontramos: 'No encontramos esta verificación',
+    noEncontramosBajada:
+      'El link puede haber quedado cortado al copiarlo, el análisis puede haberse borrado, o puede ser de otra persona. Podés verificar la nota vos mismo en unos segundos.',
+    verificarUna: 'Verificar una nota',
+    noPudimosBorrar: 'No pudimos borrarlo. Probá de nuevo en unos segundos.',
+    volverHistorial: 'Volver al historial',
+    borrando: 'Borrando…',
+    siBorrar: 'Sí, borrar para siempre',
+    cancelar: 'Cancelar',
+    borrar: 'Borrar este análisis',
+    verificarTuya: 'Verificar una nota tuya',
+    conocer: 'Conocer AletheIA',
+  },
+  en: {
+    inicio: 'AletheIA — home',
+    firma: 'Check made with AletheIA — Boreal Data',
+    noEncontrado: 'Not found',
+    noEncontramos: "We couldn't find this check",
+    noEncontramosBajada:
+      'The link may have been cut off when it was copied, the analysis may have been deleted, or it may belong to someone else. You can check the article yourself in a few seconds.',
+    verificarUna: 'Check an article',
+    noPudimosBorrar: "We couldn't delete it. Try again in a few seconds.",
+    volverHistorial: 'Back to history',
+    borrando: 'Deleting…',
+    siBorrar: 'Yes, delete it forever',
+    cancelar: 'Cancel',
+    borrar: 'Delete this analysis',
+    verificarTuya: 'Check an article of your own',
+    conocer: 'Discover AletheIA',
+  },
+})
 
 /**
  * La pantalla de un análisis guardado. Es LA pantalla de resultado del producto.
@@ -36,6 +77,7 @@ import { historyItemToAnalyzeResponse } from '@/lib/resultado-storage'
  */
 export function ResultadoCompartidoView({ id }: { id: string }) {
   const { user } = useAuth()
+  const t = useTextos(TEXTOS)
   const [estado, setEstado] = useState<'cargando' | 'no-encontrado' | 'listo'>('cargando')
   const [item, setItem] = useState<HistoryItem | null>(null)
 
@@ -83,15 +125,18 @@ export function ResultadoCompartidoView({ id }: { id: string }) {
       <Aurora intensity="soft" />
       <div className="mx-auto flex w-full max-w-shell flex-col gap-2 px-gutter pt-8 md:px-6 md:pt-12">
         <div className="flex items-center justify-between gap-4">
-          <Link href="/" aria-label="AletheIA — inicio">
+          <Link href="/" aria-label={t.inicio}>
             <Logo showParent />
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <SelectorIdioma />
+            <ThemeToggle />
+          </div>
         </div>
       </div>
       {contenido}
       <p className="mx-auto w-full max-w-shell px-gutter pb-12 font-mono text-micro uppercase text-disabled md:px-6">
-        Verificación hecha con AletheIA — Boreal Data
+        {t.firma}
       </p>
     </main>
   )
@@ -116,23 +161,19 @@ function VistaCargando() {
  * cubre las tres sin mentir en ninguna.
  */
 function VistaNoEncontrado({ conSesion }: { conSesion: boolean }) {
+  const t = useTextos(TEXTOS)
+
   return (
     <div className="mx-auto w-full max-w-card px-gutter py-12 md:px-6 md:py-16">
       <section role="alert" className="card-shell border-t-verdict-dudoso">
         <p className="chip self-start text-verdict-dudoso">
-          <SearchX aria-hidden="true" size={14} /> No encontrado
+          <SearchX aria-hidden="true" size={14} /> {t.noEncontrado}
         </p>
-        <h1 className="font-display text-h3 font-semibold text-display">
-          No encontramos esta verificación
-        </h1>
-        <p className="text-body-sm text-muted">
-          El link puede haber quedado cortado al copiarlo, el análisis puede haberse
-          borrado, o puede ser de otra persona. Podés verificar la nota vos mismo en unos
-          segundos.
-        </p>
+        <h1 className="font-display text-h3 font-semibold text-display">{t.noEncontramos}</h1>
+        <p className="text-body-sm text-muted">{t.noEncontramosBajada}</p>
         <Link href={conSesion ? '/dashboard' : '/'} className="btn-primary self-start">
           <Search aria-hidden="true" size={16} />
-          Verificar una nota
+          {t.verificarUna}
         </Link>
       </section>
     </div>
@@ -142,6 +183,8 @@ function VistaNoEncontrado({ conSesion }: { conSesion: boolean }) {
 /** Lo que puede hacer el dueño del análisis. */
 function AccionesPropias({ id }: { id: string }) {
   const router = useRouter()
+  const { idioma } = useIdioma()
+  const t = useTextos(TEXTOS)
   const [borrando, setBorrando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -154,11 +197,7 @@ function AccionesPropias({ id }: { id: string }) {
       .catch((err) => {
         setBorrando(false)
         setConfirmando(false)
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : 'No pudimos borrarlo. Probá de nuevo en unos segundos.',
-        )
+        setError(mensajeDeError(err, idioma, t.noPudimosBorrar))
       })
   }
 
@@ -167,7 +206,7 @@ function AccionesPropias({ id }: { id: string }) {
       <div className="flex flex-col gap-3 md:flex-row">
         <Link href="/historial" className="btn-secondary w-full md:w-auto">
           <ArrowLeft aria-hidden="true" size={16} />
-          Volver al historial
+          {t.volverHistorial}
         </Link>
 
         {/* El borrado es irreversible, así que pide una confirmación explícita en el
@@ -182,7 +221,7 @@ function AccionesPropias({ id }: { id: string }) {
               className="btn-secondary w-full border-verdict-falso/40 text-verdict-falso md:w-auto"
             >
               <Trash2 aria-hidden="true" size={16} />
-              {borrando ? 'Borrando…' : 'Sí, borrar para siempre'}
+              {borrando ? t.borrando : t.siBorrar}
             </button>
             <button
               type="button"
@@ -190,7 +229,7 @@ function AccionesPropias({ id }: { id: string }) {
               disabled={borrando}
               className="btn-secondary w-full md:w-auto"
             >
-              Cancelar
+              {t.cancelar}
             </button>
           </div>
         ) : (
@@ -200,7 +239,7 @@ function AccionesPropias({ id }: { id: string }) {
             className="btn-secondary w-full md:w-auto"
           >
             <Trash2 aria-hidden="true" size={16} />
-            Borrar este análisis
+            {t.borrar}
           </button>
         )}
       </div>
@@ -219,14 +258,16 @@ function AccionesPropias({ id }: { id: string }) {
 
 /** Lo que puede hacer alguien que llegó por un link compartido. */
 function AccionesVisitante() {
+  const t = useTextos(TEXTOS)
+
   return (
     <div className="flex flex-col gap-3 md:flex-row">
       <Link href="/registro" className="btn-primary w-full md:w-auto">
         <Search aria-hidden="true" size={16} />
-        Verificar una nota tuya
+        {t.verificarTuya}
       </Link>
       <Link href="/" className="btn-secondary w-full md:w-auto">
-        Conocer AletheIA
+        {t.conocer}
       </Link>
     </div>
   )

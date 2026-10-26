@@ -6,7 +6,22 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { RotateCcw } from 'lucide-react'
 import { AnalysisPanel, type AnalysisState } from '@/components/result/analysis-panel'
 import { ResultadoCompleto } from '@/components/result/resultado-completo'
+import { traducciones } from '@/lib/idioma'
 import { leerResultadoEstable, sinSuscripcion } from '@/lib/resultado-storage'
+import { useTextos } from '@/lib/use-idioma'
+
+const TEXTOS = traducciones({
+  es: {
+    noGuardado:
+      'Este análisis no llegó a guardarse, así que no va a quedar en tu historial ni se puede compartir. Si cerrás la pestaña se pierde.',
+    otra: 'Analizar otra nota',
+  },
+  en: {
+    noGuardado:
+      "This analysis wasn't saved, so it won't stay in your history and can't be shared. If you close the tab, it's gone.",
+    otra: 'Analyze another article',
+  },
+})
 
 /**
  * El resultado que NO tiene id, leído de sessionStorage.
@@ -85,15 +100,16 @@ function ResultadoSinIdContent() {
  * desaparece al cerrar la pestaña.
  */
 function AvisoNoGuardado() {
+  const t = useTextos(TEXTOS)
+
   return (
     <div className="flex flex-col gap-3">
       <p className="rounded-lg border border-verdict-dudoso/30 bg-verdict-dudoso/10 p-3.5 text-caption tracking-normal text-verdict-dudoso">
-        Este análisis no llegó a guardarse, así que no va a quedar en tu historial ni se
-        puede compartir. Si cerrás la pestaña se pierde.
+        {t.noGuardado}
       </p>
       <Link href="/dashboard" className="btn-secondary self-start">
         <RotateCcw aria-hidden="true" size={16} />
-        Analizar otra nota
+        {t.otra}
       </Link>
     </div>
   )
@@ -105,6 +121,7 @@ function AvisoNoGuardado() {
  */
 function VistaError({ estado, valor }: { estado: AnalysisState; valor: string }) {
   const router = useRouter()
+  const t = useTextos(TEXTOS)
 
   return (
     <div className="mx-auto flex w-full max-w-card flex-col gap-6 px-gutter py-16 md:px-6">
@@ -115,7 +132,7 @@ function VistaError({ estado, valor }: { estado: AnalysisState; valor: string })
       />
       <Link href="/dashboard" className="btn-secondary self-start">
         <RotateCcw aria-hidden="true" size={16} />
-        Analizar otra nota
+        {t.otra}
       </Link>
     </div>
   )

@@ -10,12 +10,16 @@
  * corta con un mensaje explicándolo.
  *
  * Para no tener que editar el .env (y después olvidarse de volverlo atrás, que ya pasó),
- * acepta una URL aparte solo para la migración:
+ * la conexión del dueño se pasa aparte. La forma recomendada deja la contraseña fuera
+ * del comando y del historial del shell:
  *
- *   MIGRATION_DATABASE_URL=postgres://postgres:TU_PASSWORD@localhost:5432/aletheia \
- *     npx tsx migrate-delete.ts
+ *   read -s -p "password de postgres: " PGPASSWORD && echo && \
+ *     PGUSER=postgres PGPASSWORD="$PGPASSWORD" npx tsx migrate-delete.ts; unset PGPASSWORD
  *
- * Si no está seteada, usa DATABASE_URL.
+ * El host, el puerto y la base salen de DATABASE_URL, así que solo hace falta el usuario
+ * y la contraseña. También acepta una URL entera en MIGRATION_DATABASE_URL, y si no hay
+ * ninguna de las dos usa DATABASE_URL (que no va a tener permisos, pero el script lo
+ * detecta y lo explica en vez de tirar un error de Postgres).
  *
  * ── Qué hace ────────────────────────────────────────────────────────────────────────
  * Es re-corrible: GRANT es idempotente y las policies se recrean (DROP IF EXISTS +
@@ -51,18 +55,45 @@ const POLICIES: Array<{ nombre: string; tabla: "users" | "analyses"; sql: string
   },
 ];
 
-async function main() {
+/**
+ * Arma la conexión del dueño de las tablas, en orden de preferencia:
+ *
+ *  1. `PGPASSWORD` (y opcionalmente PGUSER/PGHOST/PGPORT/PGDATABASE), que es la forma
+ *     estándar de libpq. Es la recomendada: permite pasar la contraseña por una variable
+ *     leída con `read -s`, sin que quede escrita en el comando ni en el historial del
+ *     shell. Lo que falte se completa desde DATABASE_URL, así solo hace falta la
+ *     contraseña y el usuario.
+ *  2. `MIGRATION_DATABASE_URL`, una URL completa, para quien prefiera pasarla de una.
+ *  3. `DATABASE_URL`, el del .env — que apunta al rol de la app y no va a tener permisos.
+ *     Sirve igual: el script detecta que no es el dueño y explica qué hacer.
+ */
+function crearCliente(): pg.Client {
+  if (process.env.PGPASSWORD) {
+    const base = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL) : null;
+    return new pg.Client({
+      host: process.env.PGHOST ?? base?.hostname ?? "localhost",
+      port: Number(process.env.PGPORT ?? base?.port ?? 5432),
+      database: process.env.PGDATABASE ?? base?.pathname.slice(1) ?? "postgres",
+      user: process.env.PGUSER ?? "postgres",
+      password: process.env.PGPASSWORD,
+    });
+  }
+
   const connectionString = process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL;
 
   if (!connectionString) {
     console.error(
-      "Falta MIGRATION_DATABASE_URL (o DATABASE_URL) en el entorno. Ver el comentario de" +
-        " arriba de este archivo."
+      "Falta la conexión. Pasá PGPASSWORD (con PGUSER si no es `postgres`), o bien" +
+        " MIGRATION_DATABASE_URL. Ver el comentario de arriba de este archivo."
     );
     process.exit(1);
   }
 
-  const client = new pg.Client({ connectionString });
+  return new pg.Client({ connectionString });
+}
+
+async function main() {
+  const client = crearCliente();
   await client.connect();
 
   try {
@@ -92,9 +123,10 @@ async function main() {
       console.error(
         `\nEste rol no es dueño de ${ajenas.map((t) => t.tabla).join(" ni de ")}` +
           ` (dueño: ${ajenas[0].dueño}), así que no puede crear las policies.\n\n` +
-          "Volvé a correrlo con el dueño de las tablas, sin tocar el .env:\n\n" +
-          `  MIGRATION_DATABASE_URL=postgres://${ajenas[0].dueño}:TU_PASSWORD@localhost:5432/TU_BASE \\\n` +
-          "    npx tsx migrate-delete.ts\n"
+          "Volvé a correrlo con el dueño de las tablas, sin tocar el .env y sin que la\n" +
+          "contraseña quede en el historial del shell:\n\n" +
+          `  read -s -p "password de ${ajenas[0].dueño}: " PGPASSWORD && echo && \\\n` +
+          `    PGUSER=${ajenas[0].dueño} PGPASSWORD="$PGPASSWORD" npx tsx migrate-delete.ts; unset PGPASSWORD\n`
       );
       process.exitCode = 1;
       return;

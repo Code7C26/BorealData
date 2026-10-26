@@ -11,9 +11,13 @@ const API_URL = 'http://localhost:4000';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'AletheIA',
-    description:
-      'Detector de noticias falsas con IA: verificación de fuentes y análisis de contenido.',
+    // Nombre y descripción salen de public/_locales/{es,en}/messages.json: es lo que
+    // muestran la Chrome Web Store y chrome://extensions, y eso sigue el idioma del
+    // NAVEGADOR (lo resuelve Chrome, no la extensión). Todo lo demás —el panel y el menú
+    // del clic derecho— sigue al idioma elegido en la web (ver lib/idioma.ts).
+    default_locale: 'es',
+    name: '__MSG_extName__',
+    description: '__MSG_extDescription__',
     // Sin entrypoint de popup, MV3 no genera un ícono en la barra de
     // herramientas por sí solo — lo declaramos vacío para que exista el
     // botón y background.ts pueda abrir el side panel al clickearlo.

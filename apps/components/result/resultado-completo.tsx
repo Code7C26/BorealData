@@ -1,6 +1,40 @@
+'use client'
+
+import { Languages } from 'lucide-react'
 import { ResultCard } from '@/components/result/result-card'
 import type { AnalyzeResponse } from '@/lib/api'
+import { traducciones, type Idioma } from '@/lib/idioma'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { cn } from '@/lib/utils'
+
+const TEXTOS = traducciones({
+  es: {
+    razonamientoCompleto: 'Razonamiento completo',
+    deQueTrata: 'De qué trata la nota',
+    sinResumen: 'El motor no dejó un resumen del contenido para este análisis.',
+    senales: 'Señales de redacción',
+    senalesBajada: 'Cómo está escrita la nota. Es una señal de contexto, no parte del veredicto.',
+    aviso:
+      'Esta verificación se apoya en la evidencia disponible al momento del análisis. Las fuentes están listadas con su postura para que puedas revisarlas vos.',
+    otroIdioma: {
+      en: 'Este análisis se pidió con la web en inglés, así que el titular, el razonamiento y las notas de las fuentes están en inglés. Si lo analizás de nuevo, sale en castellano.',
+      es: '',
+    } satisfies Record<Idioma, string>,
+  },
+  en: {
+    razonamientoCompleto: 'Full reasoning',
+    deQueTrata: 'What the article is about',
+    sinResumen: "The engine didn't leave a summary of the content for this analysis.",
+    senales: 'Writing signals',
+    senalesBajada: "How the article is written. It's a context signal, not part of the verdict.",
+    aviso:
+      'This check relies on the evidence available at the time of the analysis. The sources are listed with where each one stands so you can review them yourself.',
+    otroIdioma: {
+      es: 'This analysis was written in Spanish, so the headline, reasoning and source notes are in Spanish. Analyze the article again to get it in English.',
+      en: '',
+    },
+  },
+})
 
 /**
  * La pantalla de resultado completa: la card más el panel con todo lo que no entra en
@@ -55,16 +89,32 @@ export function ResultadoCompleto({
  * extra va acá, no al ancho.
  */
 function PanelRazonamiento({ analysis }: { analysis: AnalyzeResponse }) {
+  const t = useTextos(TEXTOS)
+  const { idioma } = useIdioma()
+  // Lo que escribió Gemini queda en el idioma en que se pidió. Si no coincide con el de la
+  // interfaz (un análisis viejo, siempre en castellano, visto con la web en inglés, o al
+  // revés), se dice arriba de todo: si no, la pantalla parece traducida a medias.
+  // Sin `language` (el ejemplo precargado) no se avisa nada.
+  const avisoIdioma =
+    analysis.language && analysis.language !== idioma ? t.otroIdioma[analysis.language] : ''
+
   return (
     <aside
       className="flex animate-rise flex-col gap-6 xl:max-w-panel"
-      aria-label="Razonamiento completo"
+      aria-label={t.razonamientoCompleto}
     >
-      <section className="panel flex flex-col gap-4">
-        <h2 className="font-mono text-caption uppercase text-subtle">De qué trata la nota</h2>
-        <p className="text-body-sm text-muted">
-          {analysis.summary || 'El motor no dejó un resumen del contenido para este análisis.'}
+      {avisoIdioma && (
+        <p
+          lang={idioma}
+          className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-sunk p-3.5 text-caption tracking-normal text-subtle"
+        >
+          <Languages aria-hidden="true" size={14} className="mt-0.5 shrink-0 text-accent-text" />
+          {avisoIdioma}
         </p>
+      )}
+      <section className="panel flex flex-col gap-4">
+        <h2 className="font-mono text-caption uppercase text-subtle">{t.deQueTrata}</h2>
+        <p className="text-body-sm text-muted">{analysis.summary || t.sinResumen}</p>
         {analysis.title && (
           <p className="border-t border-border pt-4 font-display text-body-sm font-semibold text-display">
             {analysis.title}
@@ -74,7 +124,7 @@ function PanelRazonamiento({ analysis }: { analysis: AnalyzeResponse }) {
 
       {analysis.reasoning.length > 0 && (
         <section className="panel flex flex-col gap-4">
-          <h2 className="font-mono text-caption uppercase text-subtle">Razonamiento completo</h2>
+          <h2 className="font-mono text-caption uppercase text-subtle">{t.razonamientoCompleto}</h2>
           <ol className="flex flex-col gap-4">
             {analysis.reasoning.map((paso, i) => (
               <li key={i} className="flex items-start gap-3.5">
@@ -93,10 +143,8 @@ function PanelRazonamiento({ analysis }: { analysis: AnalyzeResponse }) {
 
       {analysis.toneFlags.length > 0 && (
         <section className="panel flex flex-col gap-4">
-          <h2 className="font-mono text-caption uppercase text-subtle">Señales de redacción</h2>
-          <p className="text-caption tracking-normal text-subtle">
-            Cómo está escrita la nota. Es una señal de contexto, no parte del veredicto.
-          </p>
+          <h2 className="font-mono text-caption uppercase text-subtle">{t.senales}</h2>
+          <p className="text-caption tracking-normal text-subtle">{t.senalesBajada}</p>
           <ul className="flex flex-wrap gap-2">
             {analysis.toneFlags.map((flag) => (
               <li
@@ -110,10 +158,7 @@ function PanelRazonamiento({ analysis }: { analysis: AnalyzeResponse }) {
         </section>
       )}
 
-      <p className="px-1 text-caption tracking-normal text-disabled">
-        Esta verificación se apoya en la evidencia disponible al momento del análisis. Las
-        fuentes están listadas con su postura para que puedas revisarlas vos.
-      </p>
+      <p className="px-1 text-caption tracking-normal text-disabled">{t.aviso}</p>
     </aside>
   )
 }

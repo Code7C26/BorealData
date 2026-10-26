@@ -3,9 +3,31 @@
 import Link from 'next/link'
 import { Aurora } from '@/components/aurora'
 import { Logo } from '@/components/logo'
+import { SelectorIdioma } from '@/components/selector-idioma'
 import { Sidebar } from '@/components/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useAuth } from '@/lib/auth-context'
+import { traducciones } from '@/lib/idioma'
+import { useTextos } from '@/lib/use-idioma'
+
+const TEXTOS = traducciones({
+  es: {
+    inicioLogo: 'AletheIA — inicio',
+    enlaces: 'Enlaces de información',
+    inicio: 'Inicio',
+    privacidad: 'Privacidad',
+    terminos: 'Términos',
+    contacto: 'Contacto',
+  },
+  en: {
+    inicioLogo: 'AletheIA — home',
+    enlaces: 'Information links',
+    inicio: 'Home',
+    privacidad: 'Privacy',
+    terminos: 'Terms',
+    contacto: 'Contact',
+  },
+})
 
 /**
  * Marco de las páginas de información: contacto, privacidad y términos.
@@ -37,6 +59,7 @@ const CONTENEDOR =
 
 export default function LayoutInfo({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  const t = useTextos(TEXTOS)
 
   if (user) {
     return (
@@ -52,27 +75,30 @@ export default function LayoutInfo({ children }: { children: React.ReactNode }) 
 
       <div className={CONTENEDOR}>
         <div className="flex items-center justify-between gap-4">
-          <Link href="/" aria-label="AletheIA — inicio">
+          <Link href="/" aria-label={t.inicioLogo}>
             <Logo showParent />
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <SelectorIdioma />
+            <ThemeToggle />
+          </div>
         </div>
 
         {children}
 
         <footer className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Enlaces de información">
+          <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label={t.enlaces}>
             <Link href="/" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
-              Inicio
+              {t.inicio}
             </Link>
             <Link href="/privacidad" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
-              Privacidad
+              {t.privacidad}
             </Link>
             <Link href="/terminos" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
-              Términos
+              {t.terminos}
             </Link>
             <Link href="/contacto" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
-              Contacto
+              {t.contacto}
             </Link>
           </nav>
           <p className="font-mono text-micro uppercase text-disabled">© 2026 Boreal Data</p>

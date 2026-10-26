@@ -12,11 +12,54 @@ import {
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { mensajeErrorFirebase } from '@/lib/firebase-errors'
+import { traducciones } from '@/lib/idioma'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { AuthRedirect } from '@/components/auth-redirect'
 import { AuthShell, Campo } from '@/components/auth-shell'
 
+const TEXTOS = traducciones({
+  es: {
+    faltaCompletar: 'Falta completar el email o la contraseña.',
+    noPudimos: 'No pudimos iniciar sesión. Probá de nuevo.',
+    eyebrow: 'Entrar',
+    titulo: 'Volvé a tus verificaciones',
+    bajada: 'Tu historial, con el veredicto y las fuentes de cada nota que analizaste.',
+    sinCuenta: '¿No tenés cuenta?',
+    crearUna: 'Creá una',
+    email: 'Email',
+    emailPlaceholder: 'tu@email.com',
+    contrasena: 'Contraseña',
+    olvidaste: '¿La olvidaste?',
+    ocultar: 'Ocultar contraseña',
+    mostrar: 'Mostrar contraseña',
+    mantener: 'Mantener la sesión abierta',
+    entrando: 'Entrando…',
+    entrar: 'Entrar',
+  },
+  en: {
+    faltaCompletar: 'Please fill in your email and password.',
+    noPudimos: "We couldn't log you in. Try again.",
+    eyebrow: 'Log in',
+    titulo: 'Back to your checks',
+    bajada: 'Your history, with the verdict and the sources for every article you analyzed.',
+    sinCuenta: "Don't have an account?",
+    crearUna: 'Create one',
+    email: 'Email',
+    emailPlaceholder: 'you@email.com',
+    contrasena: 'Password',
+    olvidaste: 'Forgot it?',
+    ocultar: 'Hide password',
+    mostrar: 'Show password',
+    mantener: 'Keep me logged in',
+    entrando: 'Logging in…',
+    entrar: 'Log in',
+  },
+})
+
 export default function LoginPage() {
   const router = useRouter()
+  const { idioma } = useIdioma()
+  const t = useTextos(TEXTOS)
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,7 +73,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
-      setError('Falta completar el email o la contraseña.')
+      setError(t.faltaCompletar)
       return
     }
     setError('')
@@ -41,7 +84,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password)
       router.push('/dashboard')
     } catch (err) {
-      setError(mensajeErrorFirebase(err, 'No pudimos iniciar sesión. Probá de nuevo.'))
+      setError(mensajeErrorFirebase(err, t.noPudimos, idioma))
     } finally {
       setEnviando(false)
     }
@@ -49,17 +92,17 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      eyebrow="Entrar"
-      titulo="Volvé a tus verificaciones"
-      bajada="Tu historial, con el veredicto y las fuentes de cada nota que analizaste."
+      eyebrow={t.eyebrow}
+      titulo={t.titulo}
+      bajada={t.bajada}
       pie={
         <>
-          ¿No tenés cuenta?{' '}
+          {t.sinCuenta}{' '}
           <Link
             href="/registro"
             className="text-accent-text underline-offset-4 transition-colors duration-150 ease-boreal hover:underline"
           >
-            Creá una
+            {t.crearUna}
           </Link>
         </>
       }
@@ -74,27 +117,27 @@ export default function LoginPage() {
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <Campo label="Email" htmlFor="email">
+        <Campo label={t.email} htmlFor="email">
           <input
             id="email"
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="tu@email.com"
+            placeholder={t.emailPlaceholder}
             className="field-input"
           />
         </Campo>
 
         <Campo
-          label="Contraseña"
+          label={t.contrasena}
           htmlFor="password"
           extra={
             <Link
               href="/recuperar"
               className="font-mono text-micro uppercase text-accent-text underline-offset-4 hover:underline"
             >
-              ¿La olvidaste?
+              {t.olvidaste}
             </Link>
           }
         >
@@ -111,7 +154,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              aria-label={showPassword ? t.ocultar : t.mostrar}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-subtle transition-colors duration-150 ease-boreal hover:text-ink"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -128,12 +171,12 @@ export default function LoginPage() {
             className="size-4 cursor-pointer accent-[var(--accent)]"
           />
           <label htmlFor="remember" className="cursor-pointer text-body-sm text-muted">
-            Mantener la sesión abierta
+            {t.mantener}
           </label>
         </div>
 
         <button type="submit" disabled={enviando} className="btn-primary mt-2 w-full">
-          {enviando ? 'Entrando…' : 'Entrar'}
+          {enviando ? t.entrando : t.entrar}
         </button>
       </form>
     </AuthShell>

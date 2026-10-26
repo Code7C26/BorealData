@@ -1,4 +1,5 @@
 import type { AnalyzeResponse } from '@/lib/api'
+import { traducciones } from '@/lib/idioma'
 
 /**
  * El análisis precargado de "Probar un ejemplo".
@@ -10,8 +11,12 @@ import type { AnalyzeResponse } from '@/lib/api'
  *
  * No pega contra el backend a propósito: no gasta una llamada real a Gemini y
  * funciona igual sin sesión.
+ *
+ * Va en los dos idiomas porque, a diferencia de un análisis real, este texto lo
+ * escribimos nosotros. La URL y los dominios no se traducen: son la nota y las
+ * fuentes del caso, que existen en el idioma en que existen.
  */
-export const ANALISIS_EJEMPLO: AnalyzeResponse = {
+const EJEMPLO_ES: AnalyzeResponse = {
   url: 'https://bienestar-natural.blog/salud/pan-integral-insomnio-oslo',
   title: 'Un estudio noruego confirma que el pan integral de noche provoca insomnio',
   scrapeMethod: 'ejemplo',
@@ -59,6 +64,31 @@ export const ANALISIS_EJEMPLO: AnalyzeResponse = {
   ],
   toneFlags: ['titular tipo clickbait', 'estudio citado sin referencia', 'apelación a la autoridad'],
 }
+
+const EJEMPLO_EN: AnalyzeResponse = {
+  ...EJEMPLO_ES,
+  title: 'Norwegian study confirms that eating whole-grain bread at night causes insomnia',
+  headline: 'We found no support for this claim',
+  lead: 'The study the article attributes to the University of Oslo does not appear in its public records, and no primary outlet reports it.',
+  summary:
+    'The article claims that eating whole-grain bread at night causes insomnia and attributes it to research from the University of Oslo. It does not link to the publication or name the authors.',
+  reasoning: [
+    'The article attributes a study to the University of Oslo, but links to no publication.',
+    "The university's open repository has no record of the paper or its authors.",
+    'Two independent fact-checkers reviewed the same claim in the last 30 days.',
+    'The chain originates on a blog with no byline, references or publication date.',
+  ],
+  sources: [
+    { ...EJEMPLO_ES.sources[0], note: 'No record of the study or the cited authors' },
+    { ...EJEMPLO_ES.sources[1], note: 'Debunked the claim on Sep 9, 2026' },
+    { ...EJEMPLO_ES.sources[2], note: 'No publications linking the two topics' },
+    { ...EJEMPLO_ES.sources[3], note: 'First appearance of the article, no byline' },
+  ],
+  toneFlags: ['clickbait headline', 'study cited without a reference', 'appeal to authority'],
+}
+
+/** Se lee con `useTextos(ANALISIS_EJEMPLO)` en el idioma activo. */
+export const ANALISIS_EJEMPLO = traducciones({ es: EJEMPLO_ES, en: EJEMPLO_EN })
 
 /** Fecha fija del ejemplo — la misma que ilustra la card en la identidad V1. */
 export const FECHA_EJEMPLO = '2026-09-11T14:32:00-03:00'

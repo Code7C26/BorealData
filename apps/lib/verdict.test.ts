@@ -10,6 +10,7 @@ import {
   STANCE,
   VERDICT,
   VERDICTS,
+  VOCABULARIO,
   type Confidence,
 } from './verdict'
 
@@ -135,5 +136,28 @@ describe('vocabulario completo', () => {
 
   it('las cuatro posturas de fuente tienen etiqueta', () => {
     for (const s of SOURCE_STANCES) expect(STANCE[s].label.length, s).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * El inglés hereda las clases del español con un spread. Si alguien reescribe una entrada
+ * a mano y se le escapa una clase, el chip en inglés sale sin color: esto lo frena.
+ */
+describe('vocabulario en inglés', () => {
+  it('traduce las etiquetas pero conserva las mismas clases e íconos', () => {
+    const es = VOCABULARIO.es
+    const en = VOCABULARIO.en
+    for (const v of VERDICTS) {
+      expect(en.VERDICT[v].label, v).not.toBe(es.VERDICT[v].label)
+      expect(en.VERDICT[v].meaning.length, v).toBeGreaterThan(0)
+      for (const campo of ['icon', 'text', 'bg', 'borderTop', 'borderLeft'] as const) {
+        expect(en.VERDICT[v][campo], `${v}.${campo}`).toBe(es.VERDICT[v][campo])
+      }
+    }
+    for (const n of NIVELES) expect(en.CONFIDENCE[n].label.length, String(n)).toBeGreaterThan(0)
+    for (const s of SOURCE_STANCES) {
+      expect(en.STANCE[s].label, s).not.toBe(es.STANCE[s].label)
+      expect(en.STANCE[s].text, s).toBe(es.STANCE[s].text)
+    }
   })
 })

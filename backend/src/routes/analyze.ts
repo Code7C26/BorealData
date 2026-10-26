@@ -12,6 +12,7 @@ import { upsertUser } from "../db/usersRepository.js";
 import { requireAuth } from "../auth/verifyAuth.js";
 import { assertSafeAnalyzeUrl } from "../utils/validateUrl.js";
 import { stripControlChars } from "../utils/sanitize.js";
+import { INVALID_LANGUAGE_ERROR, parseLanguage } from "../gemini/types.js";
 import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
 import { cronometro, log, mensajeDeError, resumenDeFuentes } from "../utils/logger.js";
 
@@ -35,6 +36,7 @@ function responseFromCached(cached: AnalysisHistoryItem, id: string | null = cac
     reasoning: cached.reasoning,
     sources: cached.sources,
     toneFlags: cached.toneFlags,
+    language: cached.language,
   };
 }
 
@@ -42,7 +44,9 @@ const router = Router();
 
 /**
  * POST /analyze
- * Body: { "url": "https://..." }
+ * Body: { "url": "https://...", "language": "es" | "en" }
+ *   `language` es opcional (default "es"): idioma en que escribe Gemini. La caché matchea
+ *   por (url, language), nunca le sirve a alguien un análisis en otro idioma.
  * Header obligatorio: Authorization: Bearer <Firebase ID token>
  *
  * Flujo: requireAuth (login obligatorio, corta con 401 si falta o el token es
@@ -79,10 +83,15 @@ const router = Router();
 router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
   const reloj = cronometro();
   const uid = req.user!.uid;
-  const { url: rawUrl } = req.body ?? {};
+  const { url: rawUrl, language: rawLanguage } = req.body ?? {};
 
   if (!rawUrl || typeof rawUrl !== "string") {
     return res.status(400).json({ error: "Falta el campo 'url' (string) en el body." });
+  }
+
+  const language = parseLanguage(rawLanguage);
+  if (!language) {
+    return res.status(400).json({ error: INVALID_LANGUAGE_ERROR });
   }
 
   const url = stripControlChars(rawUrl);
@@ -105,18 +114,18 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     const userId = await upsertUser(req.user!.uid, req.user!.email);
 
     if (userId) {
-      const ownAnalysis = await getAnalysisForUserByUrl(userId, url);
+      const ownAnalysis = await getAnalysisForUserByUrl(userId, url, language);
       if (ownAnalysis) {
-        log.info("analyze.cache", { uid, url, cache: "propia", latencyMs: reloj() });
+        log.info("analyze.cache", { uid, url, language, cache: "propia", latencyMs: reloj() });
         return res.status(200).json(responseFromCached(ownAnalysis));
       }
 
-      const existingAnalysis = await getLatestAnalysisByUrl(url);
+      const existingAnalysis = await getLatestAnalysisByUrl(url, language);
       if (existingAnalysis) {
         // La fila nueva es la de ESTE usuario: el link para compartir tiene que
         // apuntar a esa y no a la del usuario que lo analizo primero.
-        const nuevoId = await saveReusedAnalysis(existingAnalysis, userId);
-        log.info("analyze.cache", { uid, url, cache: "compartida", latencyMs: reloj() });
+        const nuevoId = await saveReusedAnalysis(existingAnalysis, userId, language);
+        log.info("analyze.cache", { uid, url, language, cache: "compartida", latencyMs: reloj() });
         return res.status(200).json(responseFromCached(existingAnalysis, nuevoId));
       }
     }
@@ -140,7 +149,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const analysis = await analyzeContent(scraped);
+    const analysis = await analyzeContent(scraped, { language });
 
     if (!analysis.success) {
       log.error("analyze.geminiFallido", {
@@ -165,11 +174,12 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     // llamar a upsertUser() de nuevo. id null si el guardado falla
     // (best-effort, ver saveAnalysis) — el front oculta el botón de
     // "Compartir resultado" cuando no hay id.
-    const id = await saveAnalysis(scraped, analysis, userId);
+    const id = await saveAnalysis(scraped, analysis, userId, { language });
 
     log.info("analyze.ok", {
       uid,
       url,
+      language,
       id,
       guardado: id !== null,
       scrapeMethod: scraped.method,
@@ -192,6 +202,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       reasoning: analysis.reasoning,
       sources: analysis.sources,
       toneFlags: analysis.toneFlags,
+      language,
     });
   } catch (err) {
     log.error("analyze.error", { uid, url, detail: mensajeDeError(err), latencyMs: reloj() });

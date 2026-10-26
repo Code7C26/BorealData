@@ -8,7 +8,10 @@ import { AnalysisPanel, MAX_CHARS, type AnalysisState } from '@/components/resul
 import { LecturaRevision } from '@/components/lectura-revision'
 import { RecorteImagen } from '@/components/recorte-imagen'
 import { ApiError, leerImagen, type CaptureReading } from '@/lib/api'
+import { mensajeDeError } from '@/lib/errores-api'
+import { traducciones } from '@/lib/idioma'
 import { prepararImagen, TIPOS_ACEPTADOS, type Recorte } from '@/lib/imagen'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
 import {
   guardarBorrador,
   guardarContenidoPendiente,
@@ -35,6 +38,51 @@ import { cn } from '@/lib/utils'
  * DOCS/BRIEF-captura-contenido-privado.md.
  */
 
+const TEXTOS = traducciones({
+  es: {
+    noPudimosLeer: 'No pudimos leer esa imagen.',
+    imagenAnalizada: 'imagen analizada',
+    capturaPegada: 'captura pegada',
+    leyendo: 'Leyendo la imagen',
+    leyendoBajada:
+      'Transcribimos lo que dice la publicación. Todavía no hay veredicto: primero lo vas a poder revisar.',
+    noEsImagen: 'Eso no es una imagen. Soltá un JPG, PNG o WebP.',
+    titulo: 'Pegá el enlace de la nota que querés chequear',
+    bajada: 'Tarda unos segundos y te mostramos cada paso del análisis.',
+    enlace: 'Enlace de la nota',
+    enlacePlaceholder: 'https://diario-ejemplo.com/nota/8821',
+    analizar: 'Analizar',
+    ejemplo: 'Probar un ejemplo',
+    o: 'o',
+    analizarImagen: 'Analizar una imagen',
+    analizarImagenBajada:
+      'Subí una captura, arrastrala acá o pegala con Ctrl+V. Para posteos y cadenas que no se pueden leer por su enlace.',
+    privacidad: 'Las imágenes no se guardan',
+    queHacemos: 'Qué hacemos con tus datos',
+  },
+  en: {
+    noPudimosLeer: "We couldn't read that image.",
+    imagenAnalizada: 'analyzed image',
+    capturaPegada: 'pasted screenshot',
+    leyendo: 'Reading the image',
+    leyendoBajada:
+      "We're transcribing what the post says. There's no verdict yet: you'll get to review it first.",
+    noEsImagen: "That isn't an image. Drop a JPG, PNG or WebP.",
+    titulo: 'Paste the link to the article you want to check',
+    bajada: 'It takes a few seconds, and we show you every step of the analysis.',
+    enlace: 'Article link',
+    enlacePlaceholder: 'https://example-news.com/article/8821',
+    analizar: 'Analyze',
+    ejemplo: 'Try an example',
+    o: 'or',
+    analizarImagen: 'Analyze an image',
+    analizarImagenBajada:
+      "Upload a screenshot, drag it here or paste it with Ctrl+V. For posts and chain messages that can't be read from a link.",
+    privacidad: 'Images are not stored',
+    queHacemos: 'What we do with your data',
+  },
+})
+
 /** En qué parte del camino de la imagen estamos. */
 type EstadoImagen =
   | { paso: 'recortando'; src: string; archivo: Blob; etiqueta: string }
@@ -43,6 +91,8 @@ type EstadoImagen =
 
 export function AnalisisInput({ className }: { className?: string }) {
   const router = useRouter()
+  const { idioma } = useIdioma()
+  const t = useTextos(TEXTOS)
   /**
    * El input jamás se pierde: si volviste acá después de un error (o recargaste), se
    * repone lo que habías pegado.
@@ -124,8 +174,8 @@ export function AnalisisInput({ className }: { className?: string }) {
     setErrorImagen(null)
 
     try {
-      const preparada = await prepararImagen(archivo, recorte)
-      const lectura = await leerImagen([preparada.image])
+      const preparada = await prepararImagen(archivo, recorte, idioma)
+      const lectura = await leerImagen([preparada.image], idioma)
       // La imagen cumplió su función: se suelta acá, antes de seguir.
       if (srcRef.current) URL.revokeObjectURL(srcRef.current)
       srcRef.current = null
@@ -135,7 +185,14 @@ export function AnalisisInput({ className }: { className?: string }) {
         router.replace('/login')
         return
       }
-      setErrorImagen(err instanceof Error ? err.message : 'No pudimos leer esa imagen.')
+      setErrorImagen(
+        err instanceof ApiError
+          ? mensajeDeError(err, idioma, t.noPudimosLeer)
+          : // Los errores locales (lib/imagen.ts) ya vienen en el idioma activo.
+            err instanceof Error
+            ? err.message
+            : t.noPudimosLeer,
+      )
       // Vuelve al recorte para poder reintentar con otro encuadre, que es lo
       // que arregla la mayoría de las lecturas fallidas.
       if (srcRef.current) {
@@ -154,7 +211,7 @@ export function AnalisisInput({ className }: { className?: string }) {
       text: texto,
       platform: lectura.platform,
       author: lectura.author,
-      etiqueta: lectura.author ?? 'imagen analizada',
+      etiqueta: lectura.author ?? t.imagenAnalizada,
     })
     router.push('/analizando?tipo=contenido')
   }
@@ -168,11 +225,11 @@ export function AnalisisInput({ className }: { className?: string }) {
         ?.getAsFile()
       if (!archivo) return
       e.preventDefault()
-      tomarImagen(archivo, 'captura pegada')
+      tomarImagen(archivo, t.capturaPegada)
     }
     window.addEventListener('paste', alPegar)
     return () => window.removeEventListener('paste', alPegar)
-  }, [imagen])
+  }, [imagen, t.capturaPegada])
 
   if (imagen?.paso === 'recortando') {
     return (
@@ -193,12 +250,9 @@ export function AnalisisInput({ className }: { className?: string }) {
       <section className={cn('card-shell border-t-border items-start', className)}>
         <p className="flex items-center gap-3 font-display text-h3 font-semibold text-display">
           <Loader2 aria-hidden="true" size={20} className="animate-spin" />
-          Leyendo la imagen
+          {t.leyendo}
         </p>
-        <p className="text-body-sm text-muted">
-          Transcribimos lo que dice la publicación. Todavía no hay veredicto: primero lo vas a
-          poder revisar.
-        </p>
+        <p className="text-body-sm text-muted">{t.leyendoBajada}</p>
       </section>
     )
   }
@@ -241,7 +295,7 @@ export function AnalisisInput({ className }: { className?: string }) {
         setArrastrando(false)
         const archivo = [...e.dataTransfer.files].find((f) => f.type.startsWith('image/'))
         if (archivo) tomarImagen(archivo, archivo.name)
-        else setErrorImagen('Eso no es una imagen. Soltá un JPG, PNG o WebP.')
+        else setErrorImagen(t.noEsImagen)
       }}
       className={cn(
         'card-shell border-t-border transition-colors duration-150',
@@ -251,14 +305,12 @@ export function AnalisisInput({ className }: { className?: string }) {
       aria-labelledby="idle-title"
     >
       <h2 id="idle-title" className="font-display text-h3 font-semibold text-display">
-        Pegá el enlace de la nota que querés chequear
+        {t.titulo}
       </h2>
-      <p className="text-body-sm text-muted">
-        Tarda unos segundos y te mostramos cada paso del análisis.
-      </p>
+      <p className="text-body-sm text-muted">{t.bajada}</p>
 
       <label className="flex flex-col gap-3">
-        <span className="sr-only">Enlace de la nota</span>
+        <span className="sr-only">{t.enlace}</span>
         <textarea
           rows={3}
           value={valor}
@@ -272,20 +324,20 @@ export function AnalisisInput({ className }: { className?: string }) {
           }}
           maxLength={MAX_CHARS * 2}
           spellCheck={false}
-          placeholder="https://diario-ejemplo.com/nota/8821"
+          placeholder={t.enlacePlaceholder}
           className="field-input resize-y font-mono text-caption tracking-normal"
-          aria-label="Enlace de la nota"
+          aria-label={t.enlace}
         />
       </label>
 
       <div className="flex flex-col gap-3 md:flex-row">
         <button type="submit" disabled={!valor.trim()} className="btn-primary w-full md:w-auto">
           <Search aria-hidden="true" size={16} />
-          Analizar
+          {t.analizar}
         </button>
         <button type="button" onClick={verEjemplo} className="btn-secondary w-full md:w-auto">
           <Sparkles aria-hidden="true" size={16} />
-          Probar un ejemplo
+          {t.ejemplo}
         </button>
       </div>
 
@@ -293,7 +345,8 @@ export function AnalisisInput({ className }: { className?: string }) {
           privado, una historia o una cadena de WhatsApp: ahí el contenido es
           una imagen y hay que leerla. */}
       <div className="flex items-center gap-3 font-mono text-micro uppercase text-disabled">
-        <span className="h-px flex-1 bg-border" aria-hidden="true" />o
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        {t.o}
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
       </div>
 
@@ -304,12 +357,9 @@ export function AnalisisInput({ className }: { className?: string }) {
       >
         <span className="flex items-center gap-2 font-display text-body-sm font-semibold text-display">
           <ImagePlus aria-hidden="true" size={16} />
-          Analizar una imagen
+          {t.analizarImagen}
         </span>
-        <span className="text-caption tracking-normal text-subtle">
-          Subí una captura, arrastrala acá o pegala con Ctrl+V. Para posteos y cadenas que no se
-          pueden leer por su enlace.
-        </span>
+        <span className="text-caption tracking-normal text-subtle">{t.analizarImagenBajada}</span>
       </button>
 
       <input
@@ -332,9 +382,9 @@ export function AnalisisInput({ className }: { className?: string }) {
           el último lugar donde se puede prometer de más — ahora dice lo que el
           backend hace de verdad y linkea al detalle completo. */}
       <p className="font-mono text-micro uppercase text-disabled">
-        Las imágenes no se guardan ·{' '}
+        {t.privacidad} ·{' '}
         <Link href="/privacidad" className="underline hover:text-accent-text">
-          Qué hacemos con tus datos
+          {t.queHacemos}
         </Link>
       </p>
     </form>

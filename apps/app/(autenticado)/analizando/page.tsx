@@ -2,8 +2,10 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { AnalysisPanel, STEPS } from '@/components/result/analysis-panel'
-import { analizarContenido, apiFetch, ApiError, type AnalyzeResponse } from '@/lib/api'
+import { AnalysisPanel, TOTAL_PASOS } from '@/components/result/analysis-panel'
+import { analizarContenido, analizarUrl, ApiError } from '@/lib/api'
+import { traducciones } from '@/lib/idioma'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
 import {
   guardarResultado,
   leerContenidoPendiente,
@@ -20,6 +22,11 @@ const TICK_MS = 1000
 
 type Paso = 0 | 1 | 2 | 3
 
+const TEXTOS = traducciones({
+  es: { imagenAnalizada: 'imagen analizada' },
+  en: { imagenAnalizada: 'analyzed image' },
+})
+
 /**
  * Dos caminos distintos para la misma pantalla.
  *
@@ -31,6 +38,10 @@ type Paso = 0 | 1 | 2 | 3
  */
 function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
   const router = useRouter()
+  const t = useTextos(TEXTOS)
+  // El análisis sale en el idioma de la interfaz al momento de pedirlo. Cambiar de
+  // idioma mientras corre no lo vuelve a pedir: el efecto de abajo dispara una sola vez.
+  const { idioma } = useIdioma()
   const [paso, setPaso] = useState<Paso>(0)
   const [segundos, setSegundos] = useState(0)
   /**
@@ -59,7 +70,7 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
       return
     }
 
-    apiFetch<AnalyzeResponse>('/analyze', { method: 'POST', body: { url: valor } })
+    analizarUrl(valor, idioma)
       .then((data) => {
         resultadoRef.current = {
           status: 'ok',
@@ -111,6 +122,7 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
         text: pendiente.text,
         platform: pendiente.platform,
         author: pendiente.author,
+        idioma,
       })
         .then((data) => {
           resultadoRef.current = {
@@ -138,20 +150,20 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
         })
         .finally(() => setRespuestaLista(true))
     }
-  }, [tipo, valor, router, sinNadaQueAnalizar])
+  }, [tipo, valor, router, sinNadaQueAnalizar, idioma])
 
   // Los pasos avanzan solos y se frenan en el último: son los pasos reales del
   // motor, pero el backend no emite progreso, así que la cadencia es local.
   useEffect(() => {
-    if (paso >= STEPS.length - 1) return
-    const t = setTimeout(() => setPaso((p) => (p + 1) as Paso), DURACION_POR_PASO_MS)
-    return () => clearTimeout(t)
+    if (paso >= TOTAL_PASOS - 1) return
+    const id = setTimeout(() => setPaso((p) => (p + 1) as Paso), DURACION_POR_PASO_MS)
+    return () => clearTimeout(id)
   }, [paso])
 
   useEffect(() => {
     if (respuestaLista) return
-    const t = setInterval(() => setSegundos((s) => s + 1), TICK_MS)
-    return () => clearInterval(t)
+    const id = setInterval(() => setSegundos((s) => s + 1), TICK_MS)
+    return () => clearInterval(id)
   }, [respuestaLista])
 
   // Recién navega cuando llegó la respuesta real Y el último paso estuvo un
@@ -172,8 +184,8 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
       resultado.status === 'ok' && resultado.data?.id
         ? `/resultado/${resultado.data.id}`
         : '/resultado'
-    const t = setTimeout(() => router.replace(destino), 600)
-    return () => clearTimeout(t)
+    const id = setTimeout(() => router.replace(destino), 600)
+    return () => clearTimeout(id)
   }, [respuestaLista, router])
 
   return (
@@ -182,7 +194,7 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
         state={{ kind: 'loading', step: paso, elapsed: segundos, resuelto: respuestaLista }}
       />
       <p className="truncate px-1 font-mono text-micro uppercase text-disabled" title={valor}>
-        {tipo === 'contenido' ? valor || 'imagen analizada' : valor.replace(/^https?:\/\//, '')}
+        {tipo === 'contenido' ? valor || t.imagenAnalizada : valor.replace(/^https?:\/\//, '')}
       </p>
     </div>
   )

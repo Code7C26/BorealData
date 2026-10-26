@@ -1,7 +1,17 @@
+'use client'
+
 import Link from 'next/link'
 import { Aurora } from '@/components/aurora'
 import { Logo } from '@/components/logo'
+import { SelectorIdioma } from '@/components/selector-idioma'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { traducciones } from '@/lib/idioma'
+import { useTextos } from '@/lib/use-idioma'
+
+const TEXTOS = traducciones({
+  es: { inicio: 'AletheIA — inicio' },
+  en: { inicio: 'AletheIA — home' },
+})
 
 /**
  * El marco compartido de /login y /registro.
@@ -23,14 +33,23 @@ export function AuthShell({
   children: React.ReactNode
   pie: React.ReactNode
 }) {
+  const t = useTextos(TEXTOS)
+
   return (
-    <main className="relative isolate flex min-h-screen flex-col items-center justify-center overflow-hidden px-gutter py-12 md:px-6">
+    /* pt-24 en mobile: los controles de idioma y modo van arriba a la derecha y, a
+       375 px, caen en la misma columna que el logo. Con py-12 quedaban a 3 px. */
+    <main className="relative isolate flex min-h-screen flex-col items-center justify-center overflow-hidden px-gutter pb-12 pt-24 md:px-6 md:py-12">
       <Aurora intensity="loud" />
       <div aria-hidden="true" className="noise-field" />
 
-      <ThemeToggle className="absolute right-4 top-4 md:right-6 md:top-6" />
+      {/* El idioma también acá: hay quien llega directo a /login o /registro desde
+          un link, sin pasar por la landing. */}
+      <div className="absolute right-4 top-4 flex items-center gap-2 md:right-6 md:top-6">
+        <SelectorIdioma />
+        <ThemeToggle />
+      </div>
 
-      <Link href="/" className="relative mb-10" aria-label="AletheIA — inicio">
+      <Link href="/" className="relative mb-10" aria-label={t.inicio}>
         <Logo showParent animated />
       </Link>
 

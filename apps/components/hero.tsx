@@ -1,8 +1,32 @@
+'use client'
+
 import { AnalisisInput } from '@/components/analisis-input'
 import { AuroraBoreal } from '@/components/aurora-boreal'
 import { PalabraRotativa } from '@/components/palabra-rotativa'
-import { VERDICT, type Verdict } from '@/lib/verdict'
+import { traducciones } from '@/lib/idioma'
+import { useTextos } from '@/lib/use-idioma'
+import { useVocabulario } from '@/lib/use-vocabulario'
+import type { Verdict } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
+
+const TEXTOS = traducciones({
+  es: {
+    eyebrow: 'Verificación que se deja auditar',
+    titulo: '¿Es verdad?',
+    subtitulo: 'Te mostramos cómo lo supimos.',
+    bajada:
+      'Pegá el enlace de una nota. Te devolvemos el veredicto, qué tan sólida es la evidencia, las fuentes que consultamos —con su postura, incluso las que lo contradicen— y los pasos del razonamiento.',
+    escala: 'Cuatro veredictos · cinco niveles de confianza · ningún porcentaje',
+  },
+  en: {
+    eyebrow: 'Fact-checking you can audit',
+    titulo: 'Is it true?',
+    subtitulo: "We'll show you how we know.",
+    bajada:
+      'Paste a link to an article. We give you back the verdict, how solid the evidence is, the sources we checked —with where each one stands, even the ones that contradict it— and the steps of the reasoning.',
+    escala: 'Four verdicts · five confidence levels · no percentages',
+  },
+})
 
 const ORDEN: Verdict[] = ['verificado', 'dudoso', 'falso', 'sin-datos']
 
@@ -63,7 +87,7 @@ const POSICION_COLUMNA = [
 ]
 
 function NotaDeUtileria({ anchos, verdict }: { anchos: [string, string]; verdict: Verdict }) {
-  const meta = VERDICT[verdict]
+  const meta = useVocabulario().VERDICT[verdict]
   return (
     <div
       className={cn(
@@ -111,6 +135,9 @@ function MuroDeNotas() {
 }
 
 export function Hero() {
+  const t = useTextos(TEXTOS)
+  const { VERDICT } = useVocabulario()
+
   return (
     <section className="relative isolate flex min-h-[900px] flex-col items-center justify-center overflow-hidden px-gutter pb-28 pt-24 md:px-6">
       <AuroraBoreal />
@@ -128,24 +155,18 @@ export function Hero() {
       />
 
       <div className="relative z-[3] max-w-3xl animate-rise text-center">
-        <p className="eyebrow justify-center">Verificación que se deja auditar</p>
+        <p className="eyebrow justify-center">{t.eyebrow}</p>
 
         <h1 className="mt-8 font-display text-[clamp(3rem,7.4vw,6rem)] leading-[1.02] font-bold tracking-[-0.03em] text-display">
-          ¿Es verdad?
-          <span className="mt-2 block text-aurora">Te mostramos cómo lo supimos.</span>
+          {t.titulo}
+          <span className="mt-2 block text-aurora">{t.subtitulo}</span>
         </h1>
 
-        <p className="mx-auto mt-7 max-w-texto text-pretty text-muted">
-          Pegá el enlace de una nota. Te devolvemos el veredicto, qué tan sólida es la evidencia,
-          las fuentes que consultamos —con su postura, incluso las que lo contradicen— y los pasos
-          del razonamiento.
-        </p>
+        <p className="mx-auto mt-7 max-w-texto text-pretty text-muted">{t.bajada}</p>
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <PalabraRotativa />
-          <p className="font-mono text-micro uppercase text-disabled">
-            Cuatro veredictos · cinco niveles de confianza · ningún porcentaje
-          </p>
+          <p className="font-mono text-micro uppercase text-disabled">{t.escala}</p>
         </div>
       </div>
 

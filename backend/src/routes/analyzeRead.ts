@@ -1,6 +1,7 @@
 import express, { Router, type NextFunction, type Request, type Response } from "express";
 import { requireAuth } from "../auth/verifyAuth.js";
 import { readCapture } from "../gemini/readCapture.js";
+import { INVALID_LANGUAGE_ERROR, parseLanguage } from "../gemini/types.js";
 import { validateImages } from "../utils/imageValidation.js";
 import { readRateLimiter, READ_RATE_LIMIT } from "../utils/analyzeLimiter.js";
 
@@ -14,7 +15,8 @@ const router = Router();
 
 /**
  * POST /analyze/read  — paso 1 del análisis de contenido que el scraper no puede ver.
- * Body: { "images": [{ "dataBase64": "...", "mimeType": "image/jpeg" }] }   (1 a 3 imágenes)
+ * Body: { "images": [{ "dataBase64": "...", "mimeType": "image/jpeg" }],   (1 a 3 imágenes)
+ *         "language": "es" | "en" }   // opcional, default "es": idioma de `mainClaim`
  * Header obligatorio: Authorization: Bearer <Firebase ID token>
  *
  * Lee la imagen con un modelo multimodal y devuelve la transcripción ({ reading }) SIN
@@ -39,6 +41,11 @@ router.post(
       return res.status(400).json({ error: validation.error });
     }
 
+    const language = parseLanguage(req.body?.language);
+    if (!language) {
+      return res.status(400).json({ error: INVALID_LANGUAGE_ERROR });
+    }
+
     const rate = readRateLimiter.consume(req.user!.uid);
     if (!rate.allowed) {
       res.set("Retry-After", String(rate.retryAfterSeconds));
@@ -47,7 +54,7 @@ router.post(
       });
     }
 
-    const result = await readCapture(validation.images);
+    const result = await readCapture(validation.images, { language });
 
     if (!result.success || !result.reading) {
       const status = result.errorCode === "api" ? 502 : 422;
