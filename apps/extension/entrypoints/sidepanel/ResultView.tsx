@@ -9,36 +9,17 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { AnalysisResult, Confidence, SourceStance, Verdict } from '@/lib/analysis';
+import { TAG_IDIOMA, traducciones } from '@/lib/idioma';
 import type { ExtractionInfo } from './App';
+import { useIdioma, useTextos } from './use-idioma';
 import './ResultView.css';
 
-const VERDICT_CONFIG: Record<
-  Verdict,
-  { label: string; icon: typeof CheckCircle2; className: string }
-> = {
-  verificado: { label: 'Verificado', icon: CheckCircle2, className: 'v-verificado' },
-  dudoso: { label: 'Dudoso', icon: AlertTriangle, className: 'v-dudoso' },
-  falso: { label: 'Falso', icon: XCircle, className: 'v-falso' },
-  'sin-datos': { label: 'Sin datos', icon: HelpCircle, className: 'v-sindatos' },
-};
-
-/** Etiqueta y nota salen del MISMO nivel: el veredicto solo aporta el color. */
-const CONFIDENCE_CONFIG: Record<Confidence, { label: string; note: string }> = {
-  1: { label: 'Muy baja', note: 'Una sola fuente secundaria y sin confirmación independiente.' },
-  2: { label: 'Baja', note: 'Hay indicios, pero falta la fuente primaria.' },
-  3: { label: 'Media', note: 'Fuente primaria localizada; queda contexto sin verificar.' },
-  4: { label: 'Alta', note: 'Fuente primaria confirmada y coincidencia entre verificadores.' },
-  5: {
-    label: 'Muy alta',
-    note: 'Fuente primaria, verificadores independientes y trazabilidad completa.',
-  },
-};
-
-const STANCE_LABEL: Record<SourceStance, string> = {
-  confirma: 'Confirma',
-  contradice: 'Contradice',
-  'sin-datos': 'Sin datos',
-  origen: 'Origen',
+/** Ícono y color por veredicto. Las palabras van aparte, en TEXTOS. */
+const VERDICT_ESTILO: Record<Verdict, { icon: typeof CheckCircle2; className: string }> = {
+  verificado: { icon: CheckCircle2, className: 'v-verificado' },
+  dudoso: { icon: AlertTriangle, className: 'v-dudoso' },
+  falso: { icon: XCircle, className: 'v-falso' },
+  'sin-datos': { icon: HelpCircle, className: 'v-sindatos' },
 };
 
 const STANCE_CLASS: Record<SourceStance, string> = {
@@ -47,6 +28,92 @@ const STANCE_CLASS: Record<SourceStance, string> = {
   'sin-datos': 'v-sindatos',
   origen: 'v-origen',
 };
+
+/**
+ * El mismo vocabulario que la web (apps/lib/verdict.ts), en los dos idiomas. Etiqueta y
+ * nota de confianza salen del MISMO nivel: el veredicto solo aporta el color.
+ */
+const TEXTOS = traducciones({
+  es: {
+    veredicto: {
+      verificado: 'Verificado',
+      dudoso: 'Dudoso',
+      falso: 'Falso',
+      'sin-datos': 'Sin datos',
+    } satisfies Record<Verdict, string>,
+    confianza: {
+      1: { label: 'Muy baja', note: 'Una sola fuente secundaria y sin confirmación independiente.' },
+      2: { label: 'Baja', note: 'Hay indicios, pero falta la fuente primaria.' },
+      3: { label: 'Media', note: 'Fuente primaria localizada; queda contexto sin verificar.' },
+      4: { label: 'Alta', note: 'Fuente primaria confirmada y coincidencia entre verificadores.' },
+      5: {
+        label: 'Muy alta',
+        note: 'Fuente primaria, verificadores independientes y trazabilidad completa.',
+      },
+    } satisfies Record<Confidence, { label: string; note: string }>,
+    postura: {
+      confirma: 'Confirma',
+      contradice: 'Contradice',
+      'sin-datos': 'Sin datos',
+      origen: 'Origen',
+    } satisfies Record<SourceStance, string>,
+    analisisDe: (etiqueta: string) => `Análisis de: ${etiqueta}`,
+    soloUrl: 'Solo se pudo usar la URL: no se leyó el contenido de la página.',
+    textoCompleto: (chars: string) =>
+      `Se incluyó el texto completo de la página (${chars} caracteres).`,
+    nivelConfianza: 'Nivel de confianza',
+    valorConfianza: (nivel: string, n: number) => `Confianza ${nivel}, ${n} de 5`,
+    etiquetaConfianza: 'Nivel de confianza del análisis',
+    fuentes: 'Fuentes consultadas',
+    fuentesDeMas: (n: number) => `+${n} fuente${n === 1 ? '' : 's'} en el análisis completo`,
+    razonamiento: 'Razonamiento',
+    pasosDeMas: (n: number) => `+${n} paso${n === 1 ? '' : 's'} en el análisis completo`,
+    verCompleto: 'Ver análisis completo',
+    verCompletoSub: 'Con todas las fuentes y el razonamiento entero',
+    privado:
+      'Este análisis salió de algo que viste en tu pantalla: queda en tu historial, pero no tiene página para compartir.',
+    otraNota: 'Verificar otra nota',
+  },
+  en: {
+    veredicto: {
+      verificado: 'Verified',
+      dudoso: 'Questionable',
+      falso: 'False',
+      'sin-datos': 'No data',
+    },
+    confianza: {
+      1: { label: 'Very low', note: 'A single secondary source, with no independent confirmation.' },
+      2: { label: 'Low', note: 'There are signs, but the primary source is missing.' },
+      3: { label: 'Medium', note: 'Primary source located; some context remains unverified.' },
+      4: { label: 'High', note: 'Primary source confirmed and fact-checkers agree.' },
+      5: {
+        label: 'Very high',
+        note: 'Primary source, independent fact-checkers and full traceability.',
+      },
+    },
+    postura: {
+      confirma: 'Confirms',
+      contradice: 'Contradicts',
+      'sin-datos': 'No data',
+      origen: 'Origin',
+    },
+    analisisDe: (etiqueta: string) => `Analysis of: ${etiqueta}`,
+    soloUrl: "Only the URL could be used: the page's content wasn't read.",
+    textoCompleto: (chars: string) => `The page's full text was included (${chars} characters).`,
+    nivelConfianza: 'Confidence level',
+    valorConfianza: (nivel: string, n: number) => `${nivel} confidence, ${n} out of 5`,
+    etiquetaConfianza: 'Confidence level of the analysis',
+    fuentes: 'Sources checked',
+    fuentesDeMas: (n: number) => `+${n} more source${n === 1 ? '' : 's'} in the full analysis`,
+    razonamiento: 'Reasoning',
+    pasosDeMas: (n: number) => `+${n} more step${n === 1 ? '' : 's'} in the full analysis`,
+    verCompleto: 'See full analysis',
+    verCompletoSub: 'With every source and the complete reasoning',
+    privado:
+      "This analysis came from something you saw on your screen: it stays in your history, but it doesn't have a page to share.",
+    otraNota: 'Check another article',
+  },
+});
 
 interface ResultViewProps {
   result: AnalysisResult;
@@ -74,8 +141,11 @@ function ResultView({
   onReset,
   onViewFull,
 }: ResultViewProps) {
-  const { label, icon: Icon, className } = VERDICT_CONFIG[result.verdict];
-  const confianza = CONFIDENCE_CONFIG[result.confidence];
+  const t = useTextos(TEXTOS);
+  const tag = TAG_IDIOMA[useIdioma()];
+  const { icon: Icon, className } = VERDICT_ESTILO[result.verdict];
+  const label = t.veredicto[result.verdict];
+  const confianza = t.confianza[result.confidence];
   const pasos = result.reasoning.slice(0, MAX_PASOS);
   const pasosRestantes = result.reasoning.length - pasos.length;
   const fuentes = result.sources.slice(0, MAX_FUENTES);
@@ -83,13 +153,13 @@ function ResultView({
 
   return (
     <div className="result result-enter">
-      {analyzedLabel && <p className="analyzed-label">Análisis de: {analyzedLabel}</p>}
+      {analyzedLabel && <p className="analyzed-label">{t.analisisDe(analyzedLabel)}</p>}
       {extractionInfo && (
         <p className="extraction-note">
           <FileText size={12} />
           {extractionInfo === 'unavailable'
-            ? 'Solo se pudo usar la URL: no se leyó el contenido de la página.'
-            : `Se incluyó el texto completo de la página (${extractionInfo.chars.toLocaleString('es-AR')} caracteres).`}
+            ? t.soloUrl
+            : t.textoCompleto(extractionInfo.chars.toLocaleString(tag))}
         </p>
       )}
 
@@ -108,7 +178,7 @@ function ResultView({
             precisión decimal. */}
         <div className="confidence">
           <div className="confidence-head">
-            <span className="section-title">Nivel de confianza</span>
+            <span className="section-title">{t.nivelConfianza}</span>
             <span className={`confidence-label ${className}`}>{confianza.label}</span>
           </div>
           <div
@@ -117,8 +187,8 @@ function ResultView({
             aria-valuemin={1}
             aria-valuemax={5}
             aria-valuenow={result.confidence}
-            aria-valuetext={`Confianza ${confianza.label.toLowerCase()}, ${result.confidence} de 5`}
-            aria-label="Nivel de confianza del análisis"
+            aria-valuetext={t.valorConfianza(confianza.label.toLowerCase(), result.confidence)}
+            aria-label={t.etiquetaConfianza}
           >
             {[1, 2, 3, 4, 5].map((i) => (
               <span
@@ -132,14 +202,14 @@ function ResultView({
 
         {fuentes.length > 0 && (
           <div className="section">
-            <span className="section-title">Fuentes consultadas</span>
+            <span className="section-title">{t.fuentes}</span>
             <ul className="sources">
               {fuentes.map((fuente, i) => {
                 const contenido = (
                   <>
                     <span className="source-domain">{fuente.domain}</span>
                     <span className={`source-stance ${STANCE_CLASS[fuente.stance]}`}>
-                      {STANCE_LABEL[fuente.stance]}
+                      {t.postura[fuente.stance]}
                     </span>
                   </>
                 );
@@ -161,17 +231,13 @@ function ResultView({
                 );
               })}
             </ul>
-            {fuentesRestantes > 0 && (
-              <p className="more-note">
-                +{fuentesRestantes} fuente{fuentesRestantes === 1 ? '' : 's'} en el análisis completo
-              </p>
-            )}
+            {fuentesRestantes > 0 && <p className="more-note">{t.fuentesDeMas(fuentesRestantes)}</p>}
           </div>
         )}
 
         {pasos.length > 0 && (
           <div className="section">
-            <span className="section-title">Razonamiento</span>
+            <span className="section-title">{t.razonamiento}</span>
             <ol className="reason-steps">
               {pasos.map((paso, i) => (
                 <li key={i}>
@@ -180,11 +246,7 @@ function ResultView({
                 </li>
               ))}
             </ol>
-            {pasosRestantes > 0 && (
-              <p className="more-note">
-                +{pasosRestantes} paso{pasosRestantes === 1 ? '' : 's'} en el análisis completo
-              </p>
-            )}
+            {pasosRestantes > 0 && <p className="more-note">{t.pasosDeMas(pasosRestantes)}</p>}
           </div>
         )}
 
@@ -192,22 +254,21 @@ function ResultView({
           <button className="analyze-btn view-full-btn" onClick={onViewFull}>
             <span className="view-full-btn-title">
               <ExternalLink size={14} />
-              Ver análisis completo
+              {t.verCompleto}
             </span>
-            <span className="view-full-btn-sub">Con todas las fuentes y el razonamiento entero</span>
+            <span className="view-full-btn-sub">{t.verCompletoSub}</span>
           </button>
         ) : (
           <p className="private-note">
             <Lock size={12} />
-            Este análisis salió de algo que viste en tu pantalla: queda en tu historial,
-            pero no tiene página para compartir.
+            {t.privado}
           </p>
         )}
       </div>
 
       <button className="reset-btn" onClick={onReset}>
         <RotateCcw size={14} />
-        Verificar otra nota
+        {t.otraNota}
       </button>
     </div>
   );

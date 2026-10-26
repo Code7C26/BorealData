@@ -32,9 +32,17 @@ export function Lista({ children }: { children: React.ReactNode }) {
  * Va destacada a propósito: en una política de privacidad, de cuándo es el
  * texto es parte de la información, no un detalle de pie de página.
  */
-export function UltimaActualizacion({ fecha }: { fecha: string }) {
+export function UltimaActualizacion({
+  fecha,
+  etiqueta = 'Última actualización',
+}: {
+  fecha: string
+  etiqueta?: string
+}) {
   return (
-    <p className="font-mono text-micro uppercase text-disabled">Última actualización: {fecha}</p>
+    <p className="font-mono text-micro uppercase text-disabled">
+      {etiqueta}: {fecha}
+    </p>
   )
 }
 
@@ -44,18 +52,21 @@ export function EncabezadoLegal({
   titulo,
   bajada,
   fecha,
+  etiquetaFecha,
 }: {
   volanta: string
   titulo: string
   bajada: string
   fecha: string
+  /** "Última actualización" en el idioma de la página. */
+  etiquetaFecha?: string
 }) {
   return (
     <header className="flex flex-col gap-3">
       <p className="eyebrow">{volanta}</p>
       <h1 className="font-display text-h2-fluid text-display">{titulo}</h1>
       <p className="max-w-texto text-muted">{bajada}</p>
-      <UltimaActualizacion fecha={fecha} />
+      <UltimaActualizacion fecha={fecha} etiqueta={etiquetaFecha} />
     </header>
   )
 }

@@ -58,3 +58,17 @@ export async function broadcastAuthState(user: User | null) {
     console.error("No se pudo sincronizar la sesión con la extensión:", err);
   }
 }
+
+/**
+ * El idioma de la interfaz, por el mismo canal que la sesión: la extensión no tiene
+ * selector propio y sigue al de la web (ver apps/extension/lib/idioma.ts). Se manda al
+ * montar y cada vez que cambia, haya sesión o no — el idioma no es un dato privado y
+ * quien todavía no entró también tiene que ver la extensión en su idioma.
+ */
+export function broadcastIdioma(idioma: "es" | "en") {
+  if (typeof window === "undefined") return;
+  window.postMessage(
+    { source: ALETHEIA_AUTH_MESSAGE_SOURCE, type: "IDIOMA", idioma },
+    window.location.origin
+  );
+}

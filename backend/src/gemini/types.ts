@@ -116,7 +116,37 @@ export interface GeminiOptions {
    * son las mismas. Default: "url" (el comportamiento de siempre).
    */
   contentKind?: ContentKind;
+  /**
+   * En qué idioma escribe el modelo los textos del análisis (headline, lead, summary,
+   * reasoning, notas de las fuentes, toneFlags). Los valores enum (`verdict`, `stance`)
+   * no se traducen nunca. Default: "es".
+   */
+  language?: Language;
 }
+
+// ── Idioma del análisis (oct-2026) ──────────────────────────────────────────
+// La web es bilingüe (cookie `aletheia-idioma` en el front) y manda el idioma activo en
+// el body de /analyze, /analyze/content y /analyze/read. La extensión todavía no lo
+// manda: sin el campo, todo sigue en castellano, como siempre.
+
+export const LANGUAGES = ["es", "en"] as const;
+export type Language = (typeof LANGUAGES)[number];
+export const DEFAULT_LANGUAGE: Language = "es";
+
+/**
+ * Lee el campo `language` de un body. Ausente (undefined/null) es el default; cualquier
+ * otro valor que no sea "es" o "en" es un error del cliente y devuelve null, para que la
+ * ruta responda 400 en vez de analizar en un idioma que nadie pidió.
+ */
+export function parseLanguage(raw: unknown): Language | null {
+  if (raw === undefined || raw === null) return DEFAULT_LANGUAGE;
+  return typeof raw === "string" && (LANGUAGES as readonly string[]).includes(raw)
+    ? (raw as Language)
+    : null;
+}
+
+/** Texto del 400 cuando `language` vino con un valor inválido (igual en las tres rutas). */
+export const INVALID_LANGUAGE_ERROR = `El campo 'language' es inválido (opciones: ${LANGUAGES.join(", ")}).`;
 
 // ── Contenido que el scraper no puede ver (sep-2026) ────────────────────────
 // La extensión manda evidencia armada dentro de la pestaña del usuario (captura,

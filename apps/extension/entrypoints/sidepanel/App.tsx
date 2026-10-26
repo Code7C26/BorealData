@@ -5,9 +5,111 @@ import CropPreview from './CropPreview';
 import ReadingReview from './ReadingReview';
 import type { AnalysisResult, ContentJob } from '@/lib/analysis';
 import type { CropRect } from '@/lib/capture';
+import { traducciones } from '@/lib/idioma';
 import { patronDePermiso } from '@/lib/platform';
+import { useTextos } from './use-idioma';
 import { getAnalyzedLabel } from './utils';
 import './App.css';
+
+const TEXTOS = traducciones({
+  es: {
+    accesoSeguro: 'Acceso seguro',
+    iniciaSesionBajada: 'Iniciá sesión para analizar noticias desde cualquier página.',
+    iniciarSesion: 'Iniciar sesión',
+    /** Etiqueta del origen cuando la pestaña no tenía URL (ver etiquetaOrigen en background). */
+    estaPantalla: 'esta pantalla',
+    seleccionEn: (origen: string) => `selección en ${origen}`,
+    capturaDe: (origen: string) => `captura de ${origen}`,
+    leyendo: 'Leyendo la imagen',
+    leyendoDetalle:
+      'Transcribimos lo que dice la publicación. Todavía no hay veredicto: primero lo vas a poder revisar.',
+    verificando: 'Verificando',
+    verificandoDetalle:
+      'Buscamos la fuente primaria y la cruzamos con verificadores independientes.',
+    noPudimosCompletar: 'No pudimos completar el análisis.',
+    volver: 'Volver',
+    noPudimosCapturar: 'No pudimos capturar esta pantalla.',
+    sinPermiso: 'Sin permiso sobre esta página no podemos leer lo que estás viendo.',
+    noPudimosPedirPermiso: (motivo: string) =>
+      `No pudimos pedir permiso para capturar esta página.${motivo} Si acabás de actualizar la extensión, recargala en chrome://extensions.`,
+    subtitulo: 'Analizá esta página o pegá una URL/texto',
+    sinUrl: 'No pudimos detectar la URL de esta pestaña. Pegá una URL o texto abajo.',
+    placeholder: 'https://... o pegá el texto de la noticia',
+    analizando: 'Analizando...',
+    analizar: 'Analizar',
+    errorConexion: 'No pudimos completar el análisis. Puede ser un problema de conexión.',
+    reintentar: 'Reintentar',
+    o: 'o',
+    capturar: 'Analizar lo que estás viendo',
+    capturarSub: 'Para posteos privados o historias, que no se pueden leer por su enlace',
+    comoFunciona: 'Cómo funciona',
+    pasos: [
+      {
+        titulo: 'Extraemos el contenido',
+        texto: 'de la página que estás mirando (o el texto que pegues).',
+      },
+      {
+        titulo: 'Buscamos la fuente primaria',
+        texto: 'que la nota cita y la contrastamos con verificadores independientes.',
+      },
+      {
+        titulo: 'Te devolvemos el veredicto',
+        texto: 'con el nivel de confianza, las fuentes y su postura, y los pasos del razonamiento.',
+      },
+    ],
+    tip: 'Tip',
+    tipTexto:
+      'Si solo una fuente reporta una noticia y ningún medio independiente la confirma, tomala con cautela antes de compartirla.',
+  },
+  en: {
+    accesoSeguro: 'Secure access',
+    iniciaSesionBajada: 'Log in to analyze news from any page.',
+    iniciarSesion: 'Log in',
+    estaPantalla: 'this screen',
+    seleccionEn: (origen: string) => `selection on ${origen}`,
+    capturaDe: (origen: string) => `capture of ${origen}`,
+    leyendo: 'Reading the image',
+    leyendoDetalle:
+      "We're transcribing what the post says. There's no verdict yet: you'll get to review it first.",
+    verificando: 'Checking',
+    verificandoDetalle:
+      'We look for the primary source and cross-check it with independent fact-checkers.',
+    noPudimosCompletar: "We couldn't complete the analysis.",
+    volver: 'Back',
+    noPudimosCapturar: "We couldn't capture this screen.",
+    sinPermiso: "Without permission on this page we can't read what you're looking at.",
+    noPudimosPedirPermiso: (motivo: string) =>
+      `We couldn't request permission to capture this page.${motivo} If you just updated the extension, reload it in chrome://extensions.`,
+    subtitulo: 'Analyze this page or paste a URL/text',
+    sinUrl: "We couldn't detect this tab's URL. Paste a URL or text below.",
+    placeholder: "https://... or paste the article's text",
+    analizando: 'Analyzing...',
+    analizar: 'Analyze',
+    errorConexion: "We couldn't complete the analysis. It may be a connection problem.",
+    reintentar: 'Try again',
+    o: 'or',
+    capturar: "Analyze what you're seeing",
+    capturarSub: "For private posts or stories, which can't be read from their link",
+    comoFunciona: 'How it works',
+    pasos: [
+      {
+        titulo: 'We extract the content',
+        texto: "of the page you're looking at (or the text you paste).",
+      },
+      {
+        titulo: 'We look for the primary source',
+        texto: 'the article cites and check it against independent fact-checkers.',
+      },
+      {
+        titulo: 'We give you back the verdict',
+        texto: 'with the confidence level, the sources and where each one stands, and the reasoning steps.',
+      },
+    ],
+    tip: 'Tip',
+    tipTexto:
+      'If only one source reports a story and no independent outlet confirms it, treat it with caution before sharing it.',
+  },
+});
 
 type Status = 'checking-auth' | 'needs-login' | 'idle' | 'loading' | 'done' | 'error';
 
@@ -109,6 +211,7 @@ function PantallaCargando({ titulo, detalle }: { titulo: string; detalle: string
 }
 
 function App() {
+  const t = useTextos(TEXTOS);
   const [status, setStatus] = useState<Status>('checking-auth');
   const [idToken, setIdToken] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -292,7 +395,7 @@ function App() {
       .then((res: StartCaptureResponse) => {
         if (res && 'error' in res) setCaptureError(res.error);
       })
-      .catch(() => setCaptureError('No pudimos capturar esta pantalla.'));
+      .catch(() => setCaptureError(t.noPudimosCapturar));
   };
 
   /**
@@ -310,7 +413,7 @@ function App() {
       .request({ origins: [patronPermiso] })
       .then((concedido) => {
         if (!concedido) {
-          setCaptureError('Sin permiso sobre esta página no podemos leer lo que estás viendo.');
+          setCaptureError(t.sinPermiso);
           return;
         }
         setPermisoConcedido(true);
@@ -323,9 +426,7 @@ function App() {
         // porque todavía no conoce `optional_host_permissions`. Sin el texto
         // real del error, eso se ve igual que "el usuario dijo que no".
         const motivo = err instanceof Error ? ` (${err.message})` : '';
-        setCaptureError(
-          `No pudimos pedir permiso para capturar esta página.${motivo} Si acabás de actualizar la extensión, recargala en chrome://extensions.`,
-        );
+        setCaptureError(t.noPudimosPedirPermiso(motivo));
       });
   };
 
@@ -414,15 +515,15 @@ function App() {
         <Brand />
         <span className="eyebrow-badge">
           <ShieldCheck size={13} />
-          Acceso seguro
+          {t.accesoSeguro}
         </span>
         <div className="card">
           <p className="subtitle" style={{ marginBottom: 14 }}>
-            Iniciá sesión para analizar noticias desde cualquier página.
+            {t.iniciaSesionBajada}
           </p>
           <button className="analyze-btn" onClick={handleLogin}>
             <LogIn size={16} />
-            Iniciar sesión
+            {t.iniciarSesion}
           </button>
         </div>
       </div>
@@ -432,10 +533,10 @@ function App() {
   // El flujo de contenido manda sobre el de URL: si hay un job, es lo que el
   // usuario está haciendo ahora mismo.
   if (job) {
-    const etiquetaOrigen =
-      job.kind === 'selection'
-        ? `selección en ${job.originLabel}`
-        : `captura de ${job.originLabel}`;
+    // Sin URL de origen, background manda la etiqueta vacía y el nombre lo pone el panel,
+    // en el idioma activo.
+    const origen = job.originLabel || t.estaPantalla;
+    const etiquetaOrigen = job.kind === 'selection' ? t.seleccionEn(origen) : t.capturaDe(origen);
 
     if (job.status === 'cropping' && job.captureDataUrl) {
       return (
@@ -443,7 +544,7 @@ function App() {
           <Blobs />
           <CropPreview
             dataUrl={job.captureDataUrl}
-            originLabel={job.originLabel}
+            originLabel={origen}
             onConfirm={confirmarRecorte}
             onCancel={cancelarJob}
           />
@@ -456,10 +557,7 @@ function App() {
         <div className="app">
           <Blobs />
           <Brand />
-          <PantallaCargando
-            titulo="Leyendo la imagen"
-            detalle="Transcribimos lo que dice la publicación. Todavía no hay veredicto: primero lo vas a poder revisar."
-          />
+          <PantallaCargando titulo={t.leyendo} detalle={t.leyendoDetalle} />
         </div>
       );
     }
@@ -470,7 +568,7 @@ function App() {
           <Blobs />
           <ReadingReview
             reading={job.reading}
-            originLabel={job.originLabel}
+            originLabel={origen}
             onVerify={verificarLectura}
             onCancel={cancelarJob}
           />
@@ -483,10 +581,7 @@ function App() {
         <div className="app">
           <Blobs />
           <Brand />
-          <PantallaCargando
-            titulo="Verificando"
-            detalle="Buscamos la fuente primaria y la cruzamos con verificadores independientes."
-          />
+          <PantallaCargando titulo={t.verificando} detalle={t.verificandoDetalle} />
         </div>
       );
     }
@@ -514,15 +609,15 @@ function App() {
           <Blobs />
           <Brand />
           <div className="card">
-            <p className="result-error">{job.error ?? 'No pudimos completar el análisis.'}</p>
+            <p className="result-error">{job.error ?? t.noPudimosCompletar}</p>
             {job.errorCode === 'NEEDS_LOGIN' ? (
               <button className="analyze-btn" onClick={handleLogin}>
                 <LogIn size={16} />
-                Iniciar sesión
+                {t.iniciarSesion}
               </button>
             ) : (
               <button className="analyze-btn" onClick={cancelarJob}>
-                Volver
+                {t.volver}
               </button>
             )}
           </div>
@@ -549,19 +644,19 @@ function App() {
     <div className="app">
       <Blobs />
       <Brand />
-      <p className="subtitle">Analizá esta página o pegá una URL/texto</p>
+      <p className="subtitle">{t.subtitulo}</p>
 
       <div className="card">
         {tabUrlMissing && status === 'idle' && (
           <p className="hint" style={{ marginBottom: 10 }}>
-            No pudimos detectar la URL de esta pestaña. Pegá una URL o texto abajo.
+            {t.sinUrl}
           </p>
         )}
 
         <textarea
           className="input"
           rows={4}
-          placeholder="https://... o pegá el texto de la noticia"
+          placeholder={t.placeholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -577,20 +672,18 @@ function App() {
           {status === 'loading' ? (
             <>
               <Loader2 className="spin" size={16} />
-              Analizando...
+              {t.analizando}
             </>
           ) : (
-            'Analizar'
+            t.analizar
           )}
         </button>
 
         {status === 'error' && (
           <div className="error-box" role="alert">
-            <p className="result-error">
-              No pudimos completar el análisis. Puede ser un problema de conexión.
-            </p>
+            <p className="result-error">{t.errorConexion}</p>
             <button className="retry-btn" onClick={handleAnalyze}>
-              Reintentar
+              {t.reintentar}
             </button>
           </div>
         )}
@@ -600,17 +693,15 @@ function App() {
             Instagram, una cadena de WhatsApp. El servidor no puede verlas
             (solo vería el muro de login), pero esta pantalla sí. */}
         <div className="capture-divider">
-          <span>o</span>
+          <span>{t.o}</span>
         </div>
 
         <button className="capture-btn" onClick={handleCapture}>
           <span className="capture-btn-title">
             <Camera size={15} />
-            Analizar lo que estás viendo
+            {t.capturar}
           </span>
-          <span className="capture-btn-sub">
-            Para posteos privados o historias, que no se pueden leer por su enlace
-          </span>
+          <span className="capture-btn-sub">{t.capturarSub}</span>
         </button>
 
         {captureError && (
@@ -620,26 +711,16 @@ function App() {
         )}
       </div>
 
-      <p className="steps-title">Cómo funciona</p>
+      <p className="steps-title">{t.comoFunciona}</p>
       <div className="steps">
-        <div className="step">
-          <span className="step-num">1</span>
-          <p className="step-text">
-            <b>Extraemos el contenido</b> de la página que estás mirando (o el texto que pegues).
-          </p>
-        </div>
-        <div className="step">
-          <span className="step-num">2</span>
-          <p className="step-text">
-            <b>Buscamos la fuente primaria</b> que la nota cita y la contrastamos con verificadores independientes.
-          </p>
-        </div>
-        <div className="step">
-          <span className="step-num">3</span>
-          <p className="step-text">
-            <b>Te devolvemos el veredicto</b> con el nivel de confianza, las fuentes y su postura, y los pasos del razonamiento.
-          </p>
-        </div>
+        {t.pasos.map((paso, i) => (
+          <div className="step" key={i}>
+            <span className="step-num">{i + 1}</span>
+            <p className="step-text">
+              <b>{paso.titulo}</b> {paso.texto}
+            </p>
+          </div>
+        ))}
       </div>
 
       <div className="tip-card">
@@ -647,11 +728,8 @@ function App() {
           <Lightbulb size={14} />
         </div>
         <div>
-          <p className="tip-title">Tip</p>
-          <p className="tip-text">
-            Si solo una fuente reporta una noticia y ningún medio independiente la confirma,
-            tomala con cautela antes de compartirla.
-          </p>
+          <p className="tip-title">{t.tip}</p>
+          <p className="tip-text">{t.tipTexto}</p>
         </div>
       </div>
     </div>

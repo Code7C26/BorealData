@@ -63,7 +63,7 @@ que se integra directamente en su navegador sin interrumpir su flujo de navegaci
 |---|---|---|
 | Web | Next.js + TypeScript | Frontend web con SSR |
 | Extensión | Manifest V3 + React | Extensión para Chrome |
-| Mobile | Expo (React Native) | App iOS y Android |
+| Mobile | Expo SDK 58 + React Native | App iOS y Android |
 | Hosting | Firebase Hosting | Deploy web con CDN global |
 | Backend | Node.js + Express | API REST en Cloud Run |
 | Scraping | Cheerio + Puppeteer | Extracción de contenido web |
@@ -87,6 +87,12 @@ aletheIA/
 │   ├── entrypoints/      → Entrypoints de la extensión de Chrome (WXT)
 │   └── extension/        → Salida del build de la extensión (.output/)
 │
+├── mobile/              → App móvil (Expo SDK 58 + Expo Router)
+│   ├── src/app/          → Rutas: login, (app)/ con tabs, resultado/:id, analizando
+│   ├── src/components/   → aurora, ui, veredicto, marca
+│   ├── src/lib/          → api.ts, verdict.ts, firebase.ts, auth.tsx, config.ts
+│   └── src/theme/        → El Design System V1 portado a React Native
+│
 ├── backend/
 │   └── src/
 │       ├── auth/, db/, gemini/, routes/, scraper/, utils/
@@ -101,8 +107,12 @@ aletheIA/
 ```
 
 La web y la extensión de Chrome comparten el mismo `apps/` (WXT genera la extensión a
-partir de `entrypoints/`); Mobile (Expo) todavía no tiene código, es la última
-prioridad del roadmap.
+partir de `entrypoints/`). La app móvil vive aparte, en `mobile/`: adentro de `apps/`,
+Metro (Expo) y Next se pelean por el mismo `node_modules` y el mismo `tsconfig`.
+
+**Las tres superficies pegan contra el mismo backend y el mismo proyecto de Firebase**,
+así que una sola cuenta sirve para las tres y el historial es uno solo: lo que verificás
+desde el teléfono aparece en la web y al revés.
 
 ---
 
@@ -144,11 +154,24 @@ Cargarla como "unpacked" en `chrome://extensions` apuntando a esa carpeta de sal
 Si se toca `entrypoints/background.ts`, hay que recargar la extensión a mano (el
 service worker no tiene hot-reload).
 
+### App móvil
+
+```bash
+cd mobile
+npm install
+npm start             # servidor de Expo
+```
+
+No hace falta configurar la IP del backend: la app la deduce del host de Metro, así que
+alcanza con que el teléfono y la PC estén en la misma red. Para verla en un teléfono se
+escanea el QR con **Expo Go** — no hay que compilar nada. Detalle completo en
+[`mobile/README.md`](mobile/README.md).
+
 ---
 
 ## Estado técnico actual
 
-_Última actualización: 14 de septiembre de 2026._
+_Última actualización: 26 de octubre de 2026._
 
 - ✅ **Web (Next.js):** home, login/registro, dashboard, historial, análisis de una URL o
   texto, y la card de resultado con las 5 pantallas del veredicto. Diseño sobre el
@@ -162,10 +185,12 @@ _Última actualización: 14 de septiembre de 2026._
 - ✅ **Backend:** API REST con Gemini (grounding vía Google Search), scraping con Cheerio
   + Puppeteer, y una pasada de seguridad completa (SSRF, sanitización, rate limit,
   Row Level Security en Postgres).
-- ⬜ **Mobile (Expo):** sin desarrollo todavía, última prioridad del roadmap.
-- ⬜ **Pendiente conocido:** en algunos análisis, solo la primera fuente listada queda
-  clickeable — el motor no siempre logra cruzar el título de la fuente con su URL real.
-  Está diagnosticado, no resuelto.
+- ✅ **App móvil (Expo SDK 58):** login, verificación por enlace, texto o captura de la
+  galería, revisión de la transcripción antes de verificar, resultado completo, historial
+  y perfil. Misma cuenta y mismo historial que la web.
+- ⬜ **Pendiente:** compilar el *development build* de la app móvil con EAS para probarla
+  en un teléfono, y que la app pueda recibir el "Compartir" de otras apps
+  (intent `ACTION_SEND`).
 
 ---
 

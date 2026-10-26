@@ -1,7 +1,15 @@
 import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../auth/verifyAuth.js";
 import { callGemini } from "../gemini/geminiClient.js";
-import { CLIENT_CONTENT_KINDS, KNOWN_PLATFORMS, type ClientContentKind, type Platform } from "../gemini/types.js";
+import {
+  CLIENT_CONTENT_KINDS,
+  INVALID_LANGUAGE_ERROR,
+  KNOWN_PLATFORMS,
+  parseLanguage,
+  type ClientContentKind,
+  type Language,
+  type Platform,
+} from "../gemini/types.js";
 import { saveAnalysis } from "../db/analysesRepository.js";
 import { upsertUser } from "../db/usersRepository.js";
 import { cleanContentText, cleanInlineText, looksLikeUrl } from "../utils/contentText.js";
@@ -16,14 +24,35 @@ const MIN_TEXT_CHARS = 8;
 const MAX_TITLE_CHARS = 300;
 const MAX_AUTHOR_CHARS = 100;
 
-const PLATFORM_LABELS: Record<Platform, string> = {
-  facebook: "Facebook",
-  instagram: "Instagram",
-  x: "X",
-  whatsapp: "WhatsApp",
-  tiktok: "TikTok",
-  otro: "otra plataforma",
+const PLATFORM_LABELS: Record<Language, Record<Platform, string>> = {
+  es: {
+    facebook: "Facebook",
+    instagram: "Instagram",
+    x: "X",
+    whatsapp: "WhatsApp",
+    tiktok: "TikTok",
+    otro: "otra plataforma",
+  },
+  en: {
+    facebook: "Facebook",
+    instagram: "Instagram",
+    x: "X",
+    whatsapp: "WhatsApp",
+    tiktok: "TikTok",
+    otro: "another platform",
+  },
 };
+
+/** Título de respaldo si el cliente no manda uno. Se ve en el historial: va en el idioma pedido. */
+function fallbackTitle(author: string | null, platform: Platform | null, language: Language): string {
+  const where = platform ? PLATFORM_LABELS[language][platform] : null;
+  if (language === "en") {
+    if (author) return `Post by ${author}${where ? ` on ${where}` : ""}`;
+    return where ? `Post on ${where}` : "";
+  }
+  if (author) return `Publicación de ${author}${where ? ` en ${where}` : ""}`;
+  return where ? `Publicación en ${where}` : "";
+}
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -42,7 +71,8 @@ const router = Router();
  *                "platform": "facebook" | ... | null,   // pista del cliente, no confiable
  *                "pageUrl": "https://..." | null,       // solo contexto: NUNCA se scrapea
  *                "capturedAt": "2026-09-23T18:00:00Z" },   // se ignora
- *   "content": { "title": "...", "text": "...", "author": "@usuario" }
+ *   "content": { "title": "...", "text": "...", "author": "@usuario" },
+ *   "language": "es" | "en"   // opcional, default "es": idioma en que escribe Gemini
  * }
  *
  * Responde con la MISMA forma que POST /analyze (id, url, title, scrapeMethod, verdict,
@@ -72,6 +102,11 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
     });
   }
   const contentKind = kind as ClientContentKind;
+
+  const language = parseLanguage(body.language);
+  if (!language) {
+    return res.status(400).json({ error: INVALID_LANGUAGE_ERROR });
+  }
 
   if (typeof content.text !== "string") {
     return res.status(400).json({ error: "Falta 'content.text' (string) en el body." });
@@ -105,19 +140,14 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
   const pageUrl = sanitizePageUrl(source.pageUrl);
 
   const title =
-    cleanInlineText(content.title, MAX_TITLE_CHARS) ??
-    (author
-      ? `Publicación de ${author}${platform ? ` en ${PLATFORM_LABELS[platform]}` : ""}`
-      : platform
-        ? `Publicación en ${PLATFORM_LABELS[platform]}`
-        : "");
+    cleanInlineText(content.title, MAX_TITLE_CHARS) ?? fallbackTitle(author, platform, language);
 
   // El texto NUNCA entra al log (ver logger.ts y la política de privacidad): van el
   // tipo, la plataforma y el tamaño, que alcanzan para diagnosticar sin guardar
   // contenido de nadie.
   const reloj = cronometro();
   const uid = req.user!.uid;
-  const contexto = { uid, kind: contentKind, platform, chars: text.length };
+  const contexto = { uid, kind: contentKind, platform, language, chars: text.length };
 
   try {
     const userId = await upsertUser(req.user!.uid, req.user!.email);
@@ -131,7 +161,7 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
       });
     }
 
-    const analysis = await callGemini(title, text, { contentKind });
+    const analysis = await callGemini(title, text, { contentKind, language });
 
     if (!analysis.success) {
       log.error("analyzeContent.geminiFallido", {
@@ -152,6 +182,7 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
       id = await saveAnalysis(stored, analysis, userId, {
         sourceType: contentKind,
         capturePlatform: platform,
+        language,
       });
     }
 
@@ -178,6 +209,7 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
       reasoning: analysis.reasoning,
       sources: analysis.sources,
       toneFlags: analysis.toneFlags,
+      language,
       // El link público de "Compartir resultado" no aplica a contenido del cliente (ver
       // getAnalysisById): el front no debería ofrecer ese botón aunque haya `id`.
       shareable: false,

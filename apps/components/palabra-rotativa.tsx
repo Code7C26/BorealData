@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { VERDICT, type Verdict } from '@/lib/verdict'
+import { useVocabulario } from '@/lib/use-vocabulario'
+import type { Verdict } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
 
 const ORDEN: Verdict[] = ['verificado', 'dudoso', 'falso', 'sin-datos']
@@ -17,6 +18,7 @@ const INTERVALO_MS = 2200
  */
 export function PalabraRotativa({ className }: { className?: string }) {
   const [indice, setIndice] = useState(0)
+  const { VERDICT } = useVocabulario()
 
   useEffect(() => {
     const id = setInterval(() => setIndice((i) => (i + 1) % ORDEN.length), INTERVALO_MS)

@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "AletheIA",
+    "slug": "aletheia",
+    "owner": "renlanata",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "aletheia",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0B100F",
+    "primaryColor": "#7A5AF8",
+    "ios": {
+      "bundleIdentifier": "app.borealdata.aletheia",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "app.borealdata.aletheia",
+      "adaptiveIcon": {
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B100F",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 140
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AletheIA necesita acceso a tus fotos para leer la captura que querés verificar."
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "2bb566d6-907a-43db-a6bf-67ba594430a5"
+      }
+    }
+  }
+}

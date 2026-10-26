@@ -19,7 +19,67 @@ import type {
 } from '@/lib/analysis';
 import { mapBackendResult } from '@/lib/analysis';
 import { recortarYComprimir, traerImagen, type CropRect } from '@/lib/capture';
+import {
+  IDIOMA_KEY,
+  esIdioma,
+  guardarIdioma,
+  leerIdioma,
+  traducciones,
+  type Idioma,
+} from '@/lib/idioma';
 import { detectarPlataforma } from '@/lib/platform';
+
+/**
+ * Los textos que arma el background y llegan al panel (errores del flujo de contenido)
+ * o a Chrome (el menú del clic derecho). Siguen al idioma de la web, como el panel.
+ */
+const TEXTOS = traducciones({
+  es: {
+    menuSeleccion: 'Analizar esta selección con AletheIA',
+    menuImagen: 'Analizar esta imagen con AletheIA',
+    menuCaptura: 'Analizar lo que estoy viendo con AletheIA',
+    volverAEntrar: 'Tenés que volver a iniciar sesión.',
+    noPudimosLeer: 'No pudimos leer la imagen.',
+    noPudimosCompletar: 'No pudimos completar el análisis.',
+    noPudimosCapturar: 'No pudimos capturar esta pantalla.',
+    sinPermisoCaptura:
+      'No tenemos permiso para capturar esta página. Probá con el clic derecho sobre la página.',
+    noSeDejaCapturar:
+      'No pudimos capturar esta pantalla. Hay páginas que el navegador no deja capturar (chrome://, la tienda de extensiones).',
+  },
+  en: {
+    menuSeleccion: 'Analyze this selection with AletheIA',
+    menuImagen: 'Analyze this image with AletheIA',
+    menuCaptura: "Analyze what I'm seeing with AletheIA",
+    volverAEntrar: 'You need to log in again.',
+    noPudimosLeer: "We couldn't read the image.",
+    noPudimosCompletar: "We couldn't complete the analysis.",
+    noPudimosCapturar: "We couldn't capture this screen.",
+    sinPermisoCaptura:
+      "We don't have permission to capture this page. Try right-clicking on the page.",
+    noSeDejaCapturar:
+      "We couldn't capture this screen. Some pages can't be captured by the browser (chrome://, the extension store).",
+  },
+});
+
+/**
+ * Qué mostrar cuando el backend responde con error. Sus mensajes (`{ error }`) están en
+ * castellano y son buenos, así que en castellano van tal cual; en inglés se elige uno por
+ * código HTTP. Mismo criterio que apps/lib/errores-api.ts en la web.
+ */
+const ERROR_POR_STATUS_EN: Record<number, string> = {
+  400: "The request wasn't valid. Check what you sent and try again.",
+  413: "That's too large for us to analyze.",
+  422: "We couldn't extract any content from that link.",
+  429: "You've reached the limit of new analyses for now. Try again in a few minutes.",
+  502: "The analysis engine didn't respond. Try again in a moment.",
+  503: 'The service is temporarily unavailable. Try again in a moment.',
+};
+
+function mensajeDeError(status: number, data: unknown, idioma: Idioma, fallback: string): string {
+  if (idioma === 'en') return ERROR_POR_STATUS_EN[status] ?? fallback;
+  return (data as { error?: string } | null)?.error ?? fallback;
+}
 
 interface StoredAuth {
   idToken: string;
@@ -40,7 +100,10 @@ type AuthSyncPayload =
       uid: string;
       email: string | null;
     }
-  | { source: 'aletheia-web'; type: 'AUTH_LOGOUT' };
+  | { source: 'aletheia-web'; type: 'AUTH_LOGOUT' }
+  // El idioma de la web viaja por el mismo puente (ver broadcastIdioma en
+  // apps/lib/extension-bridge.ts): la extensión no tiene selector propio.
+  | { source: 'aletheia-web'; type: 'IDIOMA'; idioma: unknown };
 
 type ExtensionMessage =
   | { type: 'ALETHEIA_AUTH_SYNC'; payload: AuthSyncPayload }
@@ -115,6 +178,19 @@ async function refrescarToken(auth: StoredAuth): Promise<StoredAuth | null> {
 }
 
 async function handleAuthSync(payload: AuthSyncPayload) {
+  if (payload.type === 'IDIOMA') {
+    // Viene de una página (vía el content script): se valida antes de guardarlo.
+    if (!esIdioma(payload.idioma)) return { ok: false };
+    // Se manda en cada carga de la web: solo se escribe (y se rearma el menú) si cambió.
+    // Se compara contra lo guardado y no contra leerIdioma(), que cae al del navegador:
+    // la primera vez hay que guardarlo aunque coincida con ese respaldo.
+    const guardado = (await browser.storage.local.get(IDIOMA_KEY))[IDIOMA_KEY];
+    if (guardado !== payload.idioma) {
+      await guardarIdioma(payload.idioma);
+      crearMenuContextual();
+    }
+    return { ok: true };
+  }
   if (payload.type === 'AUTH_LOGOUT') {
     await setStoredAuth(null);
     return { ok: true };
@@ -164,6 +240,10 @@ async function handleGetIdToken() {
  * reabre sobre una pestaña ya analizada, el resultado sale del storage
  * local, instantáneo, sin pegarle a /analyze de nuevo.
  *
+ * La clave del caché es idioma + URL (ver claveCache), igual que la caché del backend:
+ * el análisis es texto que escribió Gemini en un idioma, y sin eso cambiar la web a
+ * inglés seguiría mostrando el análisis en castellano que ya estaba guardado.
+ *
  * Si el análisis termina mientras el panel está cerrado, queda marcado
  * "no leído" y el ícono de la extensión muestra un badge con la cantidad
  * — se limpia solo cuando el panel vuelve a abrirse sobre esa URL.
@@ -189,14 +269,22 @@ const BADGE_COLOR = '#2563eb';
 // próximo intento simplemente arranca de nuevo.
 const inFlight = new Map<string, Promise<AnalysisResult>>();
 
+/**
+ * Clave del caché y de `inFlight`. Las entradas de antes del idioma estaban guardadas
+ * por URL sola: ya no matchean con nada y se van solas por MAX_CACHE_ENTRIES.
+ */
+function claveCache(url: string, idioma: Idioma): string {
+  return `${idioma}|${url}`;
+}
+
 async function getAnalysisCache(): Promise<AnalysisCache> {
   const result = await browser.storage.local.get(CACHE_KEY);
   return (result[CACHE_KEY] as AnalysisCache | undefined) ?? {};
 }
 
-async function guardarEnCache(url: string, result: AnalysisResult): Promise<void> {
+async function guardarEnCache(clave: string, result: AnalysisResult): Promise<void> {
   const cache = await getAnalysisCache();
-  cache[url] = { result, analyzedAt: new Date().toISOString() };
+  cache[clave] = { result, analyzedAt: new Date().toISOString() };
 
   const entradas = Object.entries(cache).sort(
     ([, a], [, b]) => new Date(a.analyzedAt).getTime() - new Date(b.analyzedAt).getTime(),
@@ -242,8 +330,11 @@ async function marcarLeido(url: string): Promise<void> {
   await actualizarBadge(siguiente);
 }
 
-/** El fetch real a POST /analyze — igual al que antes vivía en el panel. */
-async function ejecutarAnalisis(url: string): Promise<AnalysisResult> {
+/**
+ * El fetch real a POST /analyze — igual al que antes vivía en el panel. `language` hace
+ * que Gemini escriba el análisis en el idioma de la persona.
+ */
+async function ejecutarAnalisis(url: string, idioma: Idioma): Promise<AnalysisResult> {
   const tokenRes = await handleGetIdToken();
   if ('error' in tokenRes) throw new Error('NEEDS_LOGIN');
 
@@ -253,7 +344,7 @@ async function ejecutarAnalisis(url: string): Promise<AnalysisResult> {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${tokenRes.idToken}`,
     },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, language: idioma }),
   });
 
   if (res.status === 401) {
@@ -265,11 +356,11 @@ async function ejecutarAnalisis(url: string): Promise<AnalysisResult> {
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error((data as { error?: string } | null)?.error ?? `Error ${res.status}`);
+    throw new Error(mensajeDeError(res.status, data, idioma, `Error ${res.status}`));
   }
 
   const resultado = mapBackendResult(data as BackendAnalyzeResponse);
-  await guardarEnCache(url, resultado);
+  await guardarEnCache(claveCache(url, idioma), resultado);
   await marcarNoLeido(url);
 
   // Avisamos a quien esté escuchando (el panel, si sigue abierto sobre esta
@@ -286,18 +377,20 @@ async function ejecutarAnalisis(url: string): Promise<AnalysisResult> {
 type AnalyzeUrlResponse = { result: AnalysisResult } | { error: string };
 
 async function handleAnalyzeUrl(url: string): Promise<AnalyzeUrlResponse> {
+  const idioma = await leerIdioma();
+  const clave = claveCache(url, idioma);
   const cache = await getAnalysisCache();
-  const cacheado = cache[url];
+  const cacheado = cache[clave];
   if (cacheado) {
     await marcarLeido(url);
     return { result: cacheado.result };
   }
 
-  let promesa = inFlight.get(url);
+  let promesa = inFlight.get(clave);
   if (!promesa) {
-    promesa = ejecutarAnalisis(url);
-    inFlight.set(url, promesa);
-    promesa.finally(() => inFlight.delete(url));
+    promesa = ejecutarAnalisis(url, idioma);
+    inFlight.set(clave, promesa);
+    promesa.finally(() => inFlight.delete(clave));
   }
 
   try {
@@ -315,13 +408,14 @@ type CacheState =
 /** Le permite al panel, al reabrirse sobre una pestaña, saber sin pegarle
  * al backend si esa URL ya tiene resultado, está en curso, o es nueva. */
 async function handleGetCacheState(url: string): Promise<CacheState> {
+  const clave = claveCache(url, await leerIdioma());
   const cache = await getAnalysisCache();
-  const cacheado = cache[url];
+  const cacheado = cache[clave];
   if (cacheado) {
     await marcarLeido(url);
     return { status: 'done', result: cacheado.result };
   }
-  if (inFlight.has(url)) return { status: 'loading' };
+  if (inFlight.has(clave)) return { status: 'loading' };
   return { status: 'none' };
 }
 
@@ -381,14 +475,18 @@ function fallarJob(error: string, errorCode?: string): void {
   actualizarJob({ status: 'error', error, errorCode, captureDataUrl: undefined });
 }
 
-/** Etiqueta corta del origen. Duplica lib/platform.ts a propósito: el worker no comparte su contexto. */
+/**
+ * Etiqueta corta del origen. Duplica lib/platform.ts a propósito: el worker no comparte
+ * su contexto. Sin URL devuelve '' y el panel pone "esta pantalla" en su idioma: el job
+ * vive más que un cambio de idioma, así que la palabra no puede quedar fija acá.
+ */
 function etiquetaOrigen(url: string | null): string {
-  if (!url) return 'esta pantalla';
+  if (!url) return '';
   try {
     const host = new URL(url).hostname.toLowerCase();
     return host.startsWith('www.') ? host.slice(4) : host;
   } catch {
-    return 'esta pantalla';
+    return '';
   }
 }
 
@@ -432,9 +530,14 @@ async function capturarPantalla(windowId?: number): Promise<string> {
     : browser.tabs.captureVisibleTab(windowId, opciones);
 }
 
-/** POST /analyze/read — paso 1. Devuelve la transcripción, sin veredicto. */
+/**
+ * POST /analyze/read — paso 1. Devuelve la transcripción, sin veredicto. `language` solo
+ * cambia la afirmación central que detecta el modelo: la transcripción queda en el idioma
+ * del posteo.
+ */
 async function leerImagenes(
   imagenes: { mimeType: string; dataBase64: string }[],
+  idioma: Idioma,
 ): Promise<CaptureReading> {
   const tokenRes = await handleGetIdToken();
   if ('error' in tokenRes) throw new Error('NEEDS_LOGIN');
@@ -445,7 +548,7 @@ async function leerImagenes(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${tokenRes.idToken}`,
     },
-    body: JSON.stringify({ images: imagenes }),
+    body: JSON.stringify({ images: imagenes, language: idioma }),
   });
 
   if (res.status === 401) {
@@ -455,7 +558,7 @@ async function leerImagenes(
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error((data as { error?: string } | null)?.error ?? 'No pudimos leer la imagen.');
+    throw new Error(mensajeDeError(res.status, data, idioma, TEXTOS[idioma].noPudimosLeer));
   }
   return (data as ReadResponse).reading;
 }
@@ -464,7 +567,11 @@ async function leerImagenes(
  * POST /analyze/content — paso 2. Verifica el TEXTO (la transcripción ya
  * corregida por el usuario), no la imagen: a esta altura la imagen ya se borró.
  */
-async function verificarContenido(actual: ContentJob, text: string): Promise<AnalysisResult> {
+async function verificarContenido(
+  actual: ContentJob,
+  text: string,
+  idioma: Idioma,
+): Promise<AnalysisResult> {
   const tokenRes = await handleGetIdToken();
   if ('error' in tokenRes) throw new Error('NEEDS_LOGIN');
 
@@ -475,6 +582,7 @@ async function verificarContenido(actual: ContentJob, text: string): Promise<Ana
       Authorization: `Bearer ${tokenRes.idToken}`,
     },
     body: JSON.stringify({
+      language: idioma,
       source: {
         kind: actual.kind,
         // El modelo lector gana sobre la pista del dominio: leyó la imagen.
@@ -496,7 +604,7 @@ async function verificarContenido(actual: ContentJob, text: string): Promise<Ana
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error((data as { error?: string } | null)?.error ?? `Error ${res.status}`);
+    throw new Error(mensajeDeError(res.status, data, idioma, `Error ${res.status}`));
   }
 
   // El resultado NO se guarda en el caché por URL: ver "Privacidad" arriba.
@@ -519,11 +627,8 @@ async function handleStartCapture(): Promise<{ ok: true } | { error: string }> {
     // (chrome://, la tienda de extensiones) o falta de permiso de host.
     const sinPermiso =
       err instanceof Error && /permission|activeTab|cannot be scripted/i.test(err.message);
-    return {
-      error: sinPermiso
-        ? 'No tenemos permiso para capturar esta página. Probá con el clic derecho sobre la página.'
-        : 'No pudimos capturar esta pantalla. Hay páginas que el navegador no deja capturar (chrome://, la tienda de extensiones).',
-    };
+    const t = TEXTOS[await leerIdioma()];
+    return { error: sinPermiso ? t.sinPermisoCaptura : t.noSeDejaCapturar };
   }
 }
 
@@ -533,34 +638,38 @@ async function handleReadJob(crop: CropRect): Promise<void> {
   if (!actual?.captureDataUrl) return;
 
   actualizarJob({ status: 'reading' });
+  const idioma = await leerIdioma();
+  const t = TEXTOS[idioma];
   try {
-    const preparada = await recortarYComprimir(actual.captureDataUrl, crop);
-    const reading = await leerImagenes([preparada.image]);
+    const preparada = await recortarYComprimir(actual.captureDataUrl, crop, idioma);
+    const reading = await leerImagenes([preparada.image], idioma);
     // La imagen cumplió su función: se borra antes de seguir (regla dura).
     actualizarJob({ status: 'review', reading, captureDataUrl: undefined });
   } catch (err) {
     if (err instanceof Error && err.message === 'NEEDS_LOGIN') {
-      fallarJob('Tenés que volver a iniciar sesión.', 'NEEDS_LOGIN');
+      fallarJob(t.volverAEntrar, 'NEEDS_LOGIN');
       return;
     }
-    fallarJob(err instanceof Error ? err.message : 'No pudimos leer la imagen.');
+    fallarJob(err instanceof Error ? err.message : t.noPudimosLeer);
   }
 }
 
 /** Lo mismo, pero sobre una imagen de la página (menú contextual sobre una imagen). */
 async function leerImagenDeUrl(srcUrl: string): Promise<void> {
   if (!job) return;
+  const idioma = await leerIdioma();
+  const t = TEXTOS[idioma];
   try {
-    const blob = await traerImagen(srcUrl);
-    const preparada = await recortarYComprimir(blob);
-    const reading = await leerImagenes([preparada.image]);
+    const blob = await traerImagen(srcUrl, idioma);
+    const preparada = await recortarYComprimir(blob, undefined, idioma);
+    const reading = await leerImagenes([preparada.image], idioma);
     actualizarJob({ status: 'review', reading });
   } catch (err) {
     if (err instanceof Error && err.message === 'NEEDS_LOGIN') {
-      fallarJob('Tenés que volver a iniciar sesión.', 'NEEDS_LOGIN');
+      fallarJob(t.volverAEntrar, 'NEEDS_LOGIN');
       return;
     }
-    fallarJob(err instanceof Error ? err.message : 'No pudimos leer la imagen.');
+    fallarJob(err instanceof Error ? err.message : t.noPudimosLeer);
   }
 }
 
@@ -570,15 +679,17 @@ async function handleVerifyJob(text: string): Promise<void> {
   if (!actual) return;
 
   actualizarJob({ status: 'analyzing', verifiedText: text });
+  const idioma = await leerIdioma();
+  const t = TEXTOS[idioma];
   try {
-    const result = await verificarContenido(actual, text);
+    const result = await verificarContenido(actual, text, idioma);
     actualizarJob({ status: 'done', result });
   } catch (err) {
     if (err instanceof Error && err.message === 'NEEDS_LOGIN') {
-      fallarJob('Tenés que volver a iniciar sesión.', 'NEEDS_LOGIN');
+      fallarJob(t.volverAEntrar, 'NEEDS_LOGIN');
       return;
     }
-    fallarJob(err instanceof Error ? err.message : 'No pudimos completar el análisis.');
+    fallarJob(err instanceof Error ? err.message : t.noPudimosCompletar);
   }
 }
 
@@ -602,27 +713,32 @@ const MENU = {
 
 function crearMenuContextual(): void {
   // removeAll primero: `create` con un id que ya existe tira error, y esto se
-  // vuelve a ejecutar cada vez que se reinstancia el service worker.
+  // vuelve a ejecutar cada vez que se reinstancia el service worker — y cada vez
+  // que la web cambia de idioma (ver handleAuthSync), para rearmarlo traducido.
   //
   // Va por promesa y no por callback a propósito: en Chrome las dos formas
   // andan, pero la API estilo `browser.*` (Firefox) devuelve una promesa e
   // IGNORA el callback, así que con la forma de callback los ítems no se
   // crearían nunca en ese navegador.
-  Promise.resolve(browser.contextMenus.removeAll())
-    .then(() => {
+  //
+  // Los títulos salen de TEXTOS y no de _locales: _locales sigue el idioma del
+  // navegador, y el menú tiene que seguir al de la web como el resto de la extensión.
+  Promise.all([leerIdioma(), browser.contextMenus.removeAll()])
+    .then(([idioma]) => {
+      const t = TEXTOS[idioma];
       browser.contextMenus.create({
         id: MENU.seleccion,
-        title: 'Analizar esta selección con AletheIA',
+        title: t.menuSeleccion,
         contexts: ['selection'],
       });
       browser.contextMenus.create({
         id: MENU.imagen,
-        title: 'Analizar esta imagen con AletheIA',
+        title: t.menuImagen,
         contexts: ['image'],
       });
       browser.contextMenus.create({
         id: MENU.captura,
-        title: 'Analizar lo que estoy viendo con AletheIA',
+        title: t.menuCaptura,
         contexts: ['page'],
       });
     })
@@ -684,7 +800,7 @@ async function handleMenuClick(
       emitirJob();
     } catch {
       nuevoJob('capture', pageUrl, 'error');
-      fallarJob('No pudimos capturar esta pantalla.');
+      fallarJob(TEXTOS[await leerIdioma()].noPudimosCapturar);
     }
   }
 }

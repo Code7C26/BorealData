@@ -1,9 +1,36 @@
+'use client'
+
 import Link from 'next/link'
 import { PanelRight } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
-import { ANALISIS_EJEMPLO } from '@/lib/ejemplo'
-import { CONFIDENCE, STANCE, VERDICT } from '@/lib/verdict'
+import { ANALISIS_EJEMPLO as EJEMPLO_POR_IDIOMA } from '@/lib/ejemplo'
+import { traducciones } from '@/lib/idioma'
+import { useTextos } from '@/lib/use-idioma'
+import { useVocabulario } from '@/lib/use-vocabulario'
 import { cn } from '@/lib/utils'
+
+const TEXTOS = traducciones({
+  es: {
+    confianza: (nivel: string) => `Confianza ${nivel}`,
+    urlMaqueta: 'diario-ejemplo.com/nota/8821',
+    eyebrow: 'Extensión de navegador',
+    titulo: 'Verificá sin salir de la nota',
+    bajada:
+      'AletheIA se abre en un panel al costado de la página que estás leyendo. Un clic y tenés el veredicto, la confianza y las fuentes al lado del texto, sin copiar enlaces ni cambiar de pestaña.',
+    crearCuenta: 'Crear cuenta y empezar',
+    enCamino: 'La extensión de Chrome está en camino — [LINK DE DESCARGA]',
+  },
+  en: {
+    confianza: (nivel: string) => `${nivel} confidence`,
+    urlMaqueta: 'example-news.com/article/8821',
+    eyebrow: 'Browser extension',
+    titulo: 'Check without leaving the article',
+    bajada:
+      "AletheIA opens in a panel next to the page you're reading. One click and you have the verdict, the confidence and the sources right beside the text, without copying links or switching tabs.",
+    crearCuenta: 'Create an account and start',
+    enCamino: 'The Chrome extension is on its way — [DOWNLOAD LINK]',
+  },
+})
 
 function BarraDeTexto({ ancho, alto = 'h-2' }: { ancho: string; alto?: string }) {
   return <span className={cn(alto, 'block rounded-sm bg-border-strong')} style={{ width: ancho }} />
@@ -17,6 +44,9 @@ function BarraDeTexto({ ancho, alto = 'h-2' }: { ancho: string; alto?: string })
  * fuentes con su postura. Es la prueba de que el sistema sobrevive a 190 px.
  */
 function MaquetaPanel() {
+  const t = useTextos(TEXTOS)
+  const ANALISIS_EJEMPLO = useTextos(EJEMPLO_POR_IDIOMA)
+  const { CONFIDENCE, STANCE, VERDICT } = useVocabulario()
   const meta = VERDICT[ANALISIS_EJEMPLO.verdict]
   const Icon = meta.icon
   const confianza = CONFIDENCE[ANALISIS_EJEMPLO.confidence]
@@ -35,7 +65,7 @@ function MaquetaPanel() {
           <span className="size-2.5 rounded-pill bg-verdict-dudoso" />
           <span className="size-2.5 rounded-pill bg-verdict-verificado" />
           <span className="ml-2.5 h-6 flex-1 truncate rounded-pill border border-border bg-bg px-3 font-mono text-[10px] leading-6 text-disabled">
-            diario-ejemplo.com/nota/8821
+            {t.urlMaqueta}
           </span>
         </div>
 
@@ -82,7 +112,7 @@ function MaquetaPanel() {
                 ))}
               </span>
               <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-subtle">
-                Confianza {confianza.label.toLowerCase()}
+                {t.confianza(confianza.label.toLowerCase())}
               </span>
             </div>
 
@@ -104,6 +134,8 @@ function MaquetaPanel() {
 }
 
 export function ExtensionSection() {
+  const t = useTextos(TEXTOS)
+
   return (
     <section
       id="extension"
@@ -112,24 +144,18 @@ export function ExtensionSection() {
     >
       <div className="relative mx-auto grid max-w-shell grid-cols-1 items-center gap-14 lg:grid-cols-[0.95fr_1.05fr]">
         <div>
-          <p className="eyebrow">Extensión de navegador</p>
+          <p className="eyebrow">{t.eyebrow}</p>
           <h2 id="extension-title" className="mt-4 text-balance font-display text-h2-fluid text-display">
-            Verificá sin salir de la nota
+            {t.titulo}
           </h2>
-          <p className="mt-4 max-w-texto text-pretty text-muted">
-            AletheIA se abre en un panel al costado de la página que estás leyendo. Un clic y
-            tenés el veredicto, la confianza y las fuentes al lado del texto, sin copiar enlaces ni
-            cambiar de pestaña.
-          </p>
+          <p className="mt-4 max-w-texto text-pretty text-muted">{t.bajada}</p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <Link href="/registro" className="btn-primary">
               <PanelRight aria-hidden="true" size={16} />
-              Crear cuenta y empezar
+              {t.crearCuenta}
             </Link>
           </div>
-          <p className="mt-4 font-mono text-micro uppercase text-disabled">
-            La extensión de Chrome está en camino — [LINK DE DESCARGA]
-          </p>
+          <p className="mt-4 font-mono text-micro uppercase text-disabled">{t.enCamino}</p>
         </div>
 
         <MaquetaPanel />

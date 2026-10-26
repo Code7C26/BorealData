@@ -10,16 +10,47 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { useAuth } from '@/lib/auth-context'
 import { iniciales } from '@/lib/usuario'
 import { apiFetch, type HistoryItem } from '@/lib/api'
+import { traducciones } from '@/lib/idioma'
 import { escribirColapso, leerColapso, suscribirAlColapso } from '@/lib/sidebar-colapso'
+import { useTextos } from '@/lib/use-idioma'
 import { normalize, VERDICT } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
 
 // Perfil se accede desde el bloque de usuario (arriba), no se repite acá.
 const NAV_INFERIOR = [
-  { href: '/historial', label: 'Historial', icon: History },
-  { href: '/configuracion', label: 'Configuración', icon: Settings },
-  { href: '/contacto', label: 'Contacto', icon: Mail },
-]
+  { href: '/historial', clave: 'historial', icon: History },
+  { href: '/configuracion', clave: 'configuracion', icon: Settings },
+  { href: '/contacto', clave: 'contacto', icon: Mail },
+] as const
+
+const TEXTOS = traducciones({
+  es: {
+    nav: { historial: 'Historial', configuracion: 'Configuración', contacto: 'Contacto' },
+    verPerfil: 'Ver perfil',
+    verificar: 'Verificar una nota',
+    recientes: 'Recientes',
+    sinRecientes: 'Acá van a quedar tus últimas verificaciones.',
+    modoLectura: 'Modo de lectura',
+    usuario: 'Usuario',
+    abrirMenu: 'Abrir menú',
+    cerrarMenu: 'Cerrar menú',
+    expandir: 'Expandir menú',
+    colapsar: 'Colapsar menú',
+  },
+  en: {
+    nav: { historial: 'History', configuracion: 'Settings', contacto: 'Contact' },
+    verPerfil: 'View profile',
+    verificar: 'Check an article',
+    recientes: 'Recent',
+    sinRecientes: 'Your latest checks will show up here.',
+    modoLectura: 'Reading mode',
+    usuario: 'User',
+    abrirMenu: 'Open menu',
+    cerrarMenu: 'Close menu',
+    expandir: 'Expand menu',
+    colapsar: 'Collapse menu',
+  },
+})
 
 /** Cuántos análisis se muestran en "Recientes". El listado completo vive en /historial. */
 const CANTIDAD_RECIENTES = 5
@@ -38,6 +69,7 @@ function ContenidoSidebar({
   onNavigate?: () => void
 }) {
   const pathname = usePathname()
+  const t = useTextos(TEXTOS)
 
   return (
     <div className="flex h-full flex-col">
@@ -51,7 +83,7 @@ function ContenidoSidebar({
         <Link
           href="/perfil"
           onClick={onNavigate}
-          title={colapsada ? `${nombre} · Ver perfil` : 'Ver perfil'}
+          title={colapsada ? `${nombre} · ${t.verPerfil}` : t.verPerfil}
           className={cn(
             'flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-3',
             'transition-colors duration-150 ease-boreal hover:border-accent-text',
@@ -77,22 +109,22 @@ function ContenidoSidebar({
         <Link
           href="/dashboard"
           onClick={onNavigate}
-          title="Verificar una nota"
+          title={t.verificar}
           className={cn('btn-primary w-full', colapsada && 'px-0')}
         >
           <Plus size={16} className="shrink-0" aria-hidden="true" />
-          {!colapsada && 'Verificar una nota'}
+          {!colapsada && t.verificar}
         </Link>
       </div>
 
       {/* Recientes — se ocultan colapsada, no entran en un riel de íconos */}
       {!colapsada && (
         <div className="mt-8 flex min-h-0 flex-1 flex-col px-4">
-          <p className="px-1 font-mono text-micro uppercase text-subtle">Recientes</p>
+          <p className="px-1 font-mono text-micro uppercase text-subtle">{t.recientes}</p>
           <div className="mt-3 flex-1 space-y-1 overflow-y-auto scrollbar-thin">
             {recientes.length === 0 ? (
               <p className="px-1 py-2 text-caption tracking-normal text-disabled">
-                Acá van a quedar tus últimas verificaciones.
+                {t.sinRecientes}
               </p>
             ) : (
               recientes.map((item) => {
@@ -129,12 +161,13 @@ function ContenidoSidebar({
           {NAV_INFERIOR.map((item) => {
             const activo = pathname === item.href
             const Icon = item.icon
+            const label = t.nav[item.clave]
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
-                title={item.label}
+                title={label}
                 aria-current={activo ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-body-sm font-medium',
@@ -150,7 +183,7 @@ function ContenidoSidebar({
                   aria-hidden="true"
                   className={cn('shrink-0', activo && 'text-accent-text')}
                 />
-                {!colapsada && item.label}
+                {!colapsada && label}
               </Link>
             )
           })}
@@ -159,7 +192,7 @@ function ContenidoSidebar({
         <div className={cn('mt-3 flex items-center gap-2', colapsada && 'justify-center')}>
           <ThemeToggle />
           {!colapsada && (
-            <span className="font-mono text-micro uppercase text-disabled">Modo de lectura</span>
+            <span className="font-mono text-micro uppercase text-disabled">{t.modoLectura}</span>
           )}
         </div>
       </div>
@@ -172,6 +205,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
   const [recientes, setRecientes] = useState<HistoryItem[]>([])
   const pathname = usePathname()
   const { user, profile } = useAuth()
+  const t = useTextos(TEXTOS)
 
   /**
    * La preferencia de colapso vive afuera de React (en el atributo de <html> que deja el
@@ -185,7 +219,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
    */
   const colapsada = useSyncExternalStore(suscribirAlColapso, leerColapso, () => false)
 
-  const nombre = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Usuario'
+  const nombre = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || t.usuario
   const email = user?.email ?? ''
 
   // El menú mobile se cierra al navegar. Va como ajuste durante el render (el patrón
@@ -228,7 +262,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
       <div className="relative flex items-center justify-between border-b border-border bg-bg/70 px-4 py-3 backdrop-blur-xl lg:hidden">
         <button
           onClick={() => setMobileAbierto(true)}
-          aria-label="Abrir menú"
+          aria-label={t.abrirMenu}
           className="flex size-9 items-center justify-center rounded-lg text-muted transition-colors duration-150 ease-boreal hover:bg-surface hover:text-ink"
         >
           <Menu size={20} aria-hidden="true" />
@@ -267,7 +301,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
         {/* Toggle colapsar/expandir */}
         <button
           onClick={alternarColapso}
-          aria-label={colapsada ? 'Expandir menú' : 'Colapsar menú'}
+          aria-label={colapsada ? t.expandir : t.colapsar}
           className="absolute -right-3 top-9 flex size-6 items-center justify-center rounded-pill border border-border bg-surface text-subtle transition-colors duration-150 ease-boreal hover:border-accent-text hover:text-accent-text"
         >
           {colapsada ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -287,7 +321,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
           <aside className="isolate absolute inset-y-0 left-0 flex w-72 max-w-[85%] animate-rise flex-col overflow-hidden border-r border-border bg-surface-sunk">
             <button
               onClick={() => setMobileAbierto(false)}
-              aria-label="Cerrar menú"
+              aria-label={t.cerrarMenu}
               className="absolute right-3 top-5 z-10 flex size-8 items-center justify-center rounded-lg text-subtle hover:bg-surface hover:text-ink"
             >
               <X size={18} aria-hidden="true" />

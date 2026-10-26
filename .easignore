@@ -1,0 +1,70 @@
+# Qué NO viaja a los servidores de EAS Build.
+#
+# Este archivo vive en la raíz del REPOSITORIO y no en `mobile/`, porque EAS
+# arma el paquete desde la raíz del repo git, no desde la carpeta de la app.
+# Medido: sin esto el paquete pesaba 1,2 GB (los `node_modules` de `mobile/` y
+# de `apps/`) cuando la app sola son ~2 MB.
+#
+# Lo más importante no es el tamaño: la raíz del repo NO tiene `.gitignore`, así
+# que sin este archivo también se subían `apps/.env.local` y `backend/.env`, con
+# la clave de Gemini y las credenciales de la base. Las entradas de `.env` de
+# abajo son la red de seguridad de eso y no se tocan.
+#
+# Sintaxis igual a la de `.gitignore`.
+
+# ── Nada de lo que no sea la app móvil ───────────────────────────────────────
+/apps/
+/backend/
+/DOCS/
+/design/
+/assets/
+/package-lock.json
+
+# OJO: esto NO funciona, y queda escrito para que nadie lo vuelva a intentar.
+#
+# Medido el 26-oct-2026 contra eas-cli 18, seis variantes, mismo resultado:
+#   sin .easignore ................................. 1,2 GB
+#   .easignore dentro de mobile/ ................... 1,2 GB
+#   acá, `/mobile/node_modules/` (anclado) ........... 813 MB
+#   acá, `node_modules/` (sin ancla) ................. 813 MB
+#   con mobile/ ya commiteada ........................ 814 MB
+#   EAS_NO_VCS=1 + `node_modules` sin barra final .... 809 MB
+#
+# Los patrones de primer nivel (como `/apps/` acá arriba) SÍ se aplican: por eso
+# el paquete bajó de 1,2 GB a 813 MB. Lo que nunca se excluye es
+# `mobile/node_modules`, que son 753 de los 809 MB que quedan.
+#
+# Si alguna vez hace falta subir rápido: sacar `mobile/node_modules` de la
+# carpeta mientras dura la subida y devolverlo después (EAS reinstala las
+# dependencias de su lado desde el package-lock.json, no las necesita). Para eso
+# no puede haber un Metro corriendo, porque tiene la carpeta tomada y Windows no
+# deja renombrarla.
+node_modules/
+
+# ── Secretos, en cualquier carpeta ───────────────────────────────────────────
+.env
+.env.*
+*.env
+!.env.example
+
+# ── De la app: lo que EAS regenera de su lado ────────────────────────────────
+/mobile/node_modules/
+/mobile/.expo/
+/mobile/dist/
+/mobile/web-build/
+/mobile/expo-env.d.ts
+/mobile/ios/
+/mobile/android/
+
+# ── Herramientas de desarrollo que no hacen falta para compilar ──────────────
+/mobile/.vscode/
+/mobile/.claude/
+/mobile/scripts/
+.git/
+*.log
+*.tsbuildinfo
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision

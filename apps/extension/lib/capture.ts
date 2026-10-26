@@ -10,6 +10,24 @@
  * valida igual y rechaza con 400. Si alguno cambia allá, cambia acá.
  */
 
+import { traducciones, type Idioma } from '@/lib/idioma';
+
+/** Los errores de acá llegan tal cual al panel (vía fallarJob con `err.message`). */
+const MENSAJES = traducciones({
+  es: {
+    noPrepara: 'No se pudo preparar la imagen para analizarla.',
+    noComprime: 'No se pudo comprimir la imagen.',
+    noDescarga: (status: number) => `No se pudo descargar la imagen (${status}).`,
+    noEsImagen: 'Eso no parece una imagen.',
+  },
+  en: {
+    noPrepara: "The image couldn't be prepared for analysis.",
+    noComprime: "The image couldn't be compressed.",
+    noDescarga: (status: number) => `The image couldn't be downloaded (${status}).`,
+    noEsImagen: "That doesn't look like an image.",
+  },
+});
+
 /** Máximo de imágenes por lectura (MAX_IMAGES del backend). */
 export const MAX_IMAGES = 3;
 /** Tope por imagen ya decodificada (MAX_IMAGE_BYTES del backend). */
@@ -90,7 +108,9 @@ function aBase64(buffer: ArrayBuffer): string {
 export async function recortarYComprimir(
   fuente: Blob | string,
   crop: CropRect = CROP_COMPLETO,
+  idioma: Idioma = 'es',
 ): Promise<ImagenPreparada> {
+  const m = MENSAJES[idioma];
   const blob = typeof fuente === 'string' ? await (await fetch(fuente)).blob() : fuente;
   const bitmap = await createImageBitmap(blob);
 
@@ -112,7 +132,7 @@ export async function recortarYComprimir(
 
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('No se pudo preparar la imagen para analizarla.');
+    if (!ctx) throw new Error(m.noPrepara);
     ctx.drawImage(bitmap, sx, sy, anchoRecorte, altoRecorte, 0, 0, width, height);
 
     for (const quality of CALIDADES) {
@@ -129,7 +149,7 @@ export async function recortarYComprimir(
     }
 
     // Inalcanzable: el for de arriba siempre devuelve en la última calidad.
-    throw new Error('No se pudo comprimir la imagen.');
+    throw new Error(m.noComprime);
   } finally {
     // Sin esto el bitmap queda ocupando memoria del worker hasta el GC, y acá
     // se manejan imágenes de pantalla completa.
@@ -145,12 +165,13 @@ export async function recortarYComprimir(
  * cookies, así que una imagen de un CDN privado (una historia de Instagram)
  * se baja igual que la bajó la pestaña. Las `data:` URL también funcionan.
  */
-export async function traerImagen(srcUrl: string): Promise<Blob> {
+export async function traerImagen(srcUrl: string, idioma: Idioma = 'es'): Promise<Blob> {
+  const m = MENSAJES[idioma];
   const res = await fetch(srcUrl, { credentials: 'include' });
-  if (!res.ok) throw new Error(`No se pudo descargar la imagen (${res.status}).`);
+  if (!res.ok) throw new Error(m.noDescarga(res.status));
   const blob = await res.blob();
   if (!blob.type.startsWith('image/')) {
-    throw new Error('Eso no parece una imagen.');
+    throw new Error(m.noEsImagen);
   }
   return blob;
 }

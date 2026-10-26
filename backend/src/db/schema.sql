@@ -229,3 +229,19 @@ CREATE POLICY analyses_select_own_or_shared ON analyses
       AND source_type = 'url'
     )
   );
+
+-- ── Idioma del análisis (22-oct-2026) ───────────────────────────────────────
+-- La web es bilingüe y le pide a Gemini el análisis en el idioma de la persona (`language`
+-- en el body de /analyze y /analyze/content). La caché de /analyze reusa análisis por URL
+-- entre usuarios, así que matchea por (url, language): sin esto, quien usa la web en inglés
+-- recibiría el análisis en castellano de otra persona. Todas las filas anteriores se
+-- escribieron en castellano, así que DEFAULT 'es' es el dato correcto para ellas.
+-- Se aplica con el dueño de la tabla (ver migrate-language.ts). Re-corrible.
+ALTER TABLE analyses
+  ADD COLUMN IF NOT EXISTS language text NOT NULL DEFAULT 'es';
+
+-- (Sin ADD CONSTRAINT IF NOT EXISTS: si ya la corriste, el error "already exists" es ignorable.)
+ALTER TABLE analyses
+  ADD CONSTRAINT analyses_language_chk CHECK (language IN ('es', 'en'));
+
+CREATE INDEX IF NOT EXISTS analyses_url_language_idx ON analyses (url, language);

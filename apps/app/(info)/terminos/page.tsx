@@ -1,11 +1,24 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { EncabezadoLegal, Lista, Seccion } from '@/components/pagina-legal'
+import { traducciones } from '@/lib/idioma'
+import { leerIdioma } from '@/lib/idioma-servidor'
 
-export const metadata: Metadata = {
-  title: 'Términos y condiciones — AletheIA',
-  description:
-    'Qué es AletheIA, qué no es, qué podés esperar de un veredicto y cuáles son las reglas de uso.',
+const METADATA = traducciones<Metadata>({
+  es: {
+    title: 'Términos y condiciones — AletheIA',
+    description:
+      'Qué es AletheIA, qué no es, qué podés esperar de un veredicto y cuáles son las reglas de uso.',
+  },
+  en: {
+    title: 'Terms and conditions — AletheIA',
+    description:
+      "What AletheIA is, what it isn't, what you can expect from a verdict and what the rules of use are.",
+  },
+})
+
+export async function generateMetadata(): Promise<Metadata> {
+  return METADATA[await leerIdioma()]
 }
 
 /**
@@ -14,8 +27,15 @@ export const metadata: Metadata = {
  * El apartado que importa de verdad es "Qué es y qué no es un veredicto": una
  * herramienta de verificación automática que no aclara sus propios límites se
  * contradice a sí misma. Va arriba por eso, antes de las reglas de uso.
+ *
+ * Dos textos enteros, por el mismo motivo que en privacidad/page.tsx. Si cambia
+ * uno, cambia el otro en el mismo commit.
  */
-export default function TerminosPage() {
+export default async function TerminosPage() {
+  return (await leerIdioma()) === 'en' ? <ContenidoEn /> : <ContenidoEs />
+}
+
+function ContenidoEs() {
   return (
     <article className="flex flex-col gap-8">
       <EncabezadoLegal
@@ -157,6 +177,162 @@ export default function TerminosPage() {
         Ver también la{' '}
         <Link href="/privacidad" className="text-accent-text underline">
           política de privacidad
+        </Link>
+        .
+      </p>
+    </article>
+  )
+}
+
+function ContenidoEn() {
+  return (
+    <article className="flex flex-col gap-8">
+      <EncabezadoLegal
+        volanta="Terms and conditions"
+        titulo="The rules, in plain English"
+        bajada="What AletheIA is, what it isn't, and what we expect from you when you use it. If something here doesn't sit right with you, write to us before creating an account."
+        fecha="October 8, 2026"
+        etiquetaFecha="Last updated"
+      />
+
+      <p className="max-w-texto text-caption text-subtle">
+        This is a translation provided for convenience. If there is any discrepancy, the
+        Spanish version of these terms prevails.
+      </p>
+
+      <Seccion titulo="What AletheIA is">
+        <p>
+          A tool that analyzes an article or a post with an artificial intelligence model and
+          gives you back a verdict, a confidence level, the sources it checked and the steps of
+          its reasoning. It is developed by <strong>Boreal Data</strong> (Renzo Lanata and Ciro
+          Di Marsico) and is currently free.
+        </p>
+      </Seccion>
+
+      <Seccion titulo="What a verdict is, and what it isn't">
+        <p>
+          This is the most important part of these terms, so here it is straight:{' '}
+          <strong>
+            an AletheIA verdict is the result of an automated analysis, not the ruling of a
+            professional fact-checker.
+          </strong>
+        </p>
+        <Lista>
+          <li>
+            <strong>It can be wrong.</strong> The model can misread a figure, fail to find a
+            source that exists, or give weight to one that doesn&apos;t deserve it. That&apos;s
+            why we show the reasoning and the sources: so you can review the path, not just the
+            conclusion.
+          </li>
+          <li>
+            <strong>The confidence level is about the evidence, not about how serious it is.</strong>{' '}
+            Confidence 5 means we reached the primary source and independent fact-checkers;
+            confidence 1, that there was a single secondary source.
+          </li>
+          <li>
+            <strong>&ldquo;Not enough data&rdquo; is not an error.</strong> It is the honest
+            verdict when the search isn&apos;t enough to confirm or debunk.
+          </li>
+          <li>
+            <strong>Don&apos;t use it as the only basis for a decision that matters.</strong>{' '}
+            Not to accuse anyone, not for a news story, not for a legal, medical or financial
+            decision. It&apos;s a starting point for looking more closely.
+          </li>
+        </Lista>
+        <p>
+          In legal terms: the service is provided &ldquo;as is&rdquo;, with no guarantee that a
+          verdict is correct, complete or current, and we are not liable for decisions anyone
+          makes based on an analysis.
+        </p>
+      </Seccion>
+
+      <Seccion titulo="Your account">
+        <Lista>
+          <li>
+            You need an account to analyze. Each analysis uses a real request to a paid model,
+            and the account is what lets us keep the service free without it being abused.
+          </li>
+          <li>
+            The details you give when signing up must be yours and true. You are responsible
+            for what is done from your account.
+          </li>
+          <li>
+            There is a limit of 20 new analyses per hour. It isn&apos;t a commercial
+            restriction: it is the ceiling that keeps us from running out of budget.
+          </li>
+          <li>You must be 13 or older.</li>
+        </Lista>
+      </Seccion>
+
+      <Seccion titulo="What you can't do">
+        <Lista>
+          <li>
+            Use AletheIA to harass, defame or single out a specific person. Our analyses talk
+            about the content, never about who shares it, and we expect the same from how they
+            are used.
+          </li>
+          <li>
+            Analyze content you access without permission, or upload screenshots of other
+            people&apos;s conversations that aren&apos;t yours to share.
+          </li>
+          <li>
+            Automate use of the service (scripts, bots, reselling the analyses) or try to get
+            around the hourly limits.
+          </li>
+          <li>
+            Present one of our verdicts as if it were a professional fact-check, or attribute to
+            us a conclusion we didn&apos;t reach.
+          </li>
+        </Lista>
+        <p>
+          If any of this happens we may suspend the account. If it&apos;s serious, without
+          prior notice.
+        </p>
+      </Seccion>
+
+      <Seccion titulo="The content you analyze">
+        <p>
+          What you paste or capture still belongs to whoever owns it: we claim no rights over
+          it. We only use it to produce the analysis you asked for. What is stored and what
+          isn&apos;t is detailed in the{' '}
+          <Link href="/privacidad" className="text-accent-text underline">
+            privacy policy
+          </Link>
+          , and the part about content traveling to Google is worth reading.
+        </p>
+        <p>
+          The analysis itself (the text of the verdict, the reasoning, the summary) is generated
+          by us and you can share and quote it freely, as long as you mention it came from
+          AletheIA.
+        </p>
+      </Seccion>
+
+      <Seccion titulo="Availability">
+        <p>
+          This is a project in development, built by two people. It may be down, it may be
+          slow, and we may change or discontinue features. If we ever decide to shut it down,
+          we will give notice in advance so you can take your history with you.
+        </p>
+      </Seccion>
+
+      <Seccion titulo="If these terms change">
+        <p>
+          We update the date above and let you know by email before it takes effect. If you
+          don&apos;t agree with a change, you can close your account.
+        </p>
+      </Seccion>
+
+      <Seccion titulo="Governing law">
+        <p>
+          These terms are governed by the laws of the Argentine Republic and any dispute will be
+          settled before its ordinary courts.
+        </p>
+      </Seccion>
+
+      <p className="text-body-sm text-muted">
+        See also the{' '}
+        <Link href="/privacidad" className="text-accent-text underline">
+          privacy policy
         </Link>
         .
       </p>

@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "AletheIA",
+    "description": "Extension name. It is the brand: do not translate."
+  },
+  "extDescription": {
+    "message": "AI fake news detector: source verification and content analysis.",
+    "description": "Extension description in the Chrome Web Store and on chrome://extensions."
+  }
+}

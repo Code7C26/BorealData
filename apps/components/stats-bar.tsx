@@ -2,8 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch, type GlobalStats } from '@/lib/api'
-import { CONFIDENCE, VERDICT, type Verdict } from '@/lib/verdict'
+import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
+import { useVocabulario } from '@/lib/use-vocabulario'
+import type { Verdict } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
+
+const TEXTOS = traducciones({
+  es: {
+    titulo: 'Lo que llevamos verificado',
+    notasAnalizadas: 'Notas analizadas',
+    fuentesConsultadas: 'Fuentes consultadas',
+    confianzaMedia: (nivel: string) => `Confianza media — ${nivel}`,
+    notas: (n: string) => `${n} notas`,
+  },
+  en: {
+    titulo: "What we've checked so far",
+    notasAnalizadas: 'Articles analyzed',
+    fuentesConsultadas: 'Sources checked',
+    confianzaMedia: (nivel: string) => `Average confidence — ${nivel}`,
+    notas: (n: string) => `${n} articles`,
+  },
+})
 
 const ORDEN: Verdict[] = ['verificado', 'dudoso', 'falso', 'sin-datos']
 
@@ -21,6 +41,9 @@ const DURACION_CONTEO_MS = 1200
 export function StatsBar() {
   const [stats, setStats] = useState<GlobalStats | null>(null)
   const [progreso, setProgreso] = useState(0)
+  const t = useTextos(TEXTOS)
+  const tag = TAG_IDIOMA[useIdioma().idioma]
+  const { CONFIDENCE, VERDICT } = useVocabulario()
 
   useEffect(() => {
     apiFetch<GlobalStats>('/stats')
@@ -49,21 +72,21 @@ export function StatsBar() {
     <section className="px-gutter pb-32 md:px-6" aria-labelledby="stats-title">
       <div className="mx-auto flex max-w-shell flex-col gap-10 border-y border-border py-16">
         <h2 id="stats-title" className="eyebrow">
-          Lo que llevamos verificado
+          {t.titulo}
         </h2>
 
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-0">
           <Dato
-            valor={Math.round(stats.totalAnalyses * progreso).toLocaleString('es-AR')}
-            label="Notas analizadas"
+            valor={Math.round(stats.totalAnalyses * progreso).toLocaleString(tag)}
+            label={t.notasAnalizadas}
           />
           <Dato
-            valor={Math.round(stats.totalSources * progreso).toLocaleString('es-AR')}
-            label="Fuentes consultadas"
+            valor={Math.round(stats.totalSources * progreso).toLocaleString(tag)}
+            label={t.fuentesConsultadas}
           />
           <Dato
-            valor={`${stats.averageConfidence.toLocaleString('es-AR')} / 5`}
-            label={`Confianza media — ${CONFIDENCE[nivelMedio].label.toLowerCase()}`}
+            valor={`${stats.averageConfidence.toLocaleString(tag)} / 5`}
+            label={t.confianzaMedia(CONFIDENCE[nivelMedio].label.toLowerCase())}
             ultimo
           />
         </div>
@@ -85,7 +108,7 @@ export function StatsBar() {
                 </div>
                 <dt className={cn('font-mono text-micro uppercase', meta.text)}>{meta.label}</dt>
                 <dd className="font-mono text-caption tracking-normal text-subtle">
-                  {n.toLocaleString('es-AR')} notas
+                  {t.notas(n.toLocaleString(tag))}
                 </dd>
               </div>
             )

@@ -12,22 +12,93 @@ import {
   WifiOff,
   type LucideIcon,
 } from 'lucide-react'
+import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
+import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { cn } from '@/lib/utils'
 
 /** Tope de caracteres que el motor analiza de una vez (espejo del backend). */
 export const MAX_CHARS = 12_000
 
-/**
- * Los cuatro pasos reales del motor. El loading no es un spinner: son los pasos
- * que de verdad ocurren, marcándose. La espera enseña cómo funciona — es el
- * posicionamiento en acción.
- */
-export const STEPS = [
-  'Leímos la nota y extrajimos las afirmaciones',
-  'Identificamos las instituciones citadas',
-  'Comparamos con fuentes primarias',
-  'Revisamos verificadores independientes',
-] as const
+type ErrorKind = Exclude<AnalysisState, { kind: 'idle' } | { kind: 'loading' }>['kind']
+
+const TEXTOS = traducciones({
+  es: {
+    /**
+     * Los cuatro pasos reales del motor. El loading no es un spinner: son los pasos
+     * que de verdad ocurren, marcándose. La espera enseña cómo funciona — es el
+     * posicionamiento en acción.
+     */
+    pasos: [
+      'Leímos la nota y extrajimos las afirmaciones',
+      'Identificamos las instituciones citadas',
+      'Comparamos con fuentes primarias',
+      'Revisamos verificadores independientes',
+    ],
+    analizando: 'Analizando',
+    casiListo: 'Casi listo',
+    tardando: 'Está tardando más de lo normal. Seguimos.',
+    errores: {
+      'error-network': { chip: 'Sin conexión', title: 'No pudimos completar el análisis' },
+      'error-url': { chip: 'Enlace no válido', title: 'Eso no parece un enlace a una nota' },
+      'error-too-long': {
+        chip: 'Texto muy largo',
+        title: 'Es más largo de lo que podemos analizar de una vez',
+      },
+      'error-content': { chip: 'Sin contenido', title: 'No pudimos leer el texto de esa nota' },
+    } satisfies Record<ErrorKind, { chip: string; title: string }>,
+    red: 'Se cortó la conexión mientras consultábamos las fuentes. Guardamos lo que pegaste: probá de nuevo cuando tengas señal.',
+    contenido:
+      'Llegamos a la página, pero no encontramos el cuerpo de la nota. Suele pasar con muros de pago, con contenido que se carga después, o cuando el enlace lleva a una portada y no a un artículo.',
+    url: 'Necesitamos la dirección completa de la publicación. Si la copiaste de una app, puede haber quedado cortada.',
+    vacio: '(vacío)',
+    muyLargo: (largo: string, limite: string) =>
+      `Pegaste ${largo} caracteres y el límite es ${limite}. Podemos analizar los primeros ${limite}, o partilo en dos.`,
+    limite: (limite: string) => `límite ${limite}`,
+    reintentar: 'Reintentar',
+    recuperar: 'Recuperar lo que pegué',
+    corregir: 'Corregir el enlace',
+    otroEnlace: 'Probar con otro enlace',
+    analizarPrimeros: (limite: string) => `Analizar los primeros ${limite}`,
+    pie: (codigo: string, intento: number) => `Error ${codigo} · reintento ${intento} de 3`,
+  },
+  en: {
+    pasos: [
+      'We read the article and extracted its claims',
+      'We identified the institutions it cites',
+      'We compared against primary sources',
+      'We checked independent fact-checkers',
+    ],
+    analizando: 'Analyzing',
+    casiListo: 'Almost done',
+    tardando: "This is taking longer than usual. We're still on it.",
+    errores: {
+      'error-network': { chip: 'No connection', title: "We couldn't complete the analysis" },
+      'error-url': { chip: 'Invalid link', title: "That doesn't look like a link to an article" },
+      'error-too-long': {
+        chip: 'Text too long',
+        title: "It's longer than we can analyze in one go",
+      },
+      'error-content': { chip: 'No content', title: "We couldn't read the text of that article" },
+    },
+    red: 'The connection dropped while we were checking the sources. We kept what you pasted: try again once you have signal.',
+    contenido:
+      "We reached the page, but couldn't find the body of the article. This usually happens with paywalls, content that loads later, or when the link points to a front page rather than an article.",
+    url: 'We need the full address of the post. If you copied it from an app, it may have been cut off.',
+    vacio: '(empty)',
+    muyLargo: (largo: string, limite: string) =>
+      `You pasted ${largo} characters and the limit is ${limite}. We can analyze the first ${limite}, or you can split it in two.`,
+    limite: (limite: string) => `limit ${limite}`,
+    reintentar: 'Try again',
+    recuperar: 'Get back what I pasted',
+    corregir: 'Fix the link',
+    otroEnlace: 'Try another link',
+    analizarPrimeros: (limite: string) => `Analyze the first ${limite}`,
+    pie: (codigo: string, intento: number) => `Error ${codigo} · attempt ${intento} of 3`,
+  },
+})
+
+/** Cuántos pasos tiene el motor (los textos van en TEXTOS, en los dos idiomas). */
+export const TOTAL_PASOS = TEXTOS.es.pasos.length
 
 export type AnalysisState =
   | { kind: 'idle' }
@@ -89,6 +160,7 @@ function LoadingCard({
   state: Extract<AnalysisState, { kind: 'loading' }>
   className?: string
 }) {
+  const t = useTextos(TEXTOS)
   // La barra no llega a 100 hasta que el backend contestó de verdad: mostrar el
   // final antes de tiempo hace que la pantalla parezca trabada mientras en
   // realidad sigue esperando. Un artículo largo con búsqueda real tarda bastante
@@ -104,10 +176,10 @@ function LoadingCard({
       <header className="flex flex-wrap items-center justify-between gap-4">
         <p className="chip text-accent-text">
           <Loader2 aria-hidden="true" size={14} className="animate-spin motion-reduce:animate-none" />
-          Analizando
+          {t.analizando}
         </p>
         <span className="font-mono text-micro uppercase text-subtle">
-          {state.resuelto ? 'Casi listo' : `~${Math.max(2, 8 - state.step * 2)} s`}
+          {state.resuelto ? t.casiListo : `~${Math.max(2, 8 - state.step * 2)} s`}
         </span>
       </header>
 
@@ -116,15 +188,15 @@ function LoadingCard({
         aria-live="polite"
         className="font-display text-h3 font-semibold text-display"
       >
-        {STEPS[state.step]}
+        {t.pasos[state.step]}
       </h2>
 
       <ol className="flex flex-col gap-3.5">
-        {STEPS.map((label, i) => {
+        {t.pasos.map((label, i) => {
           const hecho = i < state.step || (state.resuelto && i <= state.step)
           const activo = i === state.step && !state.resuelto
           return (
-            <li key={label} className="flex items-start gap-3.5 text-body-sm">
+            <li key={i} className="flex items-start gap-3.5 text-body-sm">
               <span
                 aria-hidden="true"
                 className={cn(
@@ -162,7 +234,7 @@ function LoadingCard({
       </div>
 
       {state.elapsed > SEGUNDOS_PARA_AVISAR && (
-        <p className="text-body-sm text-subtle">Está tardando más de lo normal. Seguimos.</p>
+        <p className="text-body-sm text-subtle">{t.tardando}</p>
       )}
 
       {/* Esqueleto de lo que viene: la card no cambia de tamaño al resolverse. */}
@@ -184,30 +256,11 @@ function LoadingCard({
  * "algo salió mal". El código técnico va en micro al pie, para soporte, sin
  * contaminar el mensaje.
  */
-const ERRORES: Record<
-  Exclude<AnalysisState, { kind: 'idle' } | { kind: 'loading' }>['kind'],
-  { icon: LucideIcon; chip: string; title: string }
-> = {
-  'error-network': {
-    icon: WifiOff,
-    chip: 'Sin conexión',
-    title: 'No pudimos completar el análisis',
-  },
-  'error-url': {
-    icon: Link2,
-    chip: 'Enlace no válido',
-    title: 'Eso no parece un enlace a una nota',
-  },
-  'error-too-long': {
-    icon: FileWarning,
-    chip: 'Texto muy largo',
-    title: 'Es más largo de lo que podemos analizar de una vez',
-  },
-  'error-content': {
-    icon: SearchX,
-    chip: 'Sin contenido',
-    title: 'No pudimos leer el texto de esa nota',
-  },
+const ICONO_ERROR: Record<ErrorKind, LucideIcon> = {
+  'error-network': WifiOff,
+  'error-url': Link2,
+  'error-too-long': FileWarning,
+  'error-content': SearchX,
 }
 
 function ErrorCard({
@@ -225,8 +278,11 @@ function ErrorCard({
   alertRef: React.RefObject<HTMLHeadingElement | null>
   className?: string
 }) {
-  const meta = ERRORES[state.kind]
-  const ErrIcon = meta.icon
+  const t = useTextos(TEXTOS)
+  const tag = TAG_IDIOMA[useIdioma().idioma]
+  const meta = t.errores[state.kind]
+  const ErrIcon = ICONO_ERROR[state.kind]
+  const limite = MAX_CHARS.toLocaleString(tag)
 
   return (
     <section role="alert" className={cn('card-shell border-t-verdict-dudoso', className)}>
@@ -242,20 +298,11 @@ function ErrorCard({
         {meta.title}
       </h2>
 
-      {state.kind === 'error-network' && (
-        <p className="text-body-sm text-muted">
-          Se cortó la conexión mientras consultábamos las fuentes. Guardamos lo que pegaste: probá
-          de nuevo cuando tengas señal.
-        </p>
-      )}
+      {state.kind === 'error-network' && <p className="text-body-sm text-muted">{t.red}</p>}
 
       {state.kind === 'error-content' && (
         <>
-          <p className="text-body-sm text-muted">
-            Llegamos a la página, pero no encontramos el cuerpo de la nota. Suele pasar con muros
-            de pago, con contenido que se carga después, o cuando el enlace lleva a una portada y
-            no a un artículo.
-          </p>
+          <p className="text-body-sm text-muted">{t.contenido}</p>
           <p
             className="truncate rounded-lg bg-surface-sunk px-3.5 py-2.5 font-mono text-caption tracking-normal text-subtle"
             title={state.value}
@@ -267,12 +314,9 @@ function ErrorCard({
 
       {state.kind === 'error-url' && (
         <>
-          <p className="text-body-sm text-muted">
-            Necesitamos la dirección completa de la publicación. Si la copiaste de una app, puede
-            haber quedado cortada.
-          </p>
+          <p className="text-body-sm text-muted">{t.url}</p>
           <p className="truncate rounded-lg bg-surface-sunk px-3.5 py-2.5 font-mono text-caption tracking-normal text-verdict-dudoso" title={state.value}>
-            {state.value || '(vacío)'}
+            {state.value || t.vacio}
           </p>
         </>
       )}
@@ -280,9 +324,7 @@ function ErrorCard({
       {state.kind === 'error-too-long' && (
         <>
           <p className="text-body-sm text-muted">
-            Pegaste {state.length.toLocaleString('es-AR')} caracteres y el límite es{' '}
-            {MAX_CHARS.toLocaleString('es-AR')}. Podemos analizar los primeros{' '}
-            {MAX_CHARS.toLocaleString('es-AR')}, o partilo en dos.
+            {t.muyLargo(state.length.toLocaleString(tag), limite)}
           </p>
           <div className="flex flex-col gap-2">
             <div className="h-2 overflow-hidden rounded-pill bg-border">
@@ -292,8 +334,8 @@ function ErrorCard({
               />
             </div>
             <div className="flex justify-between font-mono text-micro uppercase text-subtle">
-              <span>{state.length.toLocaleString('es-AR')}</span>
-              <span>límite {MAX_CHARS.toLocaleString('es-AR')}</span>
+              <span>{state.length.toLocaleString(tag)}</span>
+              <span>{t.limite(limite)}</span>
             </div>
           </div>
         </>
@@ -304,12 +346,12 @@ function ErrorCard({
           <>
             {onRetry && (
               <button type="button" onClick={onRetry} className="btn-primary w-full md:w-auto">
-                <RotateCcw aria-hidden="true" size={16} /> Reintentar
+                <RotateCcw aria-hidden="true" size={16} /> {t.reintentar}
               </button>
             )}
             {onEditar && (
               <button type="button" onClick={onEditar} className="btn-secondary w-full md:w-auto">
-                <ClipboardCopy aria-hidden="true" size={16} /> Recuperar lo que pegué
+                <ClipboardCopy aria-hidden="true" size={16} /> {t.recuperar}
               </button>
             )}
           </>
@@ -317,7 +359,7 @@ function ErrorCard({
 
         {state.kind === 'error-url' && onEditar && (
           <button type="button" onClick={onEditar} className="btn-primary w-full md:w-auto">
-            <Sparkles aria-hidden="true" size={16} /> Corregir el enlace
+            <Sparkles aria-hidden="true" size={16} /> {t.corregir}
           </button>
         )}
 
@@ -325,12 +367,12 @@ function ErrorCard({
           <>
             {onEditar && (
               <button type="button" onClick={onEditar} className="btn-primary w-full md:w-auto">
-                Probar con otro enlace
+                {t.otroEnlace}
               </button>
             )}
             {onRetry && (
               <button type="button" onClick={onRetry} className="btn-secondary w-full md:w-auto">
-                <RotateCcw aria-hidden="true" size={16} /> Reintentar
+                <RotateCcw aria-hidden="true" size={16} /> {t.reintentar}
               </button>
             )}
           </>
@@ -338,14 +380,14 @@ function ErrorCard({
 
         {state.kind === 'error-too-long' && onTruncate && (
           <button type="button" onClick={onTruncate} className="btn-primary w-full md:w-auto">
-            Analizar los primeros {MAX_CHARS.toLocaleString('es-AR')}
+            {t.analizarPrimeros(limite)}
           </button>
         )}
       </div>
 
       {state.kind === 'error-network' && (
         <p className="font-mono text-micro uppercase text-disabled">
-          Error {state.code} · reintento {state.attempt} de 3
+          {t.pie(state.code, state.attempt)}
         </p>
       )}
     </section>

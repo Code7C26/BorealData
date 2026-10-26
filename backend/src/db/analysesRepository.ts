@@ -1,9 +1,12 @@
 import { runInUserTransaction } from "./context.js";
 import {
+  DEFAULT_LANGUAGE,
   normalizeVerdict,
+  parseLanguage,
   type AnalysisResult,
   type AnalysisSource,
   type Confidence,
+  type Language,
   type SourceStance,
   type Verdict,
 } from "../gemini/types.js";
@@ -32,6 +35,8 @@ interface AnalysisRowFields {
   /** Default 'url'. Solo lo informa saveAnalysis(): saveReusedAnalysis() copia siempre filas 'url'. */
   sourceType?: SourceType;
   capturePlatform?: string | null;
+  /** Idioma en que escribió Gemini (columna `language`). Default 'es'. */
+  language?: Language;
 }
 
 /** Un uuid v4 tal como lo genera `gen_random_uuid()`. Cualquier otra cosa ni toca la DB. */
@@ -52,8 +57,8 @@ async function insertAnalysisRow(
         `INSERT INTO analyses
           (url, title, scrape_method, verdict, confidence, headline, lead_text,
            summary, reasoning, sources, tone_flags, user_id,
-           source_type, capture_platform)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           source_type, capture_platform, language)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          RETURNING id`,
         [
           fields.url,
@@ -70,6 +75,7 @@ async function insertAnalysisRow(
           userId,
           fields.sourceType ?? "url",
           fields.capturePlatform ?? null,
+          fields.language ?? "es",
         ]
       );
       return result.rows[0]?.id ?? null;
@@ -87,6 +93,7 @@ async function insertAnalysisRow(
 export interface SaveAnalysisMeta {
   sourceType?: SourceType;
   capturePlatform?: string | null;
+  language?: Language;
 }
 
 /**
@@ -121,6 +128,7 @@ export async function saveAnalysis(
       toneFlags: analysis.toneFlags,
       sourceType: meta.sourceType ?? "url",
       capturePlatform: meta.capturePlatform ?? null,
+      language: meta.language ?? "es",
     },
     userId
   );
@@ -130,12 +138,16 @@ export async function saveAnalysis(
  * Guarda una fila de historial para `userId` reutilizando un análisis ya hecho (por este
  * mismo usuario u otro) para la misma URL — sin volver a scrapear ni llamar a Gemini. Ver
  * getLatestAnalysisByUrl() y su uso en routes/analyze.ts.
+ *
+ * `language` es el idioma con el que se buscó `cached` (la caché matchea por url + idioma),
+ * así que la fila nueva queda en ese mismo idioma.
  */
 export async function saveReusedAnalysis(
   cached: AnalysisHistoryItem,
-  userId: string | null
+  userId: string | null,
+  language: Language
 ): Promise<string | null> {
-  return insertAnalysisRow(cached, userId);
+  return insertAnalysisRow({ ...cached, language }, userId);
 }
 
 /** Forma de un análisis tal como lo devuelve GET /history (misma forma que la respuesta 200 de /analyze, más `id` y `createdAt`). */
@@ -160,6 +172,11 @@ export interface AnalysisHistoryItem {
    * "Compartir resultado", y GET /analyses/:id solo se lo sirve a su dueño.
    */
   shareable: boolean;
+  /**
+   * Idioma en que escribió Gemini. El front lo usa para avisar cuando un análisis está en
+   * otro idioma que la interfaz (los guardados antes de oct-2026 son todos 'es').
+   */
+  language: Language;
 }
 
 interface AnalysisRow {
@@ -177,6 +194,7 @@ interface AnalysisRow {
   tone_flags: string[] | null;
   created_at: Date;
   source_type: string | null;
+  language: string | null;
   // ── Columnas del esquema viejo, solo para las filas anteriores al rediseño ──
   score: number | null;
   label: string | null;
@@ -184,10 +202,16 @@ interface AnalysisRow {
   claim_vs_evidence: string | null;
 }
 
-/** Las columnas que hace falta leer en todas las queries (nuevas + legacy). */
+/**
+ * Las columnas que hace falta leer en todas las queries (nuevas + legacy).
+ *
+ * `language` necesita migrate-language.ts corrido: sin la columna, todas las lecturas
+ * fallan y el historial se ve vacío (los repos atrapan el error). El INSERT ya la
+ * necesitaba, así que no agrega un requisito nuevo, solo lo hace visible antes.
+ */
 const SELECT_COLUMNS = `id, url, title, scrape_method, verdict, confidence, headline,
             lead_text, summary, reasoning, sources, tone_flags, created_at,
-            source_type, score, label, explanation, claim_vs_evidence`;
+            source_type, language, score, label, explanation, claim_vs_evidence`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Compatibilidad con el esquema viejo (score 0-100 + label de 6 valores)
@@ -364,6 +388,7 @@ function mapAnalysisRow(row: AnalysisRow): AnalysisHistoryItem {
     createdAt: row.created_at.toISOString(),
     sourceType,
     shareable: sourceType === "url",
+    language: parseLanguage(row.language) ?? DEFAULT_LANGUAGE,
   };
 }
 
@@ -452,6 +477,11 @@ export async function getAnalysisById(
  * Igual que saveAnalysis(), no propagan errores: son parte de una optimización, no la
  * única fuente del dato como en /history, así que si la DB falla acá /analyze tiene que
  * poder seguir con el flujo normal (scrapear + analizar) en vez de romperse con un 500.
+ *
+ * Idioma (oct-2026): las dos matchean por (url, language). El análisis es texto que
+ * escribió Gemini en un idioma; sin este filtro, quien usa la web en inglés recibiría el
+ * análisis en castellano que pidió otra persona (o él mismo antes de cambiar el idioma).
+ * Una misma URL puede tener entonces una fila por idioma en el historial: es a propósito.
  */
 // IMPORTANTE (contenido del cliente): las dos búsquedas filtran `source_type = 'url'`. Una
 // captura guarda como `url` la página donde estaba (instagram.com/, facebook.com/...), que es
@@ -459,17 +489,18 @@ export async function getAnalysisById(
 // otra) el análisis de OTRO posteo, y en el caso compartido filtraría un posteo privado.
 export async function getAnalysisForUserByUrl(
   userId: string,
-  url: string
+  url: string,
+  language: Language
 ): Promise<AnalysisHistoryItem | null> {
   try {
     return await runInUserTransaction({ currentUserId: userId }, async (client) => {
       const result = await client.query<AnalysisRow>(
         `SELECT ${SELECT_COLUMNS}
          FROM analyses
-         WHERE user_id = $1 AND url = $2 AND source_type = 'url'
+         WHERE user_id = $1 AND url = $2 AND source_type = 'url' AND language = $3
          ORDER BY created_at DESC
          LIMIT 1`,
-        [userId, url]
+        [userId, url, language]
       );
 
       const row = result.rows[0];
@@ -489,16 +520,19 @@ export async function getAnalysisForUserByUrl(
  * schema.sql) — esta búsqueda es la caché de /analyze que reusa el análisis de
  * CUALQUIER usuario para la misma URL, para no gastar otra llamada a Gemini.
  */
-export async function getLatestAnalysisByUrl(url: string): Promise<AnalysisHistoryItem | null> {
+export async function getLatestAnalysisByUrl(
+  url: string,
+  language: Language
+): Promise<AnalysisHistoryItem | null> {
   try {
     return await runInUserTransaction({ bypassOwnerCheck: true }, async (client) => {
       const result = await client.query<AnalysisRow>(
         `SELECT ${SELECT_COLUMNS}
          FROM analyses
-         WHERE url = $1 AND source_type = 'url'
+         WHERE url = $1 AND source_type = 'url' AND language = $2
          ORDER BY created_at DESC
          LIMIT 1`,
-        [url]
+        [url, language]
       );
 
       const row = result.rows[0];

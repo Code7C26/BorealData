@@ -1,16 +1,39 @@
+'use client'
+
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
 import { LogoBorealData } from '@/components/logo-boreal'
+import { traducciones } from '@/lib/idioma'
+import { useTextos } from '@/lib/use-idioma'
 
-const LINKS = [
-  { href: '/contacto', label: 'Contacto' },
-  { href: '#faq', label: 'Preguntas' },
-  { href: '#boreal-data', label: 'Quiénes somos' },
-  { href: '/privacidad', label: 'Privacidad' },
-  { href: '/terminos', label: 'Términos' },
-]
+const TEXTOS = traducciones({
+  es: {
+    links: [
+      { href: '/contacto', label: 'Contacto' },
+      { href: '#faq', label: 'Preguntas' },
+      { href: '#boreal-data', label: 'Quiénes somos' },
+      { href: '/privacidad', label: 'Privacidad' },
+      { href: '/terminos', label: 'Términos' },
+    ],
+    bajada: 'Verificación que se deja auditar. No un puntaje: el camino completo hasta el veredicto.',
+    enlaces: 'Enlaces del pie',
+  },
+  en: {
+    links: [
+      { href: '/contacto', label: 'Contact' },
+      { href: '#faq', label: 'FAQ' },
+      { href: '#boreal-data', label: 'About us' },
+      { href: '/privacidad', label: 'Privacy' },
+      { href: '/terminos', label: 'Terms' },
+    ],
+    bajada: 'Fact-checking you can audit. Not a score: the full path to the verdict.',
+    enlaces: 'Footer links',
+  },
+})
 
 export function Footer() {
+  const t = useTextos(TEXTOS)
+
   return (
     <footer className="relative border-t border-border bg-bg px-gutter py-12 md:px-8 xl:px-12">
       <div
@@ -22,14 +45,11 @@ export function Footer() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-3">
             <Logo />
-            <p className="max-w-texto text-caption tracking-normal text-subtle">
-              Verificación que se deja auditar. No un puntaje: el camino completo hasta el
-              veredicto.
-            </p>
+            <p className="max-w-texto text-caption tracking-normal text-subtle">{t.bajada}</p>
           </div>
 
-          <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Enlaces del pie">
-            {LINKS.map((link) => (
+          <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label={t.enlaces}>
+            {t.links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

@@ -133,6 +133,7 @@ export function historyItemToAnalyzeResponse(item: HistoryItem): AnalyzeResponse
     reasoning: item.reasoning,
     sources: item.sources,
     toneFlags: item.toneFlags,
+    language: item.language,
   }
 }
 
