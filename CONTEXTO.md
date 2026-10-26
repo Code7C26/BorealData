@@ -2,7 +2,7 @@
 
 > Documento de continuidad. Se actualiza a medida que avanza el proyecto para no perder contexto entre sesiones.
 
-**Última actualización:** 8 de octubre de 2026 (pasada de calidad de producto: privacidad y páginas legales, fix del cruce de fuentes con grounding, borrado de datos, resultado por URL, primeros tests, limpieza de código muerto — ver sección 13)
+**Última actualización:** 26 de octubre de 2026 (arranca la app móvil de verdad: `mobile/` con Expo SDK 58 — ver sección 14)
 
 ---
 
@@ -13,7 +13,7 @@
 | Empresa | Boreal Data |
 | Producto | AletheIA |
 | Concepto | Detector de noticias falsas con IA, verificación de fuentes y análisis de contenido |
-| Formatos | Web + Extensión de Chrome (Mobile en Expo, aún sin desarrollo real) |
+| Formatos | Web + Extensión de Chrome + App móvil (Expo) |
 | Contexto | Proyecto Final de Secundaria (FAT 2026) — presentación diciembre 2026 |
 | Equipo | 2 integrantes — **Renzo Lanata** (frontend/diseño) y **Ciro Di Marsico** (backend/scraping/IA/infra) |
 | Materia | FAT 7C 2026 — Profesora: Tamara Piccinni |
@@ -30,7 +30,7 @@
 |---|---|
 | Web | Next.js (TypeScript), App Router |
 | Extensión Chrome | WXT + Manifest V3 + React (side panel, no popup) |
-| Mobile | Expo (TypeScript) — pendiente, sin avances reales todavía |
+| Mobile | Expo SDK 58 + React Native 0.88 + Expo Router (TypeScript) — en `mobile/` |
 | Hosting | Firebase Hosting |
 | Auth | Firebase Auth (Google) + JWT hacia el backend |
 
@@ -61,6 +61,12 @@ BorealData/
 │   ├── entrypoints/          → entrypoints de la extensión (WXT)
 │   ├── extension/            → build/salida de la extensión (.output/)
 │   └── public/
+│
+├── mobile/                   → App móvil (Expo SDK 58). Carpeta propia, NO dentro de apps/:
+│   ├── src/app/              → rutas de Expo Router (login, (app)/, resultado/[id], …)
+│   ├── src/lib/              → api.ts, verdict.ts, firebase.ts, auth.tsx, config.ts
+│   ├── src/theme/            → el Design System V1 portado a React Native
+│   └── src/components/       → aurora, ui, veredicto, marca
 │
 ├── backend/
 │   └── src/
@@ -225,9 +231,11 @@ La extensión corre con `npm run dev` (WXT) desde la misma carpeta y se carga "u
 - [ ] **Nada está deployado todavía.** No hay Dockerfile, ni `firebase.json`, ni CI, y
       `NEXT_PUBLIC_API_URL` apunta a `localhost:4000`. Es el pendiente más grande: la
       presentación es en diciembre y hoy el producto solo corre en la máquina de Renzo.
-- [ ] Mobile (Expo) sigue sin desarrollo real — última prioridad. Alternativa más barata
-      y más demostrable: PWA + `share_target`, para que AletheIA aparezca en el menú
-      "Compartir" de Android. Requiere HTTPS, así que depende del deploy.
+- [ ] **Compilar el dev build de la app móvil** con EAS (`eas build --profile
+      development --platform android`). Hasta entonces la app solo corre en el emulador
+      o compilando local: el Expo Go de la tienda todavía no soporta SDK 58. Ver sección 14.
+- [ ] En la app móvil falta recibir el "Compartir" de otras apps (intent `ACTION_SEND`),
+      que es lo que la hace más útil que la web en el teléfono.
 - [ ] Seguir la bitácora de bugs de frontend a medida que Renzo reporte nuevos.
 
 ---
@@ -328,6 +336,51 @@ persona analiza nunca entra al log, igual que promete la política de privacidad
 - **Rate limiter en memoria.** Está documentado en `rateLimiter.ts`. En Cloud Run con
   autoescalado, el límite de 20/hora se multiplica por instancia. Al deployar: o
   `max-instances=1`, o mover el conteo a Postgres (no hace falta Redis).
+
+---
+
+## 14. App móvil (26-oct-2026)
+
+Arrancó de cero en `mobile/`, **fuera de `apps/`** a propósito: adentro, Metro y Next se
+pelean por el mismo `node_modules` y el mismo `tsconfig`.
+
+### Stack
+Expo **SDK 58** (salió el 15-oct-2026) con React Native 0.88, Expo Router 58, React 19.3,
+React Compiler activado y la New Architecture por default. Firebase 13.
+
+**Consecuencia de ir al SDK más nuevo:** el Expo Go de la tienda todavía no soporta 58, así
+que para verla en un teléfono hace falta un *development build* (`eas build --profile
+development`, se compila en la nube, no necesita Android Studio). Se instala una sola vez;
+después el hot reload funciona igual que con Expo Go. A cambio, no hay que migrar 57 → 58
+antes de la presentación, que este ciclo tocó el núcleo de Expo Router.
+
+### Qué comparte con el resto del producto
+Mismo backend y mismo proyecto de Firebase: la cuenta de la web entra en la app y los
+análisis caen en el mismo historial. `src/lib/verdict.ts` y `src/lib/api.ts` son espejos de
+los de `apps/lib/`, y `src/theme/tokens.ts` es el Design System V1 traducido (paleta cruda +
+roles semánticos, misma estructura de dos capas que `global.css`).
+
+### Pantallas
+Login/registro, Verificar (enlace, texto o **captura de la galería**), la revisión de la
+transcripción antes de verificar, la espera con los pasos reales del backend, el resultado
+completo (veredicto, confianza, razonamiento, fuentes, tono) con compartir y borrar,
+historial y perfil con el borrado de datos y el selector de tema.
+
+### Decisiones y trampas
+- **`localhost` en el teléfono es el teléfono.** `src/lib/config.ts` deduce la IP del
+  backend del host de Metro (`Constants.expoConfig.hostUri`), así no hay que escribir la IP
+  de la LAN en un `.env` cada vez que cambia el WiFi. Perfil muestra la URL en uso.
+- **La sesión no persiste con `getAuth()` en React Native:** hay que pedir
+  `initializeAuth` + `getReactNativePersistence(AsyncStorage)`.
+- **`firebase/auth` no declara `getReactNativePersistence` en sus typings** (los tipos
+  publicados son los del build de browser, el símbolo solo existe en el de RN): la firma
+  está escrita a mano en `src/lib/firebase.ts`.
+- **StyleSheet y no NativeWind:** la web usa Tailwind v4 y el soporte de NativeWind para v4
+  todavía no está cerrado. Los tokens tipados dan el mismo contrato sin esa apuesta.
+- **Los iconos se generan desde el isotipo "Umbral"** con sharp (el que ya está en
+  `apps/node_modules`), no se dibujan a mano.
+- `apiFetch` tiene timeout, a diferencia del de la web: en celular la red se corta y un
+  fetch colgado deja la pantalla de "analizando" girando para siempre.
 
 ---
 

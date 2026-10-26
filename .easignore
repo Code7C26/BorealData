@@ -1,0 +1,53 @@
+# Qué NO viaja a los servidores de EAS Build.
+#
+# Este archivo vive en la raíz del REPOSITORIO y no en `mobile/`, porque EAS
+# arma el paquete desde la raíz del repo git, no desde la carpeta de la app.
+# Medido: sin esto el paquete pesaba 1,2 GB (los `node_modules` de `mobile/` y
+# de `apps/`) cuando la app sola son ~2 MB.
+#
+# Lo más importante no es el tamaño: la raíz del repo NO tiene `.gitignore`, así
+# que sin este archivo también se subían `apps/.env.local` y `backend/.env`, con
+# la clave de Gemini y las credenciales de la base. Las entradas de `.env` de
+# abajo son la red de seguridad de eso y no se tocan.
+#
+# Sintaxis igual a la de `.gitignore`.
+
+# ── Nada de lo que no sea la app móvil ───────────────────────────────────────
+/apps/
+/backend/
+/DOCS/
+/design/
+/assets/
+/package-lock.json
+
+# Sin barra inicial: así matchea a cualquier profundidad. Medido: con
+# `/mobile/node_modules/` (anclado) NO lo excluía y el paquete seguía en 813 MB.
+node_modules/
+
+# ── Secretos, en cualquier carpeta ───────────────────────────────────────────
+.env
+.env.*
+*.env
+!.env.example
+
+# ── De la app: lo que EAS regenera de su lado ────────────────────────────────
+/mobile/node_modules/
+/mobile/.expo/
+/mobile/dist/
+/mobile/web-build/
+/mobile/expo-env.d.ts
+/mobile/ios/
+/mobile/android/
+
+# ── Herramientas de desarrollo que no hacen falta para compilar ──────────────
+/mobile/.vscode/
+/mobile/.claude/
+/mobile/scripts/
+.git/
+*.log
+*.tsbuildinfo
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
