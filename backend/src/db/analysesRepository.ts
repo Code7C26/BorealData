@@ -17,7 +17,7 @@ import {
  * persona (POST /analyze/content) y puede ser PRIVADO: nunca entra a la caché por URL ni al
  * link público de "Compartir resultado".
  */
-export type SourceType = "url" | "capture" | "selection" | "image" | "text";
+export type SourceType = "url" | "capture" | "selection" | "image" | "text" | "question";
 
 /** Campos de una fila de `analyses`, sin id/user_id/created_at (lo que hace falta para insertarla). */
 interface AnalysisRowFields {
@@ -335,7 +335,7 @@ function mapSources(raw: unknown[] | null): AnalysisSource[] {
     });
 }
 
-const SOURCE_TYPES: readonly string[] = ["url", "capture", "selection", "image", "text"];
+const SOURCE_TYPES: readonly string[] = ["url", "capture", "selection", "image", "text", "question"];
 
 function isSourceType(value: string | null): value is SourceType {
   return value !== null && SOURCE_TYPES.includes(value);
