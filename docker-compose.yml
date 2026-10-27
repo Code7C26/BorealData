@@ -30,19 +30,14 @@ services:
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
       NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+    ports:
+      - "4000:4000"
     networks:
       - truconet
       - boreal-internal-net
     deploy:
       restart_policy:
         condition: on-failure
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.boreal-web.rule=Host(`${BOREAL_DOMAIN}`)"
-        - "traefik.http.routers.boreal-web.entrypoints=websecure"
-        - "traefik.http.routers.boreal-web.tls=true"
-        - "traefik.http.routers.boreal-web.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.boreal-web.loadbalancer.server.port=4000"
 
 volumes:
   pgdata:
