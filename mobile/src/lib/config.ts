@@ -49,14 +49,31 @@ export const API_URL =
   urlDeDesarrollo() ??
   `http://localhost:${PUERTO_BACKEND}`;
 
+/** Puerto en el que corre la web de `apps/` (`npm run dev` en Next.js). */
+const PUERTO_WEB = 3000;
+
 /**
- * Origen de la web, para los links que salen de la app: "ver en la web" y el
- * link público que se comparte de un resultado. Mismo criterio que arriba.
+ * Origen de la web, que es lo que arma el link público de un resultado al
+ * compartirlo.
+ *
+ * Acá NO vale inventar un dominio por defecto: un link a un dominio que no
+ * existe se ve igual de bien que uno que funciona, y el que lo recibe se come
+ * un error. Por eso vale `null` mientras no haya un origen real, y la pantalla
+ * de resultado esconde el botón de compartir en vez de ofrecer algo roto.
+ *
+ * En desarrollo se deduce del host de Metro, igual que `API_URL`: el link
+ * apunta a la web corriendo en la misma máquina, que es verdad dentro de la red
+ * local. `EXPO_PUBLIC_WEB_ORIGIN` lo pisa cuando la web esté deployada.
  */
-export const WEB_ORIGIN = (process.env.EXPO_PUBLIC_WEB_ORIGIN ?? 'https://aletheia.borealdata.app').replace(
-  /\/$/,
-  '',
-);
+function webDeDesarrollo(): string | null {
+  const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
+  const host = hostUri?.split(':')[0];
+  if (!host || LOOPBACK.has(host)) return null;
+  return `http://${host}:${PUERTO_WEB}`;
+}
+
+export const WEB_ORIGIN: string | null =
+  process.env.EXPO_PUBLIC_WEB_ORIGIN?.replace(/\/$/, '') ?? webDeDesarrollo();
 
 /** true cuando falta completar `.env.local` con los datos de Firebase. */
 export const FIREBASE_SIN_CONFIGURAR = !process.env.EXPO_PUBLIC_FIREBASE_API_KEY;

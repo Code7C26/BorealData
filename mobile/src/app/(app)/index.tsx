@@ -1,6 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { ClipboardPaste, ImageDown, Link2, ScanSearch, Type } from 'lucide-react-native';
@@ -8,28 +7,76 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Marca } from '@/components/marca';
+import { NumerosPlataforma } from '@/components/numeros-plataforma';
 import { Aviso, Boton, Campo, Pantalla, Tarjeta, Texto } from '@/components/ui';
 import { analisis } from '@/lib/analisis-store';
 import { MAX_CONTENT_CHARS, MIN_CONTENT_CHARS } from '@/lib/api';
 import { useSesion } from '@/lib/auth';
+import { traducciones } from '@/lib/idioma';
+import { useTag, useTextos } from '@/lib/use-idioma';
 import { radio, space, useTema } from '@/theme';
 
 /** Las tres formas de entrar un contenido. La captura es la propia del teléfono. */
 type Modo = 'enlace' | 'texto' | 'captura';
 
-const MODOS: { id: Modo; etiqueta: string; icono: typeof Link2 }[] = [
-  { id: 'enlace', etiqueta: 'Enlace', icono: Link2 },
-  { id: 'texto', etiqueta: 'Texto', icono: Type },
-  { id: 'captura', etiqueta: 'Captura', icono: ImageDown },
-];
 
-/** Ancho máximo al que se achica una captura antes de mandarla a transcribir. */
-const ANCHO_MAX = 1280;
+const T = traducciones({
+  es: {
+    hola: (nombre: string) => `Hola, ${nombre}`,
+    titulo: '¿Qué vas a verificar?',
+    modos: { enlace: 'Enlace', texto: 'Texto', captura: 'Captura' },
+    enlaceEtiqueta: 'ENLACE DE LA NOTA',
+    textoEtiqueta: 'TEXTO A VERIFICAR',
+    textoPlaceholder: 'Pegá acá el mensaje, el posteo o el fragmento que te llegó.',
+    pegar: 'Pegar del portapapeles',
+    verificar: 'Verificar',
+    capturaTitulo: 'CAPTURA DE UN POSTEO',
+    capturaAyuda:
+      'Para lo que no tiene enlace público: una historia, un grupo de WhatsApp, un posteo privado. Primero te muestro lo que leí de la imagen para que lo corrijas, y recién después se verifica.',
+    elegir: 'Elegir captura',
+    privacidad:
+      'Los enlaces que verificás quedan guardados en tu historial. El contenido viaja a Gemini para ser analizado.',
+    urlInvalida: 'Eso no parece un enlace. Pegá la dirección completa, con https://',
+    urlProtocolo: 'Solo se pueden verificar enlaces http o https.',
+    textoCorto: (min: number) => `Escribí al menos ${min} caracteres para poder verificar algo.`,
+    textoLargo: (max: string) => `El texto no puede superar los ${max} caracteres.`,
+    sinPermiso: 'Necesito permiso a tus fotos para leer la captura. Se puede dar desde Ajustes.',
+    imagenIlegible: 'No se pudo leer esa imagen. Probá con otra.',
+    sinGaleria:
+      'No se pudo leer esa imagen. Si está guardada en iCloud y no bajada al teléfono, abrila primero en Fotos y volvé a intentar.',
+  },
+  en: {
+    hola: (nombre: string) => `Hi, ${nombre}`,
+    titulo: 'What are you checking?',
+    modos: { enlace: 'Link', texto: 'Text', captura: 'Screenshot' },
+    enlaceEtiqueta: 'LINK TO THE STORY',
+    textoEtiqueta: 'TEXT TO CHECK',
+    textoPlaceholder: 'Paste the message, post or excerpt you received.',
+    pegar: 'Paste from clipboard',
+    verificar: 'Check',
+    capturaTitulo: 'SCREENSHOT OF A POST',
+    capturaAyuda:
+      "For things with no public link: a story, a WhatsApp group, a private post. First I'll show you what I read from the image so you can correct it, and only then it gets checked.",
+    elegir: 'Choose a screenshot',
+    privacidad:
+      'The links you check are saved to your history. The content is sent to Gemini to be analysed.',
+    urlInvalida: "That doesn't look like a link. Paste the full address, including https://",
+    urlProtocolo: 'Only http and https links can be checked.',
+    textoCorto: (min: number) => `Write at least ${min} characters so there's something to check.`,
+    textoLargo: (max: string) => `The text cannot be longer than ${max} characters.`,
+    sinPermiso: 'I need access to your photos to read the screenshot. You can grant it in Settings.',
+    imagenIlegible: "I couldn't read that image. Try another one.",
+    sinGaleria:
+      "I couldn't read that image. If it lives in iCloud and isn't downloaded to the phone, open it in Photos first and try again.",
+  },
+});
 
 export default function Verificar() {
   const { c } = useTema();
   const router = useRouter();
   const { profile, user } = useSesion();
+  const t = useTextos(T);
+  const tag = useTag();
 
   const [modo, setModo] = useState<Modo>('enlace');
   const [url, setUrl] = useState('');
@@ -39,17 +86,23 @@ export default function Verificar() {
 
   const nombre = (profile?.fullName ?? user?.displayName ?? '').split(' ')[0];
 
+  const MODOS: { id: Modo; icono: typeof Link2 }[] = [
+    { id: 'enlace', icono: Link2 },
+    { id: 'texto', icono: Type },
+    { id: 'captura', icono: ImageDown },
+  ];
+
   function verificarEnlace() {
     const limpia = url.trim();
     let valida: URL;
     try {
       valida = new URL(limpia);
     } catch {
-      setError('Eso no parece un enlace. Pegá la dirección completa, con https://');
+      setError(t.urlInvalida);
       return;
     }
     if (valida.protocol !== 'http:' && valida.protocol !== 'https:') {
-      setError('Solo se pueden verificar enlaces http o https.');
+      setError(t.urlProtocolo);
       return;
     }
     setError(null);
@@ -61,11 +114,11 @@ export default function Verificar() {
   function verificarTexto() {
     const limpio = texto.trim();
     if (limpio.length < MIN_CONTENT_CHARS) {
-      setError(`Escribí al menos ${MIN_CONTENT_CHARS} caracteres para poder verificar algo.`);
+      setError(t.textoCorto(MIN_CONTENT_CHARS));
       return;
     }
     if (limpio.length > MAX_CONTENT_CHARS) {
-      setError(`El texto no puede superar los ${MAX_CONTENT_CHARS.toLocaleString('es-AR')} caracteres.`);
+      setError(t.textoLargo(MAX_CONTENT_CHARS.toLocaleString(tag)));
       return;
     }
     setError(null);
@@ -83,11 +136,11 @@ export default function Verificar() {
   }
 
   /**
-   * Elige una captura de la galería y la deja lista para el paso 1.
+   * Elige una captura de la galería y va al recorte.
    *
-   * Se achica a `ANCHO_MAX` y se guarda en JPEG antes de mandarla: una captura
-   * de un celular moderno pasa los 3 MB que acepta `POST /analyze/read`, y el
-   * texto de un posteo se lee perfecto a 1280 px de ancho.
+   * Acá NO se toca la imagen: recortar y achicar pasa en `/recorte`, sobre el
+   * original. Procesarla antes perdería el detalle justo donde más hace falta,
+   * que es el texto chico del posteo.
    */
   async function elegirCaptura() {
     setError(null);
@@ -95,38 +148,40 @@ export default function Verificar() {
     try {
       const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permiso.granted) {
-        setError('Necesito permiso a tus fotos para leer la captura. Se puede dar desde Ajustes.');
+        setError(t.sinPermiso);
         return;
       }
 
       const elegida = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 1,
+        // iOS: pedirle al selector la representación MÁS COMPATIBLE en vez de
+        // la original. Sin esto, una foto que vive en iCloud y no está bajada
+        // al teléfono falla con "Cannot load representation of type public.png":
+        // el sistema no logra producir el formato original y aborta. Pidiendo
+        // la compatible, iOS la transcodifica a JPEG y la baja si hace falta.
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       });
-      if (elegida.canceled || !elegida.assets[0]) return;
+      if (elegida.canceled) return;
+      const asset = elegida.assets[0];
+      if (!asset) return;
 
-      const imagen = await ImageManipulator.manipulate(elegida.assets[0].uri)
-        .resize({ width: ANCHO_MAX })
-        .renderAsync();
-      const lista = await imagen.saveAsync({
-        format: SaveFormat.JPEG,
-        compress: 0.75,
-        base64: true,
-      });
-      if (!lista.base64) {
-        setError('No se pudo leer esa imagen. Probá con otra.');
+      if (!asset.width || !asset.height) {
+        setError(t.imagenIlegible);
         return;
       }
 
-      analisis.ponerCaptura({
-        mimeType: 'image/jpeg',
-        dataBase64: lista.base64,
-        uri: lista.uri,
-      });
+      analisis.ponerElegida({ uri: asset.uri, width: asset.width, height: asset.height });
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push('/revision');
-    } catch {
-      setError('No se pudo abrir la galería.');
+      router.push('/recorte');
+    } catch (err) {
+      // El mensaje de verdad, no un "no se pudo" genérico: cuando esto falla en
+      // un teléfono real, el único que puede contar qué pasó es este texto.
+      // Además queda en el log de Metro, que es donde se puede leer sin tener
+      // el teléfono en la mano.
+      console.error('[captura] falló elegirCaptura:', err);
+      setError(err instanceof Error ? `${t.sinGaleria} ${err.message}` : t.sinGaleria);
     } finally {
       setAbriendoGaleria(false);
     }
@@ -138,16 +193,16 @@ export default function Verificar() {
         <Marca size={44} />
         <View style={{ flex: 1 }}>
           <Texto variante="caption" rol="subtle">
-            {nombre ? `Hola, ${nombre}` : 'AletheIA'}
+            {nombre ? t.hola(nombre) : 'AletheIA'}
           </Texto>
           <Texto variante="title" rol="display">
-            ¿Qué vas a verificar?
+            {t.titulo}
           </Texto>
         </View>
       </View>
 
       <View style={[styles.selector, { backgroundColor: c.surfaceSunk, borderColor: c.border }]}>
-        {MODOS.map(({ id, etiqueta, icono: Icono }) => {
+        {MODOS.map(({ id, icono: Icono }) => {
           const activo = modo === id;
           return (
             <Pressable
@@ -164,7 +219,7 @@ export default function Verificar() {
               ]}>
               <Icono size={17} color={activo ? c.accentText : c.textSubtle} />
               <Texto variante="caption" color={activo ? c.text : c.textSubtle}>
-                {etiqueta}
+                {t.modos[id]}
               </Texto>
             </Pressable>
           );
@@ -175,7 +230,7 @@ export default function Verificar() {
         {modo === 'enlace' ? (
           <>
             <Campo
-              etiqueta="ENLACE DE LA NOTA"
+              etiqueta={t.enlaceEtiqueta}
               placeholder="https://..."
               value={url}
               onChangeText={(valor) => {
@@ -189,16 +244,21 @@ export default function Verificar() {
               returnKeyType="go"
               onSubmitEditing={verificarEnlace}
             />
-            <Boton titulo="Pegar del portapapeles" icono={ClipboardPaste} variante="fantasma" onPress={pegar} />
-            <Boton titulo="Verificar" icono={ScanSearch} onPress={verificarEnlace} disabled={!url.trim()} />
+            <Boton titulo={t.pegar} icono={ClipboardPaste} variante="fantasma" onPress={pegar} />
+            <Boton
+              titulo={t.verificar}
+              icono={ScanSearch}
+              onPress={verificarEnlace}
+              disabled={!url.trim()}
+            />
           </>
         ) : null}
 
         {modo === 'texto' ? (
           <>
             <Campo
-              etiqueta="TEXTO A VERIFICAR"
-              placeholder="Pegá acá el mensaje, el posteo o el fragmento que te llegó."
+              etiqueta={t.textoEtiqueta}
+              placeholder={t.textoPlaceholder}
               value={texto}
               onChangeText={(valor) => {
                 setTexto(valor);
@@ -211,12 +271,12 @@ export default function Verificar() {
             />
             <View style={styles.contador}>
               <Texto variante="mono" rol="subtle">
-                {texto.trim().length} / {MAX_CONTENT_CHARS.toLocaleString('es-AR')}
+                {texto.trim().length} / {MAX_CONTENT_CHARS.toLocaleString(tag)}
               </Texto>
             </View>
-            <Boton titulo="Pegar del portapapeles" icono={ClipboardPaste} variante="fantasma" onPress={pegar} />
+            <Boton titulo={t.pegar} icono={ClipboardPaste} variante="fantasma" onPress={pegar} />
             <Boton
-              titulo="Verificar"
+              titulo={t.verificar}
               icono={ScanSearch}
               onPress={verificarTexto}
               disabled={texto.trim().length < MIN_CONTENT_CHARS}
@@ -227,15 +287,13 @@ export default function Verificar() {
         {modo === 'captura' ? (
           <>
             <Texto variante="caption" rol="muted">
-              CAPTURA DE UN POSTEO
+              {t.capturaTitulo}
             </Texto>
             <Texto variante="small" rol="muted">
-              Para lo que no tiene enlace público: una historia, un grupo de WhatsApp, un posteo
-              privado. Primero te muestro lo que leí de la imagen para que lo corrijas, y recién
-              después se verifica.
+              {t.capturaAyuda}
             </Texto>
             <Boton
-              titulo="Elegir captura"
+              titulo={t.elegir}
               icono={ImageDown}
               onPress={elegirCaptura}
               cargando={abriendoGaleria}
@@ -246,9 +304,10 @@ export default function Verificar() {
         {error ? <Aviso>{error}</Aviso> : null}
       </Tarjeta>
 
+      <NumerosPlataforma />
+
       <Texto variante="small" rol="subtle" style={{ textAlign: 'center' }}>
-        Los enlaces que verificás quedan guardados en tu historial. El contenido viaja a Gemini
-        para ser analizado.
+        {t.privacidad}
       </Texto>
     </Pantalla>
   );
