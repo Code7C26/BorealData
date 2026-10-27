@@ -24,10 +24,12 @@ const T = traducciones({
   es: {
     hola: (nombre: string) => `Hola, ${nombre}`,
     titulo: '¿Qué vas a verificar?',
-    modos: { enlace: 'Enlace', texto: 'Texto', captura: 'Captura' },
+    modos: { enlace: 'Enlace', texto: 'Pregunta', captura: 'Captura' },
     enlaceEtiqueta: 'ENLACE DE LA NOTA',
-    textoEtiqueta: 'TEXTO A VERIFICAR',
-    textoPlaceholder: 'Pegá acá el mensaje, el posteo o el fragmento que te llegó.',
+    textoEtiqueta: '¿QUÉ QUERÉS COMPROBAR?',
+    textoPlaceholder: '¿Es verdad que…? · Escuché que… · O pegá el mensaje que te llegó.',
+    textoAyuda:
+      'No hace falta que sea una noticia. Si te lo contaron, lo escuchaste o te llegó por un grupo, escribilo con tus palabras.',
     pegar: 'Pegar del portapapeles',
     verificar: 'Verificar',
     capturaTitulo: 'CAPTURA DE UN POSTEO',
@@ -48,10 +50,12 @@ const T = traducciones({
   en: {
     hola: (nombre: string) => `Hi, ${nombre}`,
     titulo: 'What are you checking?',
-    modos: { enlace: 'Link', texto: 'Text', captura: 'Screenshot' },
+    modos: { enlace: 'Link', texto: 'Question', captura: 'Screenshot' },
     enlaceEtiqueta: 'LINK TO THE STORY',
-    textoEtiqueta: 'TEXT TO CHECK',
-    textoPlaceholder: 'Paste the message, post or excerpt you received.',
+    textoEtiqueta: 'WHAT DO YOU WANT TO CHECK?',
+    textoPlaceholder: 'Is it true that…? · I heard that… · Or paste the message you received.',
+    textoAyuda:
+      "It doesn't have to be a news story. If someone told you, you overheard it or it reached you in a group chat, write it in your own words.",
     pegar: 'Paste from clipboard',
     verificar: 'Check',
     capturaTitulo: 'SCREENSHOT OF A POST',
@@ -123,7 +127,9 @@ export default function Verificar() {
     }
     setError(null);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    analisis.ponerPendiente({ tipo: 'contenido', kind: 'text', text: limpio });
+    // `question` y no `text`: le dice al backend que la persona está preguntando,
+    // no afirmando. Cambia el encuadre del análisis y cómo se escribe el titular.
+    analisis.ponerPendiente({ tipo: 'contenido', kind: 'question', text: limpio });
     router.push('/analizando');
   }
 
@@ -256,6 +262,9 @@ export default function Verificar() {
 
         {modo === 'texto' ? (
           <>
+            <Texto variante="small" rol="muted">
+              {t.textoAyuda}
+            </Texto>
             <Campo
               etiqueta={t.textoEtiqueta}
               placeholder={t.textoPlaceholder}

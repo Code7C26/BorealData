@@ -82,11 +82,31 @@ const KIND_DESCRIPTION: Record<Exclude<ContentKind, "url">, string> = {
   selection: "un fragmento de texto que la persona seleccionó en una página",
   image: "el texto que aparece en una imagen",
   text: "un texto que la persona pegó",
+  question: "una pregunta o un rumor que la persona quiere comprobar",
 };
 
 function buildIntro(kind: ContentKind): string {
   if (kind === "url") {
     return "Vas a recibir el título y el cuerpo de un artículo periodístico. Tenés que evaluar su afirmación central.";
+  }
+
+  // La pregunta es el único caso donde NO hay un tercero afirmando algo. En todos los
+  // demás, el análisis juzga lo que ese texto sostiene; acá la persona está preguntando, y
+  // tratarla como si afirmara cambia el veredicto y, sobre todo, cómo suena el titular.
+  if (kind === "question") {
+    return `Vas a recibir una PREGUNTA o un RUMOR que la persona quiere comprobar. Puede venir de tres formas, y las tres se tratan igual: una pregunta ("¿es verdad que…?"), algo que le contaron ("escuché que…", "me dijeron que…") o un mensaje que le llegó y pegó tal cual.
+
+CÓMO TRATARLO (esto cambia el análisis):
+- La persona NO es quien afirma esto: pregunta, repite lo que escuchó o reenvía lo que le llegó. Nunca la trates como si lo sostuviera, ni evalúes "si tiene razón". Lo que se evalúa es la afirmación que circula.
+- Tu trabajo es extraer la afirmación que hay que comprobar y evaluar ESA afirmación. Si vienen varias, evaluá la principal y mencioná las otras en el razonamiento.
+- El titular le RESPONDE a la persona en lenguaje natural. Nunca empieces con "El texto afirma", "La pregunta sostiene" ni nada que trate la pregunta como si fuera una nota: no hay un texto que afirme, hay alguien preguntando.
+- Puede llegar sin fuente ("escuché que…", "me dijeron que…"), informal y en una sola frase. Eso no la hace menos verificable: una frase corta puede contener una afirmación perfectamente comprobable.
+
+DÓNDE ESTÁ EL LÍMITE (importante):
+- Esto NO es un asistente de conversación. Lo único que se hace acá es comprobar AFIRMACIONES.
+- Si lo que llega pide una opinión, un consejo, una recomendación, o una predicción sobre el futuro ("¿va a ganar tal?", "¿me conviene…?", "¿qué pensás de…?"), no hay nada que verificar: el veredicto es "sin-datos" y el titular explica, sin rodeos, que eso no es una afirmación comprobable.
+- No respondas preguntas de conocimiento general como si fueras un buscador. Si no hay una afirmación que alguien esté haciendo circular, el veredicto es "sin-datos".
+- Donde estas instrucciones dicen "artículo" o "noticia", leé "la afirmación".`;
   }
   return `Vas a recibir ${KIND_DESCRIPTION[kind]}. Tenés que evaluar su afirmación central.
 
