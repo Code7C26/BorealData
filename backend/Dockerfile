@@ -1,5 +1,4 @@
-# Imagen del backend de AletheIA para Cloud Run.
-#
+# Imagen del backend de AletheIA.
 # Lo que la hace distinta de un Dockerfile de Node cualquiera es Puppeteer: el
 # scraper cae en un navegador real cuando la nota necesita JavaScript para
 # renderizarse (`src/scraper/puppeteerScraper.ts`). Eso obliga a tener Chromium
@@ -39,8 +38,7 @@ RUN npm run build
 # Fuera lo que solo hacía falta para compilar.
 RUN npm prune --omit=dev
 
-# Cloud Run inyecta PORT y espera que el server escuche ahí; `src/index.ts` ya
-# lo lee. El 8080 es solo el default de la imagen.
+# Configuración del puerto para el servidor
 ENV PORT=8080
 EXPOSE 8080
 

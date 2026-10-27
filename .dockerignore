@@ -1,0 +1,29 @@
+# Lo que NO entra en el contexto de build de la imagen del front.
+#
+# Sin esto, `COPY apps/ .` del Dockerfile pisa el node_modules que armó la etapa
+# `deps` (npm ci dentro de Linux) con el node_modules de Windows del disco local:
+# los binarios no son compatibles y el `npm run build` falla o produce una imagen
+# rota. Además el contexto pesaría cientos de MB.
+
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+
+# Secretos: las variables se inyectan como build args / environment, nunca se hornean.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Lo que la imagen del front no necesita
+backend/
+mobile/
+DOCS/
+design/
+assets/
+.git/
+.github/
+.claude/
+.vscode/
+**/coverage/
+**/*.log
