@@ -180,8 +180,14 @@ export async function analizarUrl(url: string, idioma: Idioma = 'es') {
 /** Plataformas que el backend reconoce (KNOWN_PLATFORMS). */
 export type Platform = 'facebook' | 'instagram' | 'x' | 'whatsapp' | 'tiktok' | 'otro';
 
-/** De dónde salió el contenido. Nunca "url": eso va por POST /analyze. */
-export type ClientContentKind = 'capture' | 'selection' | 'image' | 'text';
+/**
+ * De dónde salió el contenido. Nunca "url": eso va por POST /analyze.
+ *
+ * `question` es el único que no es evidencia de un tercero: es la duda que la
+ * persona escribe con sus propias palabras. El backend lo trata distinto — ver
+ * `buildIntro` en backend/src/gemini/geminiClient.ts.
+ */
+export type ClientContentKind = 'capture' | 'selection' | 'image' | 'text' | 'question';
 
 /** Qué tan legible quedó la imagen, según el propio modelo lector. */
 export type ReadingConfidence = 'alta' | 'media' | 'baja';

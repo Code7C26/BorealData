@@ -210,9 +210,10 @@ ALTER TABLE analyses
   ADD COLUMN IF NOT EXISTS capture_platform text;
 
 -- (Sin ADD CONSTRAINT IF NOT EXISTS: si ya la corriste, el error "already exists" es ignorable.)
+-- Actualizada en oct-2026 con 'question' (ver la sección "Preguntas" al final).
 ALTER TABLE analyses
   ADD CONSTRAINT analyses_source_type_chk
-  CHECK (source_type IN ('url', 'capture', 'selection', 'image', 'text'));
+  CHECK (source_type IN ('url', 'capture', 'selection', 'image', 'text', 'question'));
 
 -- Segunda capa, en la base: el bypass de RLS (link público, caché entre usuarios, /stats)
 -- ahora SOLO alcanza a filas 'url'. Aunque una query futura se olvide del
@@ -245,3 +246,16 @@ ALTER TABLE analyses
   ADD CONSTRAINT analyses_language_chk CHECK (language IN ('es', 'en'));
 
 CREATE INDEX IF NOT EXISTS analyses_url_language_idx ON analyses (url, language);
+
+-- ── Preguntas de la persona (27-oct-2026) ───────────────────────────────────
+-- La desinformación no siempre llega como una noticia: muchas veces es algo que alguien
+-- escuchó o le contaron. La app y la web ahora dejan escribir esa duda con palabras
+-- propias ("¿es verdad que…?", "escuché que…") y el análisis se guarda con
+-- `source_type = 'question'`.
+--
+-- Es contenido del cliente como los demás: NO entra a la caché por URL ni al link público
+-- de "Compartir resultado", y solo lo ve su dueño (la policy de más arriba ya lo cubre,
+-- porque alcanza a todo lo que no es 'url').
+--
+-- La CHECK de source_type de más arriba ya incluye 'question'. Para una base que ya existe,
+-- correr `backend/migrate-question.ts`, que la reemplaza sin tocar ninguna fila.
