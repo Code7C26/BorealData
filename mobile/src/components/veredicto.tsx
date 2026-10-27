@@ -4,8 +4,24 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Texto } from '@/components/ui';
 import type { AnalysisSource } from '@/lib/api';
-import { CONFIDENCE, STANCE, VERDICT, type Confidence, type Verdict } from '@/lib/verdict';
+import { traducciones } from '@/lib/idioma';
+import { useTextos } from '@/lib/use-idioma';
+import { useVocabulario } from '@/lib/use-vocabulario';
+import { type Confidence, type Verdict } from '@/lib/verdict';
 import { radio, space, useTema } from '@/theme';
+
+const T = traducciones({
+  es: {
+    confianza: 'CONFIANZA',
+    valor: (nivel: string, n: number) => `Confianza ${nivel}, ${n} de 5`,
+    abrir: (fuente: string, postura: string) => `${fuente}. ${postura}. Abrir fuente.`,
+  },
+  en: {
+    confianza: 'CONFIDENCE',
+    valor: (nivel: string, n: number) => `${nivel} confidence, ${n} out of 5`,
+    abrir: (fuente: string, postura: string) => `${fuente}. ${postura}. Open source.`,
+  },
+});
 
 /**
  * El chip del veredicto: ícono + etiqueta, nunca color solo.
@@ -22,6 +38,7 @@ export function ChipVeredicto({
   tamano?: 'normal' | 'chico';
 }) {
   const { c } = useTema();
+  const { VERDICT } = useVocabulario();
   const meta = VERDICT[verdict];
   const color = c[meta.color];
   const chico = tamano === 'chico';
@@ -66,13 +83,15 @@ export function MedidorConfianza({
   conNota?: boolean;
 }) {
   const { c } = useTema();
+  const { CONFIDENCE } = useVocabulario();
+  const t = useTextos(T);
   const meta = CONFIDENCE[confidence];
 
   return (
     <View style={{ gap: space[2] }}>
       <View style={styles.filaEtiqueta}>
         <Texto variante="overline" rol="subtle">
-          CONFIANZA
+          {t.confianza}
         </Texto>
         <Texto variante="bodyMedium" color={color}>
           {meta.label}
@@ -85,7 +104,7 @@ export function MedidorConfianza({
           min: 1,
           max: 5,
           now: confidence,
-          text: `Confianza ${meta.label.toLowerCase()}, ${confidence} de 5`,
+          text: t.valor(meta.label.toLowerCase(), confidence),
         }}
         style={styles.segmentos}>
         {[1, 2, 3, 4, 5].map((i) => (
@@ -119,6 +138,8 @@ export function MedidorConfianza({
  */
 export function FilaFuente({ fuente }: { fuente: AnalysisSource }) {
   const { c } = useTema();
+  const { STANCE } = useVocabulario();
+  const t = useTextos(T);
   const postura = STANCE[fuente.stance];
   const color = c[postura.color];
   const abrible = !!fuente.url;
@@ -154,7 +175,7 @@ export function FilaFuente({ fuente }: { fuente: AnalysisSource }) {
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${fuente.title || fuente.domain}. ${postura.label}. Abrir fuente.`}
+      accessibilityLabel={t.abrir(fuente.title || fuente.domain, postura.label)}
       onPress={() => {
         void WebBrowser.openBrowserAsync(fuente.url!, {
           toolbarColor: c.bg,

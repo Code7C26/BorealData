@@ -205,3 +205,31 @@ export const cortinas = {
     { color: raw.luz, opacidad: 0.45 },
   ],
 } as const;
+
+/**
+ * Los colores de la aurora boreal, por tono y por altura.
+ *
+ * Traducción de los tokens `--ab-*` de `apps/app/global.css`. Cada cortina es
+ * un gradiente vertical de tres colores: `top` donde nace (se desvanece hacia
+ * arriba), `mid` en el cuerpo y `low` en el dobladillo, que es el borde de
+ * abajo, donde la aurora quema.
+ *
+ * `verde` es el color clásico de la aurora real y se usa como acento: casi
+ * siempre apagado, aparece de a ratos.
+ */
+export const boreal = {
+  dark: {
+    a: { top: raw.aurora500, mid: raw.aurora300, low: raw.luz },
+    b: { top: raw.aurora700, mid: raw.aurora500, low: raw.aurora300 },
+    c: { top: raw.aurora300, mid: '#D9CCFF', low: raw.luz },
+    verde: { top: '#22C98E', mid: '#3FF0B0', low: '#9DFFD8' },
+  },
+  light: {
+    a: { top: raw.aurora300, mid: raw.aurora500, low: raw.aurora700 },
+    b: { top: raw.aurora300, mid: raw.aurora300, low: raw.aurora500 },
+    c: { top: raw.aurora300, mid: raw.aurora500, low: raw.aurora500 },
+    verde: { top: '#7FDCB8', mid: '#3FB88A', low: '#1F8F66' },
+  },
+} as const;
+
+export type TonoBoreal = keyof (typeof boreal)['dark'];

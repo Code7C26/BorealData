@@ -8,10 +8,39 @@ import { Aviso, Boton, Campo, Pantalla, Tarjeta, Texto } from '@/components/ui';
 import { useSesion } from '@/lib/auth';
 import { FIREBASE_SIN_CONFIGURAR } from '@/lib/config';
 import { mensajeErrorFirebase } from '@/lib/firebase-errors';
+import { traducciones } from '@/lib/idioma';
+import { useIdioma, useTextos } from '@/lib/use-idioma';
 import { space } from '@/theme';
+
+const T = traducciones({
+  es: {
+    bajada: 'Verificá lo que te llega antes de compartirlo.',
+    sinFirebase: 'Falta completar mobile/.env.local con los datos de Firebase.',
+    email: 'EMAIL',
+    emailPlaceholder: 'vos@ejemplo.com',
+    password: 'CONTRASEÑA',
+    entrar: 'Entrar',
+    error: 'No pudimos iniciar sesión. Probá de nuevo.',
+    sinCuenta: '¿Todavía no tenés cuenta?',
+    crear: 'Crear una',
+  },
+  en: {
+    bajada: 'Check what reaches you before you share it.',
+    sinFirebase: 'Fill in mobile/.env.local with your Firebase settings.',
+    email: 'EMAIL',
+    emailPlaceholder: 'you@example.com',
+    password: 'PASSWORD',
+    entrar: 'Sign in',
+    error: "We couldn't sign you in. Please try again.",
+    sinCuenta: "Don't have an account yet?",
+    crear: 'Create one',
+  },
+});
 
 export default function Login() {
   const { user, iniciarSesion } = useSesion();
+  const { idioma } = useIdioma();
+  const t = useTextos(T);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +56,7 @@ export default function Login() {
     try {
       await iniciarSesion(email, password);
     } catch (err) {
-      setError(mensajeErrorFirebase(err, 'No pudimos iniciar sesión. Probá de nuevo.'));
+      setError(mensajeErrorFirebase(err, t.error, idioma));
     } finally {
       setEnviando(false);
     }
@@ -42,18 +71,16 @@ export default function Login() {
             AletheIA
           </Texto>
           <Texto variante="body" rol="muted" style={{ textAlign: 'center' }}>
-            Verificá lo que te llega antes de compartirlo.
+            {t.bajada}
           </Texto>
         </View>
 
         <Tarjeta style={{ gap: space[4] }}>
-          {FIREBASE_SIN_CONFIGURAR ? (
-            <Aviso>Falta completar mobile/.env.local con los datos de Firebase.</Aviso>
-          ) : null}
+          {FIREBASE_SIN_CONFIGURAR ? <Aviso>{t.sinFirebase}</Aviso> : null}
 
           <Campo
-            etiqueta="EMAIL"
-            placeholder="vos@ejemplo.com"
+            etiqueta={t.email}
+            placeholder={t.emailPlaceholder}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -62,7 +89,7 @@ export default function Login() {
             inputMode="email"
           />
           <Campo
-            etiqueta="CONTRASEÑA"
+            etiqueta={t.password}
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
@@ -75,7 +102,7 @@ export default function Login() {
           {error ? <Aviso>{error}</Aviso> : null}
 
           <Boton
-            titulo="Entrar"
+            titulo={t.entrar}
             icono={LogIn}
             onPress={entrar}
             cargando={enviando}
@@ -85,11 +112,11 @@ export default function Login() {
 
         <View style={styles.pie}>
           <Texto variante="small" rol="muted">
-            ¿Todavía no tenés cuenta?
+            {t.sinCuenta}
           </Texto>
           <Link href="/registro" asChild>
             <Texto variante="bodyMedium" rol="accent" accessibilityRole="link">
-              Crear una
+              {t.crear}
             </Texto>
           </Link>
         </View>

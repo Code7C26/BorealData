@@ -14,7 +14,8 @@
 | Producto | AletheIA |
 | Concepto | Detector de noticias falsas con IA, verificación de fuentes y análisis de contenido |
 | Formatos | Web + Extensión de Chrome + App móvil (Expo) |
-| Contexto | Proyecto Final de Secundaria (FAT 2026) — presentación diciembre 2026 |
+| Contexto | Proyecto Final de Secundaria (FAT 2026) |
+| Fechas | **Entrega del MVP: mediados de noviembre 2026.** Presentación: diciembre 2026 — lo que se sume entre una y otra suma a la nota final |
 | Equipo | 2 integrantes — **Renzo Lanata** (frontend/diseño) y **Ciro Di Marsico** (backend/scraping/IA/infra) |
 | Materia | FAT 7C 2026 — Profesora: Tamara Piccinni |
 | Repositorio | github.com/Code7C26/BorealData |
@@ -230,7 +231,10 @@ La extensión corre con `npm run dev` (WXT) desde la misma carpeta y se carga "u
       responde 503. Ver sección 13.
 - [ ] **Nada está deployado todavía.** No hay Dockerfile, ni `firebase.json`, ni CI, y
       `NEXT_PUBLIC_API_URL` apunta a `localhost:4000`. Es el pendiente más grande: la
-      presentación es en diciembre y hoy el producto solo corre en la máquina de Renzo.
+      entrega es a mediados de noviembre y hoy el producto solo corre en la máquina de
+      Renzo. Es lo que desbloquea todo lo demás: sin una URL pública, el APK de Android
+      no sirve fuera de la red de casa, la PWA de iOS es imposible, los links de
+      "compartir resultado" no le funcionan a nadie más, y la profesora no puede probarlo.
 - [ ] El `development` de `eas.json` quedó sin `expo-dev-client` (se sacó al probar
       SDK 57 y no se repuso). Si alguna vez hace falta un build propio:
       `npx.cmd expo install expo-dev-client` antes de compilar.
@@ -330,9 +334,8 @@ persona analiza nunca entra al log, igual que promete la política de privacidad
   antes de lo que entretiene.
 
 ### Lo que NO se tocó, a propósito
-- **9 errores de `react-hooks/set-state-in-effect`** hacen fallar `npm run lint` en
-  `apps/`. Son previos, todos el mismo patrón (hidratar estado del browser en un efecto)
-  y sensibles a hidratación: arreglarlos bien es una pasada propia.
+- ~~9 errores de `react-hooks/set-state-in-effect`~~ **Resuelto.** Verificado el
+  26-oct-2026: `npm run lint` en `apps/` pasa limpio.
 - **Rate limiter en memoria.** Está documentado en `rateLimiter.ts`. En Cloud Run con
   autoescalado, el límite de 20/hora se multiplica por instancia. Al deployar: o
   `max-instances=1`, o mover el conteo a Postgres (no hace falta Redis).
@@ -369,10 +372,34 @@ los de `apps/lib/`, y `src/theme/tokens.ts` es el Design System V1 traducido (pa
 roles semánticos, misma estructura de dos capas que `global.css`).
 
 ### Pantallas
-Login/registro, Verificar (enlace, texto o **captura de la galería**), la revisión de la
-transcripción antes de verificar, la espera con los pasos reales del backend, el resultado
-completo (veredicto, confianza, razonamiento, fuentes, tono) con compartir y borrar,
-historial y perfil con el borrado de datos y el selector de tema.
+Login/registro, Verificar (enlace, texto o **captura de la galería**, con los números de la
+plataforma a la vista), el **recorte** de la captura, la revisión de la transcripción, la
+espera, el resultado completo (veredicto, confianza, razonamiento, fuentes, tono) con
+compartir y borrar, historial, y **Configuración** como menú en lista: cuenta, apariencia,
+idioma, legales, Boreal Data y, al final y en tono bajo, el borrado de datos.
+
+### Lo que se aprendió haciéndola (27-oct-2026)
+- **El recorte va antes de achicar la imagen**, no después: recortar sobre una versión ya
+  reducida pierde el detalle justo en el texto chico del posteo.
+- **`overflow: hidden` corta las áreas táctiles** que sobresalen del contenedor. Las
+  agarraderas del marco de recorte eran imposibles de agarrar por eso; se resolvió
+  separando el marco en dos capas, una que recorta y otra que no.
+- **Animaciones cíclicas: seno, nunca módulo.** `valor % 1` salta de 0,99 a 0 en un frame.
+  Y `withRepeat(..., reverse)` vuelve al valor inicial de la repetición, así que si cada
+  capa arranca en su propio desfase, termina oscilando en un tramo recortado.
+- **PHPicker de iOS falla con fotos de iCloud** no descargadas
+  (`Cannot load representation of type public.png`). Se arregla pidiendo
+  `preferredAssetRepresentationMode: Compatible`.
+- **Renombrar un archivo de ruta deja el árbol de Expo Router cacheado.** Hay que reiniciar
+  Metro con `--clear` o la pantalla abre en blanco.
+
+### Idioma (26-oct-2026)
+La app está en castellano e inglés, con el mismo patrón que la web: `src/lib/idioma.ts` es
+espejo de `apps/lib/idioma.ts` y los textos viven al lado de cada pantalla en un
+`traducciones({ es, en })`, donde TypeScript obliga a que el inglés tenga la misma forma
+que el castellano. Única diferencia: la preferencia va a AsyncStorage y no a una cookie,
+porque acá no hay servidor que renderice. El idioma activo viaja al backend en cada
+análisis, así que Gemini escribe el veredicto directamente en ese idioma.
 
 ### Decisiones y trampas
 - **`localhost` en el teléfono es el teléfono.** `src/lib/config.ts` deduce la IP del
