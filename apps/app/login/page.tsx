@@ -134,7 +134,7 @@ export default function LoginPage() {
           htmlFor="password"
           extra={
             <Link
-              href="/recuperar"
+              href=""
               className="font-mono text-micro uppercase text-accent-text underline-offset-4 hover:underline"
             >
               {t.olvidaste}
