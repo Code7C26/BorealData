@@ -10,7 +10,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/ .
 
-# Declarar los argumentos de compilación para Next.js
+# Declarar los argumentos de compilación para Next.js.
+# Next.js reemplaza las NEXT_PUBLIC_* por su valor literal dentro del bundle del
+# cliente durante `npm run build`: si no llegan acá como build args, el navegador
+# recibe `undefined` y Firebase arranca sin configurar. Pasarlas solo en runtime
+# (docker-compose `environment`) no alcanza.
+ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_FIREBASE_API_KEY
 ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
 ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
@@ -19,6 +24,7 @@ ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 ARG NEXT_PUBLIC_FIREBASE_APP_ID
 
 # Convertirlos en variables de entorno para el proceso de build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY
 ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
 ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID
