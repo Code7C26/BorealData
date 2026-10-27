@@ -3,8 +3,6 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: boreal_postgres
-    restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -13,6 +11,9 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - boreal-internal-net
+    deploy:
+      restart_policy:
+        condition: on-failure
 
   web:
     image: boreal_web:latest
@@ -30,9 +31,11 @@ services:
       NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
     networks:
-      - red_existente
+      - truconet
       - boreal-internal-net
     deploy:
+      restart_policy:
+        condition: on-failure
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.boreal-web.rule=Host(`${BOREAL_DOMAIN}`)"
@@ -45,8 +48,7 @@ volumes:
   pgdata:
 
 networks:
-  red_existente:
+  truconet:
     external: true
-    name: ${RED_TRAEFIK:-truconet}
   boreal-internal-net:
     driver: overlay
