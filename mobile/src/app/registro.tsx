@@ -7,13 +7,52 @@ import { Marca } from '@/components/marca';
 import { Aviso, Boton, Campo, Pantalla, Tarjeta, Texto } from '@/components/ui';
 import { useSesion } from '@/lib/auth';
 import { mensajeErrorFirebase } from '@/lib/firebase-errors';
+import { traducciones } from '@/lib/idioma';
+import { useIdioma, useTextos } from '@/lib/use-idioma';
 import { space } from '@/theme';
 
 /** Mismo mínimo que pide la web (y que Firebase rechaza por su cuenta a los 6). */
 const MIN_PASSWORD = 8;
 
+const T = traducciones({
+  es: {
+    titulo: 'Crear cuenta',
+    nombre: 'NOMBRE',
+    nombrePlaceholder: 'Cómo te llamamos',
+    email: 'EMAIL',
+    emailPlaceholder: 'vos@ejemplo.com',
+    password: 'CONTRASEÑA',
+    passwordPlaceholder: `Al menos ${MIN_PASSWORD} caracteres`,
+    passwordCorta: `La contraseña tiene que tener al menos ${MIN_PASSWORD} caracteres.`,
+    crear: 'Crear cuenta',
+    error: 'No pudimos crear la cuenta. Probá de nuevo.',
+    legal:
+      'Al crear la cuenta aceptás los términos y la política de privacidad de AletheIA: guardamos los análisis que hacés en tu historial y el contenido que verificás viaja a Gemini para ser analizado.',
+    conCuenta: '¿Ya tenés cuenta?',
+    entrar: 'Entrar',
+  },
+  en: {
+    titulo: 'Create account',
+    nombre: 'NAME',
+    nombrePlaceholder: 'What should we call you',
+    email: 'EMAIL',
+    emailPlaceholder: 'you@example.com',
+    password: 'PASSWORD',
+    passwordPlaceholder: `At least ${MIN_PASSWORD} characters`,
+    passwordCorta: `The password must be at least ${MIN_PASSWORD} characters long.`,
+    crear: 'Create account',
+    error: "We couldn't create the account. Please try again.",
+    legal:
+      "By creating an account you accept AletheIA's terms and privacy policy: we store the analyses you run in your history, and the content you check is sent to Gemini to be analysed.",
+    conCuenta: 'Already have an account?',
+    entrar: 'Sign in',
+  },
+});
+
 export default function Registro() {
   const { user, registrar } = useSesion();
+  const { idioma } = useIdioma();
+  const t = useTextos(T);
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +63,7 @@ export default function Registro() {
 
   async function crear() {
     if (password.length < MIN_PASSWORD) {
-      setError(`La contraseña tiene que tener al menos ${MIN_PASSWORD} caracteres.`);
+      setError(t.passwordCorta);
       return;
     }
     setEnviando(true);
@@ -32,7 +71,7 @@ export default function Registro() {
     try {
       await registrar(nombre, email, password);
     } catch (err) {
-      setError(mensajeErrorFirebase(err, 'No pudimos crear la cuenta. Probá de nuevo.'));
+      setError(mensajeErrorFirebase(err, t.error, idioma));
     } finally {
       setEnviando(false);
     }
@@ -44,22 +83,22 @@ export default function Registro() {
         <View style={styles.marca}>
           <Marca size={56} />
           <Texto variante="title" rol="display">
-            Crear cuenta
+            {t.titulo}
           </Texto>
         </View>
 
         <Tarjeta style={{ gap: space[4] }}>
           <Campo
-            etiqueta="NOMBRE"
-            placeholder="Cómo te llamamos"
+            etiqueta={t.nombre}
+            placeholder={t.nombrePlaceholder}
             value={nombre}
             onChangeText={setNombre}
             autoCapitalize="words"
             autoComplete="name"
           />
           <Campo
-            etiqueta="EMAIL"
-            placeholder="vos@ejemplo.com"
+            etiqueta={t.email}
+            placeholder={t.emailPlaceholder}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -68,8 +107,8 @@ export default function Registro() {
             inputMode="email"
           />
           <Campo
-            etiqueta="CONTRASEÑA"
-            placeholder={`Al menos ${MIN_PASSWORD} caracteres`}
+            etiqueta={t.password}
+            placeholder={t.passwordPlaceholder}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -81,7 +120,7 @@ export default function Registro() {
           {error ? <Aviso>{error}</Aviso> : null}
 
           <Boton
-            titulo="Crear cuenta"
+            titulo={t.crear}
             icono={UserPlus}
             onPress={crear}
             cargando={enviando}
@@ -89,19 +128,17 @@ export default function Registro() {
           />
 
           <Texto variante="small" rol="subtle">
-            Al crear la cuenta aceptás los términos y la política de privacidad de AletheIA:
-            guardamos los análisis que hacés en tu historial y el contenido que verificás viaja a
-            Gemini para ser analizado.
+            {t.legal}
           </Texto>
         </Tarjeta>
 
         <View style={styles.pie}>
           <Texto variante="small" rol="muted">
-            ¿Ya tenés cuenta?
+            {t.conCuenta}
           </Texto>
           <Link href="/login" asChild>
             <Texto variante="bodyMedium" rol="accent" accessibilityRole="link">
-              Entrar
+              {t.entrar}
             </Texto>
           </Link>
         </View>

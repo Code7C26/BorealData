@@ -1,0 +1,23 @@
+# Lo que NO entra en el contexto de build de Docker.
+#
+# Sin esto, `docker build` sube `node_modules` entero (cientos de MB) al demonio
+# antes de empezar, y encima pisaría el `npm ci` de la imagen con los binarios
+# compilados para Windows.
+
+node_modules/
+dist/
+
+# Secretos: las variables se inyectan en Cloud Run, nunca se hornean en la imagen
+.env
+.env.*
+!.env.example
+
+# Desarrollo
+*.log
+*.md
+.git/
+.vscode/
+coverage/
+
+# Tests: no se corren adentro de la imagen
+**/*.test.ts

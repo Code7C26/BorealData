@@ -7,15 +7,36 @@ import { Aurora } from '@/components/aurora';
 import { Aviso, Texto } from '@/components/ui';
 import { ChipVeredicto } from '@/components/veredicto';
 import { getHistorial, type HistoryItem } from '@/lib/api';
+import { traducciones } from '@/lib/idioma';
+import { useTag, useTextos } from '@/lib/use-idioma';
 import { normalize } from '@/lib/verdict';
 import { radio, space, useTema } from '@/theme';
 
 /** Cuántos análisis se piden de una. El backend pagina por limit/offset. */
 const POR_PAGINA = 20;
 
+const T = traducciones({
+  es: {
+    titulo: 'Historial',
+    bajada: 'Todo lo que verificaste con esta cuenta.',
+    error: 'No se pudo traer el historial.',
+    vacioTitulo: 'Todavía no verificaste nada',
+    vacioBajada: 'Pegá un enlace en la pestaña Verificar y el análisis va a aparecer acá.',
+  },
+  en: {
+    titulo: 'History',
+    bajada: 'Everything you have checked with this account.',
+    error: "The history couldn't be loaded.",
+    vacioTitulo: "You haven't checked anything yet",
+    vacioBajada: 'Paste a link in the Check tab and the analysis will show up here.',
+  },
+});
+
 export default function Historial() {
   const { c } = useTema();
   const router = useRouter();
+  const t = useTextos(T);
+  const tag = useTag();
 
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -28,7 +49,7 @@ export default function Historial() {
       setItems(analyses);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo traer el historial.');
+      setError(err instanceof Error ? err.message : t.error);
     }
   }, []);
 
@@ -60,10 +81,10 @@ export default function Historial() {
           ListHeaderComponent={
             <View style={{ gap: space[2], marginBottom: space[2] }}>
               <Texto variante="title" rol="display">
-                Historial
+                {t.titulo}
               </Texto>
               <Texto variante="small" rol="muted">
-                Todo lo que verificaste con esta cuenta.
+                {t.bajada}
               </Texto>
               {error ? <Aviso>{error}</Aviso> : null}
             </View>
@@ -74,17 +95,17 @@ export default function Historial() {
             ) : (
               <View style={styles.vacio}>
                 <Texto variante="heading" rol="display" style={{ textAlign: 'center' }}>
-                  Todavía no verificaste nada
+                  {t.vacioTitulo}
                 </Texto>
                 <Texto variante="small" rol="muted" style={{ textAlign: 'center' }}>
-                  Pegá un enlace en la pestaña Verificar y el análisis va a aparecer acá.
+                  {t.vacioBajada}
                 </Texto>
               </View>
             )
           }
           renderItem={({ item }) => {
             const { verdict } = normalize(item.verdict, item.confidence);
-            const fecha = new Date(item.createdAt).toLocaleDateString('es-AR', {
+            const fecha = new Date(item.createdAt).toLocaleDateString(tag, {
               day: 'numeric',
               month: 'short',
               hour: '2-digit',

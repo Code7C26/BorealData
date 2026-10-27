@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SesionProvider, useSesion } from '@/lib/auth';
+import { IdiomaProvider } from '@/lib/use-idioma';
 import { useTema, TemaProvider } from '@/theme';
 import { useFuentes } from '@/theme/fonts';
 
@@ -20,9 +21,11 @@ export default function LayoutRaiz() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <TemaProvider>
-          <SesionProvider>
-            <Navegacion />
-          </SesionProvider>
+          <IdiomaProvider>
+            <SesionProvider>
+              <Navegacion />
+            </SesionProvider>
+          </IdiomaProvider>
         </TemaProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

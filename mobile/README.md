@@ -180,11 +180,14 @@ días) necesita una Mac.
 |---|---|
 | `src/app/login.tsx`, `registro.tsx` | Email y contraseña (igual que la web) |
 | `src/app/(app)/index.tsx` | Verificar: enlace, texto o captura |
-| `src/app/revision.tsx` | Lo que el modelo leyó de la captura, para corregir antes de verificar |
+| `src/app/recorte.tsx` | Ajustar el marco sobre la captura antes de leerla |
+| `src/app/revision.tsx` | Lo que el modelo leyó, para corregir antes de verificar |
 | `src/app/analizando.tsx` | La espera, con los pasos reales del backend |
 | `src/app/resultado/[id].tsx` | Veredicto, confianza, razonamiento y fuentes |
 | `src/app/(app)/historial.tsx` | Todo lo verificado con esa cuenta |
-| `src/app/(app)/perfil.tsx` | Cuenta, tema, borrado de datos |
+| `src/app/(app)/configuracion.tsx` | El menú: cuenta, preferencias, legales, borrado |
+| `src/app/cuenta.tsx` | Nombre, mail y fecha de alta |
+| `src/app/acerca-de.tsx` | Qué es AletheIA, cómo funciona y quiénes la hicieron |
 
 | Módulo | Qué es |
 |---|---|
@@ -192,6 +195,8 @@ días) necesita una Mac.
 | `src/lib/verdict.ts` | Espejo de `apps/lib/verdict.ts` y de `backend/src/gemini/types.ts` |
 | `src/lib/api.ts` | Espejo de `apps/lib/api.ts`, con timeout (en celular la red se corta) |
 | `src/components/aurora.tsx` | El fondo animado, en el hilo de UI |
+| `src/components/aurora-cortinas.tsx` | La aurora boreal de la espera, puerto de la de la web |
+| `src/lib/idioma.ts` | Castellano e inglés, espejo de `apps/lib/idioma.ts` |
 
 ### Reglas que se mantienen del resto del producto
 
@@ -202,6 +207,15 @@ días) necesita una Mac.
   emite el veredicto — igual que el side panel de la extensión.
 - **El fondo se anima siempre**, incluso con "reducir movimiento" activado: es
   una decisión de diseño tomada, no un descuido (está igual en la web).
+- **La aurora de la espera no usa filtros gaussianos.** La web difumina cada
+  capa con tres `feGaussianBlur`; en un teléfono eso se arrastra. Acá el
+  difuminado sale de apilar ocho trazos con caída suave en el dobladillo y de
+  pintar cada rayo con un degradado en vez de un blanco plano.
+- **Las animaciones cíclicas van por un seno, no por un módulo.** `valor % 1`
+  salta de 0,99 a 0 en un frame y el salto se ve; `reverse` recorta el
+  recorrido al desfase inicial de cada capa y la deja casi quieta. Un reloj
+  lineal pasado por `sin()` es continuo porque la función vale lo mismo en 0
+  que en 1.
 
 ---
 
@@ -244,6 +258,11 @@ EXPO_PUBLIC_FIREBASE_APP_ID=...
   app solo elige imágenes de la galería, así que los dos están en
   `android.blockedPermissions`. Pedir el micrófono en un detector de noticias
   falsas es exactamente la clase de cosa que hace desconfiar.
+- **`Cannot load representation of type public.png` al elegir una captura en
+  iPhone.** Es de PHPicker, no de la app: pasa cuando la foto vive en iCloud y
+  no está bajada al teléfono. Se resuelve pidiéndole al selector
+  `preferredAssetRepresentationMode: Compatible`, que hace que iOS la
+  transcodifique en vez de abortar.
 - **Los botones de borrar contestan 503 hasta que corra `backend/migrate-delete.ts`.**
   No es un bug de la app: el rol `aletheia_app` arranca sin permiso de DELETE.
   Es el mismo pendiente que tiene la web.
@@ -258,4 +277,3 @@ EXPO_PUBLIC_FIREBASE_APP_ID=...
   un intent filter de `ACTION_SEND` y una librería para leer lo compartido.
 - **Notificación cuando termina un análisis largo**, para poder salir de la app
   mientras tanto.
-- Idioma: la app arranca solo en castellano; la web ya tiene es/en.

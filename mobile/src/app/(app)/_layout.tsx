@@ -1,8 +1,15 @@
 import { Redirect, Tabs } from 'expo-router';
-import { Clock, ScanSearch, UserRound } from 'lucide-react-native';
+import { Clock, ScanSearch, SlidersHorizontal } from 'lucide-react-native';
 
 import { useSesion } from '@/lib/auth';
+import { traducciones } from '@/lib/idioma';
+import { useTextos } from '@/lib/use-idioma';
 import { font, useTema } from '@/theme';
+
+const T = traducciones({
+  es: { verificar: 'Verificar', historial: 'Historial', configuracion: 'Ajustes' },
+  en: { verificar: 'Check', historial: 'History', configuracion: 'Settings' },
+});
 
 /**
  * El área con sesión. Es también el portón: cualquier ruta de adentro pasa por
@@ -15,6 +22,7 @@ import { font, useTema } from '@/theme';
 export default function LayoutApp() {
   const { c } = useTema();
   const { user } = useSesion();
+  const t = useTextos(T);
 
   if (!user) return <Redirect href="/login" />;
 
@@ -39,22 +47,22 @@ export default function LayoutApp() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Verificar',
+          title: t.verificar,
           tabBarIcon: ({ color, size }) => <ScanSearch size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="historial"
         options={{
-          title: 'Historial',
+          title: t.historial,
           tabBarIcon: ({ color, size }) => <Clock size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="perfil"
+        name="configuracion"
         options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => <UserRound size={size} color={color} />,
+          title: t.configuracion,
+          tabBarIcon: ({ color, size }) => <SlidersHorizontal size={size} color={color} />,
         }}
       />
     </Tabs>

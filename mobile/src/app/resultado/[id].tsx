@@ -10,8 +10,53 @@ import { ChipVeredicto, FilaFuente, MedidorConfianza } from '@/components/veredi
 import { analisis, ID_LOCAL } from '@/lib/analisis-store';
 import { borrarAnalisis, getAnalisis, type AnalyzeResponse } from '@/lib/api';
 import { WEB_ORIGIN } from '@/lib/config';
+import { traducciones } from '@/lib/idioma';
+import { useTextos } from '@/lib/use-idioma';
 import { normalize } from '@/lib/verdict';
 import { radio, space, useTema } from '@/theme';
+
+const T = traducciones({
+  es: {
+    volver: 'Volver',
+    compartir: 'Compartir',
+    verNota: 'Ver la nota',
+    razonamiento: 'RAZONAMIENTO',
+    fuentes: (n: number) => `FUENTES CONSULTADAS (${n})`,
+    tono: 'SEÑALES DE TONO',
+    deQueTrata: 'DE QUÉ TRATA',
+    borrar: 'Borrar este análisis',
+    borrarTitulo: 'Borrar este análisis',
+    sinDeshacer: 'No se puede deshacer.',
+    cancelar: 'Cancelar',
+    borrarCorto: 'Borrar',
+    noSePudoBorrar: 'No se pudo borrar',
+    probaDeNuevo: 'Probá de nuevo.',
+    noDisponible: 'Este análisis ya no está disponible.',
+    noSePudoTraer: 'No se pudo traer el análisis.',
+    noEncontrado: 'No encontramos ese análisis.',
+    mensajeCompartir: (url: string) => `Verifiqué esto con AletheIA: ${url}`,
+  },
+  en: {
+    volver: 'Back',
+    compartir: 'Share',
+    verNota: 'Open the story',
+    razonamiento: 'REASONING',
+    fuentes: (n: number) => `SOURCES CONSULTED (${n})`,
+    tono: 'TONE SIGNALS',
+    deQueTrata: 'WHAT IT IS ABOUT',
+    borrar: 'Delete this analysis',
+    borrarTitulo: 'Delete this analysis',
+    sinDeshacer: 'This cannot be undone.',
+    cancelar: 'Cancel',
+    borrarCorto: 'Delete',
+    noSePudoBorrar: "Couldn't delete it",
+    probaDeNuevo: 'Please try again.',
+    noDisponible: 'This analysis is no longer available.',
+    noSePudoTraer: "The analysis couldn't be loaded.",
+    noEncontrado: "We couldn't find that analysis.",
+    mensajeCompartir: (url: string) => `I checked this with AletheIA: ${url}`,
+  },
+});
 
 /**
  * La pantalla de resultado.
@@ -24,6 +69,7 @@ import { radio, space, useTema } from '@/theme';
 export default function Resultado() {
   const { c } = useTema();
   const router = useRouter();
+  const t = useTextos(T);
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [resultado, setResultado] = useState<AnalyzeResponse | null>(() => analisis.verResultado(id));
@@ -32,7 +78,7 @@ export default function Resultado() {
 
   useEffect(() => {
     if (resultado || id === ID_LOCAL) {
-      if (!resultado) setError('Este análisis ya no está disponible.');
+      if (!resultado) setError(t.noDisponible);
       setCargando(false);
       return;
     }
@@ -43,7 +89,7 @@ export default function Resultado() {
         const traido = await getAnalisis(id);
         if (vivo) setResultado(traido);
       } catch (err) {
-        if (vivo) setError(err instanceof Error ? err.message : 'No se pudo traer el análisis.');
+        if (vivo) setError(err instanceof Error ? err.message : t.noSePudoTraer);
       } finally {
         if (vivo) setCargando(false);
       }
@@ -51,6 +97,7 @@ export default function Resultado() {
     return () => {
       vivo = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, resultado]);
 
   if (cargando) {
@@ -64,8 +111,13 @@ export default function Resultado() {
   if (!resultado) {
     return (
       <Pantalla>
-        <Aviso>{error ?? 'No encontramos ese análisis.'}</Aviso>
-        <Boton titulo="Volver" icono={ArrowLeft} variante="secundario" onPress={() => router.back()} />
+        <Aviso>{error ?? t.noEncontrado}</Aviso>
+        <Boton
+          titulo={t.volver}
+          icono={ArrowLeft}
+          variante="secundario"
+          onPress={() => router.back()}
+        />
       </Pantalla>
     );
   }
@@ -77,20 +129,23 @@ export default function Resultado() {
   const colorVeredicto = c[
     verdict === 'sin-datos' ? 'sindatos' : (verdict as 'verificado' | 'dudoso' | 'falso')
   ];
-  const compartible = resultado.shareable !== false && !!resultado.id && id !== ID_LOCAL;
+  // Sin `WEB_ORIGIN` no hay link que compartir: ver la nota en `config.ts` sobre
+  // por qué no se inventa un dominio por defecto.
+  const compartible =
+    resultado.shareable !== false && !!resultado.id && id !== ID_LOCAL && !!WEB_ORIGIN;
 
   async function compartir() {
-    if (!compartible || !resultado?.id) return;
+    if (!resultado?.id || !WEB_ORIGIN) return;
     await Share.share({
-      message: `Verifiqué esto con AletheIA: ${WEB_ORIGIN}/resultado/${resultado.id}`,
+      message: t.mensajeCompartir(`${WEB_ORIGIN}/resultado/${resultado.id}`),
     });
   }
 
   function borrar() {
-    Alert.alert('Borrar este análisis', 'No se puede deshacer.', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t.borrarTitulo, t.sinDeshacer, [
+      { text: t.cancelar, style: 'cancel' },
       {
-        text: 'Borrar',
+        text: t.borrarCorto,
         style: 'destructive',
         onPress: async () => {
           try {
@@ -98,7 +153,10 @@ export default function Resultado() {
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.replace('/historial');
           } catch (err) {
-            Alert.alert('No se pudo borrar', err instanceof Error ? err.message : 'Probá de nuevo.');
+            Alert.alert(
+              t.noSePudoBorrar,
+              err instanceof Error ? err.message : t.probaDeNuevo,
+            );
           }
         },
       },
@@ -107,7 +165,13 @@ export default function Resultado() {
 
   return (
     <Pantalla>
-      <Boton titulo="Volver" icono={ArrowLeft} variante="fantasma" onPress={() => router.back()} style={styles.volver} />
+      <Boton
+        titulo={t.volver}
+        icono={ArrowLeft}
+        variante="fantasma"
+        onPress={() => router.back()}
+        style={styles.volver}
+      />
 
       {/* El veredicto: chip + titular en lenguaje natural. El titular NUNCA
           repite la etiqueta — dice qué pasa, el chip dice cómo se clasifica. */}
@@ -126,11 +190,17 @@ export default function Resultado() {
 
       <View style={styles.acciones}>
         {compartible ? (
-          <Boton titulo="Compartir" icono={Share2} variante="secundario" onPress={compartir} style={{ flex: 1 }} />
+          <Boton
+            titulo={t.compartir}
+            icono={Share2}
+            variante="secundario"
+            onPress={compartir}
+            style={{ flex: 1 }}
+          />
         ) : null}
         {resultado.url ? (
           <Boton
-            titulo="Ver la nota"
+            titulo={t.verNota}
             icono={ExternalLink}
             variante="secundario"
             style={{ flex: 1 }}
@@ -147,7 +217,7 @@ export default function Resultado() {
       {resultado.reasoning?.length ? (
         <Tarjeta style={{ gap: space[4] }}>
           <Texto variante="overline" rol="subtle">
-            RAZONAMIENTO
+            {t.razonamiento}
           </Texto>
           {resultado.reasoning.map((paso, i) => (
             <View key={i} style={styles.paso}>
@@ -167,7 +237,7 @@ export default function Resultado() {
       {resultado.sources?.length ? (
         <View style={{ gap: space[3] }}>
           <Texto variante="overline" rol="subtle">
-            FUENTES CONSULTADAS ({resultado.sources.length})
+            {t.fuentes(resultado.sources.length)}
           </Texto>
           {resultado.sources.map((fuente, i) => (
             <FilaFuente key={`${fuente.domain}-${i}`} fuente={fuente} />
@@ -178,7 +248,7 @@ export default function Resultado() {
       {resultado.toneFlags?.length ? (
         <Tarjeta style={{ gap: space[3] }}>
           <Texto variante="overline" rol="subtle">
-            SEÑALES DE TONO
+            {t.tono}
           </Texto>
           <View style={styles.tonos}>
             {resultado.toneFlags.map((senal) => (
@@ -195,7 +265,7 @@ export default function Resultado() {
       {resultado.summary ? (
         <Tarjeta style={{ gap: space[2] }}>
           <Texto variante="overline" rol="subtle">
-            DE QUÉ TRATA
+            {t.deQueTrata}
           </Texto>
           <Texto variante="small" rol="muted">
             {resultado.summary}
@@ -204,7 +274,7 @@ export default function Resultado() {
       ) : null}
 
       {resultado.id ? (
-        <Boton titulo="Borrar este análisis" icono={Trash2} variante="peligro" onPress={borrar} />
+        <Boton titulo={t.borrar} icono={Trash2} variante="peligro" onPress={borrar} />
       ) : null}
     </Pantalla>
   );

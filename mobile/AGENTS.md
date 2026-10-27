@@ -15,7 +15,10 @@ Reglas propias de este proyecto, además de las de Expo que siguen abajo:
 - El veredicto nunca es color solo: siempre color + ícono + etiqueta.
 - El fondo se anima siempre, incluso con "reducir movimiento" activado. Es una
   decisión de diseño tomada, no un descuido (de ahí los `ReduceMotion.Never`).
-- Los textos de interfaz van en castellano rioplatense ("verificá", "pegá").
+- Los textos de interfaz van en los DOS idiomas, en un `traducciones({ es, en })`
+  al lado de cada pantalla (`src/lib/idioma.ts`, espejo de `apps/lib/idioma.ts`).
+  El castellano es rioplatense ("verificá", "pegá") y es el canónico: TypeScript
+  obliga a que la versión en inglés tenga exactamente la misma forma.
 
 ---
 

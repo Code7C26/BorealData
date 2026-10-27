@@ -25,7 +25,14 @@ export type Pendiente =
     };
 
 let pendiente: Pendiente | null = null;
-/** La imagen que espera transcripción, entre el selector y la revisión. */
+/**
+ * La imagen tal como salió de la galería, entre el selector y el recorte.
+ * Se guarda sin procesar (ni achicar ni pasar a base64) porque el recorte
+ * necesita el original: recortar sobre una versión ya reducida pierde el
+ * detalle justo donde más hace falta, que es el texto chico del posteo.
+ */
+let elegida: { uri: string; width: number; height: number } | null = null;
+/** La imagen ya recortada y lista para transcribir, entre el recorte y la revisión. */
 let captura: { mimeType: string; dataBase64: string; uri: string } | null = null;
 /** Resultados ya traídos, para que la pantalla de resultado abra sin esperar red. */
 const resultados = new Map<string, AnalyzeResponse>();
@@ -45,6 +52,13 @@ export const analisis = {
     return valor;
   },
 
+  ponerElegida(valor: { uri: string; width: number; height: number }) {
+    elegida = valor;
+  },
+  verElegida() {
+    return elegida;
+  },
+
   ponerCaptura(valor: { mimeType: string; dataBase64: string; uri: string }) {
     captura = valor;
   },
@@ -52,6 +66,7 @@ export const analisis = {
     return captura;
   },
   limpiarCaptura() {
+    elegida = null;
     captura = null;
     lectura = null;
   },
