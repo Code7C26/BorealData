@@ -133,12 +133,11 @@ export default function LoginPage() {
           label={t.contrasena}
           htmlFor="password"
           extra={
-            <Link
-              href=""
+            <h2
               className="font-mono text-micro uppercase text-accent-text underline-offset-4 hover:underline"
             >
               {t.olvidaste}
-            </Link>
+            </h2>
           }
         >
           <div className="relative">
