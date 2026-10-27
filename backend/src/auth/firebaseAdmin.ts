@@ -38,9 +38,8 @@ function getFirebaseApp(): App {
     existing.length > 0
       ? existing[0]
       : initializeApp({
-          credential: applicationDefault(),
-          projectId,
-        });
+        projectId,
+      });
 
   return app;
 }
