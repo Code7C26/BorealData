@@ -3,19 +3,26 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ImagePlus, Loader2, Search, Sparkles } from 'lucide-react'
+import { ImagePlus, Link2, Loader2, MessageCircleQuestion, Search, Sparkles } from 'lucide-react'
 import { AnalysisPanel, MAX_CHARS, type AnalysisState } from '@/components/result/analysis-panel'
 import { LecturaRevision } from '@/components/lectura-revision'
 import { RecorteImagen } from '@/components/recorte-imagen'
-import { ApiError, leerImagen, type CaptureReading } from '@/lib/api'
+import {
+  ApiError,
+  leerImagen,
+  MAX_CONTENT_CHARS,
+  MIN_CONTENT_CHARS,
+  type CaptureReading,
+} from '@/lib/api'
 import { mensajeDeError } from '@/lib/errores-api'
-import { traducciones } from '@/lib/idioma'
+import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
 import { prepararImagen, TIPOS_ACEPTADOS, type Recorte } from '@/lib/imagen'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import {
   guardarBorrador,
   guardarContenidoPendiente,
   leerBorrador,
+  leerContenidoPendiente,
   sinSuscripcion,
 } from '@/lib/resultado-storage'
 import { cn } from '@/lib/utils'
@@ -36,6 +43,12 @@ import { cn } from '@/lib/utils'
  * imagen, confirmar lo leído) y recién después verifica, porque el veredicto
  * sale del texto confirmado y no de los píxeles. Ver
  * DOCS/BRIEF-captura-contenido-privado.md.
+ *
+ * El tercero es la pregunta: la persona escribe con sus palabras lo que le
+ * contaron o lo que quiere comprobar ("¿es verdad que…?"). No es un chat —no
+ * hay conversación ni repregunta—: es otra forma de entrar el contenido, y sale
+ * el mismo veredicto que con una nota. Viaja como `kind: 'question'`, que le
+ * dice al backend que la persona pregunta y no afirma.
  */
 
 const TEXTOS = traducciones({
@@ -59,6 +72,17 @@ const TEXTOS = traducciones({
       'Subí una captura, arrastrala acá o pegala con Ctrl+V. Para posteos y cadenas que no se pueden leer por su enlace.',
     privacidad: 'Las imágenes no se guardan',
     queHacemos: 'Qué hacemos con tus datos',
+    modos: { enlace: 'Enlace', pregunta: 'Pregunta' },
+    modoGrupo: 'Qué querés verificar',
+    preguntaTitulo: '¿Qué querés comprobar?',
+    preguntaBajada:
+      'No hace falta que sea una noticia. Si te lo contaron, lo escuchaste o te llegó por un grupo, escribilo con tus palabras.',
+    pregunta: 'Tu pregunta',
+    preguntaPlaceholder: '¿Es verdad que…? · Escuché que… · O pegá el mensaje que te llegó.',
+    verificar: 'Verificar',
+    tuPregunta: 'tu pregunta',
+    preguntaCorta: (min: number) => `Escribí al menos ${min} caracteres para poder verificar algo.`,
+    preguntaLarga: (max: string) => `La pregunta no puede superar los ${max} caracteres.`,
   },
   en: {
     noPudimosLeer: "We couldn't read that image.",
@@ -80,8 +104,33 @@ const TEXTOS = traducciones({
       "Upload a screenshot, drag it here or paste it with Ctrl+V. For posts and chain messages that can't be read from a link.",
     privacidad: 'Images are not stored',
     queHacemos: 'What we do with your data',
+    modos: { enlace: 'Link', pregunta: 'Question' },
+    modoGrupo: 'What do you want to check',
+    preguntaTitulo: 'What do you want to check?',
+    preguntaBajada:
+      "It doesn't have to be a news story. If someone told you, you overheard it or it reached you in a group chat, write it in your own words.",
+    pregunta: 'Your question',
+    preguntaPlaceholder: 'Is it true that…? · I heard that… · Or paste the message you received.',
+    verificar: 'Check',
+    tuPregunta: 'your question',
+    preguntaCorta: (min: number) => `Write at least ${min} characters so there's something to check.`,
+    preguntaLarga: (max: string) => `The question cannot be longer than ${max} characters.`,
   },
 })
+
+/** Qué se está escribiendo en el campo: el enlace de una nota o una pregunta propia. */
+type Modo = 'enlace' | 'pregunta'
+
+/**
+ * La pregunta que quedó pendiente después de un error. `/analizando` borra el
+ * contenido pendiente solo si el análisis salió bien, así que lo que queda es
+ * justo lo que hay que reponer. Devuelve un string (y no el objeto) porque
+ * `useSyncExternalStore` compara snapshots por identidad.
+ */
+function leerPreguntaPendiente(): string {
+  const pendiente = leerContenidoPendiente()
+  return pendiente?.kind === 'question' ? pendiente.text : ''
+}
 
 /** En qué parte del camino de la imagen estamos. */
 type EstadoImagen =
@@ -108,6 +157,18 @@ export function AnalisisInput({ className }: { className?: string }) {
   const [editado, setEditado] = useState<string | null>(null)
   const valor = editado ?? borrador
   const setValor = setEditado
+
+  // La pregunta tampoco se pierde: misma lógica que el borrador del enlace.
+  const preguntaPendiente = useSyncExternalStore(sinSuscripcion, leerPreguntaPendiente, () => '')
+  const [preguntaEditada, setPregunta] = useState<string | null>(null)
+  const pregunta = preguntaEditada ?? preguntaPendiente
+  const [errorPregunta, setErrorPregunta] = useState<string | null>(null)
+  const preguntaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Si lo único que hay para reponer es una pregunta, se vuelve a su pestaña.
+  const [modoElegido, setModo] = useState<Modo | null>(null)
+  const modo = modoElegido ?? (preguntaPendiente && !borrador ? 'pregunta' : 'enlace')
+  const tag = TAG_IDIOMA[idioma]
 
   const [estado, setEstado] = useState<AnalysisState>({ kind: 'idle' })
   const [imagen, setImagen] = useState<EstadoImagen | null>(null)
@@ -141,6 +202,27 @@ export function AnalisisInput({ className }: { className?: string }) {
     }
 
     router.push(`/analizando?tipo=url&valor=${encodeURIComponent(limpio)}`)
+  }
+
+  const verificarPregunta = (texto: string) => {
+    const limpio = texto.trim()
+    if (limpio.length < MIN_CONTENT_CHARS) {
+      setErrorPregunta(t.preguntaCorta(MIN_CONTENT_CHARS))
+      return
+    }
+    if (limpio.length > MAX_CONTENT_CHARS) {
+      setErrorPregunta(t.preguntaLarga(MAX_CONTENT_CHARS.toLocaleString(tag)))
+      return
+    }
+    guardarContenidoPendiente({
+      kind: 'question',
+      text: limpio,
+      platform: null,
+      author: null,
+      etiqueta: t.tuPregunta,
+    })
+    // El texto viaja por sessionStorage; en la URL va solo la etiqueta fija.
+    router.push(`/analizando?tipo=contenido&valor=${encodeURIComponent(t.tuPregunta)}`)
   }
 
   // /ejemplo es una ruta pública: el ejemplo tiene que poder verse SIN cuenta,
@@ -283,7 +365,8 @@ export function AnalisisInput({ className }: { className?: string }) {
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        analizar(valor)
+        if (modo === 'pregunta') verificarPregunta(pregunta)
+        else analizar(valor)
       }}
       onDragOver={(e) => {
         e.preventDefault()
@@ -304,36 +387,120 @@ export function AnalisisInput({ className }: { className?: string }) {
       )}
       aria-labelledby="idle-title"
     >
-      <h2 id="idle-title" className="font-display text-h3 font-semibold text-display">
-        {t.titulo}
-      </h2>
-      <p className="text-body-sm text-muted">{t.bajada}</p>
+      <div
+        role="group"
+        aria-label={t.modoGrupo}
+        className="inline-flex items-center gap-0.5 self-start rounded-pill border border-border p-1"
+      >
+        {(['enlace', 'pregunta'] as const).map((opcion) => {
+          const Icono = opcion === 'enlace' ? Link2 : MessageCircleQuestion
+          return (
+            <button
+              key={opcion}
+              type="button"
+              onClick={() => {
+                setModo(opcion)
+                setErrorPregunta(null)
+                // Elegir "Pregunta" es elegir escribir: el foco va directo al campo.
+                // (autoFocus no alcanza: el clic deja el foco en el botón.)
+                if (opcion === 'pregunta') requestAnimationFrame(() => preguntaRef.current?.focus())
+              }}
+              aria-pressed={modo === opcion}
+              // `text-micro` va afuera de `cn`: tailwind-merge lo toma por un color
+              // y lo borra al ver `text-subtle`/`text-accent-text`.
+              className={`text-micro ${cn(
+                'flex h-8 items-center gap-1.5 rounded-pill px-3 font-mono uppercase transition-colors duration-150 ease-boreal',
+                modo === opcion ? 'bg-accent/15 text-accent-text' : 'text-subtle hover:text-ink',
+              )}`}
+            >
+              <Icono aria-hidden="true" size={14} />
+              {t.modos[opcion]}
+            </button>
+          )
+        })}
+      </div>
 
-      <label className="flex flex-col gap-3">
-        <span className="sr-only">{t.enlace}</span>
-        <textarea
-          rows={3}
-          value={valor}
-          onChange={(e) => setValor(e.target.value)}
-          onKeyDown={(e) => {
-            // Enter analiza; Shift+Enter deja escribir varias líneas.
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              analizar(valor)
-            }
-          }}
-          maxLength={MAX_CHARS * 2}
-          spellCheck={false}
-          placeholder={t.enlacePlaceholder}
-          className="field-input resize-y font-mono text-caption tracking-normal"
-          aria-label={t.enlace}
-        />
-      </label>
+      {modo === 'enlace' ? (
+        <>
+          <h2 id="idle-title" className="font-display text-h3 font-semibold text-display">
+            {t.titulo}
+          </h2>
+          <p className="text-body-sm text-muted">{t.bajada}</p>
+
+          <label className="flex flex-col gap-3">
+            <span className="sr-only">{t.enlace}</span>
+            <textarea
+              rows={3}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter analiza; Shift+Enter deja escribir varias líneas.
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  analizar(valor)
+                }
+              }}
+              maxLength={MAX_CHARS * 2}
+              spellCheck={false}
+              placeholder={t.enlacePlaceholder}
+              className="field-input resize-y font-mono text-caption tracking-normal"
+              aria-label={t.enlace}
+            />
+          </label>
+        </>
+      ) : (
+        <>
+          <h2 id="idle-title" className="font-display text-h3 font-semibold text-display">
+            {t.preguntaTitulo}
+          </h2>
+          <p className="text-body-sm text-muted">{t.preguntaBajada}</p>
+
+          <label className="flex flex-col gap-2">
+            <span className="sr-only">{t.pregunta}</span>
+            <textarea
+              rows={5}
+              value={pregunta}
+              onChange={(e) => {
+                setPregunta(e.target.value)
+                setErrorPregunta(null)
+              }}
+              onKeyDown={(e) => {
+                // Igual que el enlace: Enter verifica, Shift+Enter baja de línea.
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  verificarPregunta(pregunta)
+                }
+              }}
+              ref={preguntaRef}
+              maxLength={MAX_CONTENT_CHARS * 2}
+              placeholder={t.preguntaPlaceholder}
+              className="field-input resize-y text-body-sm"
+              aria-label={t.pregunta}
+              aria-describedby="pregunta-contador"
+            />
+            <span
+              id="pregunta-contador"
+              className={cn(
+                'self-end font-mono',
+                pregunta.trim().length > MAX_CONTENT_CHARS ? 'text-verdict-falso' : 'text-disabled',
+              ) + ' text-micro'}
+            >
+              {pregunta.trim().length.toLocaleString(tag)} / {MAX_CONTENT_CHARS.toLocaleString(tag)}
+            </span>
+          </label>
+
+          {errorPregunta && <ErrorImagen mensaje={errorPregunta} />}
+        </>
+      )}
 
       <div className="flex flex-col gap-3 md:flex-row">
-        <button type="submit" disabled={!valor.trim()} className="btn-primary w-full md:w-auto">
+        <button
+          type="submit"
+          disabled={modo === 'pregunta' ? !pregunta.trim() : !valor.trim()}
+          className="btn-primary w-full md:w-auto"
+        >
           <Search aria-hidden="true" size={16} />
-          {t.analizar}
+          {modo === 'pregunta' ? t.verificar : t.analizar}
         </button>
         <button type="button" onClick={verEjemplo} className="btn-secondary w-full md:w-auto">
           <Sparkles aria-hidden="true" size={16} />
