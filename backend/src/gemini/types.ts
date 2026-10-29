@@ -153,11 +153,19 @@ export const INVALID_LANGUAGE_ERROR = `El campo 'language' es inválido (opcione
 // selección, texto pegado) en vez de una URL que el servidor tendría que ir a buscar.
 // Ver DOCS/BRIEF-captura-contenido-privado.md.
 
-/** De dónde salió el contenido. "url" es el camino clásico (scraper); el resto es evidencia del cliente. */
-export type ContentKind = "url" | "capture" | "selection" | "image" | "text";
+/**
+ * De dónde salió el contenido. "url" es el camino clásico (scraper); el resto es evidencia
+ * del cliente.
+ *
+ * "question" es el único que NO es evidencia: es una duda que la persona escribe con sus
+ * propias palabras ("¿es verdad que…?", "escuché que…"). La diferencia no es cosmética —
+ * en todos los demás casos hay un texto de un tercero que AFIRMA algo y el análisis juzga
+ * esa afirmación; acá la persona no afirma nada, pregunta. Ver `buildIntro`.
+ */
+export type ContentKind = "url" | "capture" | "selection" | "image" | "text" | "question";
 
-/** Solo estos cuatro se aceptan desde el cliente en /analyze/content (nunca "url"). */
-export const CLIENT_CONTENT_KINDS = ["capture", "selection", "image", "text"] as const;
+/** Solo estos cinco se aceptan desde el cliente en /analyze/content (nunca "url"). */
+export const CLIENT_CONTENT_KINDS = ["capture", "selection", "image", "text", "question"] as const;
 export type ClientContentKind = (typeof CLIENT_CONTENT_KINDS)[number];
 
 /** Plataformas reconocidas. Lo declara el cliente: es una pista, no un dato confiable. */

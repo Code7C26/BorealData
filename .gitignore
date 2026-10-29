@@ -1,0 +1,5 @@
+# El .env del server, el que lee docker-compose.yml. Tiene la password de Postgres
+# y la API key de Gemini: nunca se commitea. La plantilla es .env.example.
+.env
+.env.*
+!.env.example

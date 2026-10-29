@@ -17,6 +17,20 @@ services:
 
   web:
     image: boreal_web:latest
+    # Next.js hornea las NEXT_PUBLIC_* en el bundle del cliente durante `npm run build`:
+    # ponerlas solo en `environment` no alcanza, el navegador nunca las ve. Por eso van
+    # también como build args (el Dockerfile las declara con ARG).
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://31.220.86.94:5000
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -44,10 +58,19 @@ services:
 
   backend:
     image: boreal_backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       PORT: 8080
       DATABASE_URL: ${DATABASE_URL}
       CORS_ORIGIN: http://31.220.86.94:4000
+      # Sin esto, src/auth/firebaseAdmin.ts tira "Falta la variable de entorno
+      # FIREBASE_PROJECT_ID" en cada verifyIdToken() y requireAuth responde 401
+      # "Token inválido o expirado" en /me, /history y /analyze.
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_READ_MODEL: ${GEMINI_READ_MODEL}
     ports:
       - "5000:8080"
     networks:
