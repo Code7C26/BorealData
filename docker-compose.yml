@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://31.220.86.94:5000
+        NEXT_PUBLIC_API_URL: https://aletheiainc.online/api
         NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
         NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
         NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
@@ -31,7 +31,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      NEXT_PUBLIC_API_URL: http://31.220.86.94:5000
+      NEXT_PUBLIC_API_URL: https://aletheiainc.online/api
       NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
@@ -52,7 +52,9 @@ services:
         - "traefik.http.routers.aletheia-web.entrypoints=websecure"
         - "traefik.http.routers.aletheia-web.tls=true"
         - "traefik.http.routers.aletheia-web.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.aletheia-web.priority=1"
         - "traefik.http.services.aletheia-web.loadbalancer.server.port=4000"
+        - "traefik.docker.network=Kobacnet"
 
   backend:
     build:
@@ -62,18 +64,28 @@ services:
     environment:
       PORT: 8080
       DATABASE_URL: ${DATABASE_URL}
-      CORS_ORIGIN: http://31.220.86.94:4000
+      CORS_ORIGIN: https://aletheiainc.online,https://www.aletheiainc.online
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_READ_MODEL: ${GEMINI_READ_MODEL}
-    ports:
-      - "5000:8080"
     networks:
       - truconet
       - boreal-internal-net
+      - Kobacnet  # <--- Conectado a Traefik
     deploy:
       restart_policy:
         condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.aletheia-api.rule=(Host(`aletheiainc.online`) || Host(`www.aletheiainc.online`)) && PathPrefix(`/api`)"
+        - "traefik.http.routers.aletheia-api.priority=100"
+        - "traefik.http.routers.aletheia-api.entrypoints=websecure"
+        - "traefik.http.routers.aletheia-api.tls=true"
+        - "traefik.http.routers.aletheia-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.aletheia-api.middlewares=aletheia-api-strip"
+        - "traefik.http.middlewares.aletheia-api-strip.stripprefix.prefixes=/api"
+        - "traefik.http.services.aletheia-api.loadbalancer.server.port=8080"
+        - "traefik.docker.network=Kobacnet"
 
 volumes:
   pgdata:
