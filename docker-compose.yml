@@ -28,14 +28,19 @@ services:
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
       NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
-    ports:
-      - "4000:4000"
     networks:
       - truconet
       - boreal-internal-net
+      - Kobacnet  # <--- Conectado a la red de Traefik
     deploy:
       restart_policy:
         condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.aletheia-web.rule=Host(`aletheiainc.online`) || Host(`www.aletheiainc.online`)"
+        - "traefik.http.routers.aletheia-web.entrypoints=websecure"
+        - "traefik.http.routers.aletheia-web.tls.certresolver=letsencrypt" # (Asegúrate de que tu Traefik use 'letsencrypt' o cámbialo por el nombre de tu resolver)
+        - "traefik.http.services.aletheia-web.loadbalancer.server.port=4000"
 
   backend:
     image: boreal_backend:latest
@@ -60,3 +65,5 @@ networks:
     external: true
   boreal-internal-net:
     driver: overlay
+  Kobacnet:
+    external: true  # <--- Declarada correctamente como externa
