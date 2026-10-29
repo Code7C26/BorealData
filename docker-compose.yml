@@ -86,4 +86,3 @@ networks:
   Kobacnet:
     external: true
     name: Kobacnet
-    external: true  # <--- Declarada correctamente como externa
