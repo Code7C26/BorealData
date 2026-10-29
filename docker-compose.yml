@@ -16,6 +16,17 @@ services:
         condition: on-failure
 
   web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://31.220.86.94:5000
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
     image: boreal_web:latest
     environment:
       NODE_ENV: production
@@ -31,7 +42,7 @@ services:
     networks:
       - truconet
       - boreal-internal-net
-      - Kobacnet  # <--- Conectado a la red de Traefik
+      - Kobacnet
     deploy:
       restart_policy:
         condition: on-failure
@@ -39,15 +50,22 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.aletheia-web.rule=Host(`aletheiainc.online`) || Host(`www.aletheiainc.online`)"
         - "traefik.http.routers.aletheia-web.entrypoints=websecure"
-        - "traefik.http.routers.aletheia-web.tls.certresolver=letsencrypt" # (Asegúrate de que tu Traefik use 'letsencrypt' o cámbialo por el nombre de tu resolver)
+        - "traefik.http.routers.aletheia-web.tls=true"
+        - "traefik.http.routers.aletheia-web.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.aletheia-web.loadbalancer.server.port=4000"
 
   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: boreal_backend:latest
     environment:
       PORT: 8080
       DATABASE_URL: ${DATABASE_URL}
       CORS_ORIGIN: http://31.220.86.94:4000
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_READ_MODEL: ${GEMINI_READ_MODEL}
     ports:
       - "5000:8080"
     networks:
@@ -66,4 +84,5 @@ networks:
   boreal-internal-net:
     driver: overlay
   Kobacnet:
-    external: true  # <--- Declarada correctamente como externa
+    external: true
+    name: Kobacnet
