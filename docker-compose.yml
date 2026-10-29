@@ -16,10 +16,6 @@ services:
         condition: on-failure
 
   web:
-    image: boreal_web:latest
-    # Next.js hornea las NEXT_PUBLIC_* en el bundle del cliente durante `npm run build`:
-    # ponerlas solo en `environment` no alcanza, el navegador nunca las ve. Por eso van
-    # también como build args (el Dockerfile las declara con ARG).
     build:
       context: .
       dockerfile: Dockerfile
@@ -31,6 +27,7 @@ services:
         NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
         NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+    image: boreal_web:latest
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -45,7 +42,7 @@ services:
     networks:
       - truconet
       - boreal-internal-net
-      - Kobacnet  # <--- Conectado a la red de Traefik
+      - Kobacnet
     deploy:
       restart_policy:
         condition: on-failure
@@ -53,21 +50,19 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.aletheia-web.rule=Host(`aletheiainc.online`) || Host(`www.aletheiainc.online`)"
         - "traefik.http.routers.aletheia-web.entrypoints=websecure"
-        - "traefik.http.routers.aletheia-web.tls.certresolver=letsencrypt" # (Asegúrate de que tu Traefik use 'letsencrypt' o cámbialo por el nombre de tu resolver)
+        - "traefik.http.routers.aletheia-web.tls=true"
+        - "traefik.http.routers.aletheia-web.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.aletheia-web.loadbalancer.server.port=4000"
 
   backend:
-    image: boreal_backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: boreal_backend:latest
     environment:
       PORT: 8080
       DATABASE_URL: ${DATABASE_URL}
       CORS_ORIGIN: http://31.220.86.94:4000
-      # Sin esto, src/auth/firebaseAdmin.ts tira "Falta la variable de entorno
-      # FIREBASE_PROJECT_ID" en cada verifyIdToken() y requireAuth responde 401
-      # "Token inválido o expirado" en /me, /history y /analyze.
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_READ_MODEL: ${GEMINI_READ_MODEL}
@@ -89,4 +84,6 @@ networks:
   boreal-internal-net:
     driver: overlay
   Kobacnet:
+    external: true
+    name: Kobacnet
     external: true  # <--- Declarada correctamente como externa
