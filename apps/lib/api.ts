@@ -2,7 +2,7 @@ import { auth } from '@/lib/firebase'
 import type { Confidence, SourceStance, Verdict } from '@/lib/verdict'
 import type { Idioma } from '@/lib/idioma'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://31.220.86.94:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://aletheiainc.online/api';
 
 export type { Confidence, SourceStance, Verdict }
 
