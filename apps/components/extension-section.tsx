@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { PanelRight } from 'lucide-react'
+import { ArrowUpRight, Crop, KeyRound, PanelRight } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
+import { LogoChrome } from '@/components/logo-chrome'
 import { ANALISIS_EJEMPLO as EJEMPLO_POR_IDIOMA } from '@/lib/ejemplo'
+import { URL_CHROME_WEB_STORE } from '@/lib/extension-store'
 import { traducciones } from '@/lib/idioma'
 import { useTextos } from '@/lib/use-idioma'
 import { useVocabulario } from '@/lib/use-vocabulario'
@@ -13,24 +15,45 @@ const TEXTOS = traducciones({
   es: {
     confianza: (nivel: string) => `Confianza ${nivel}`,
     urlMaqueta: 'diario-ejemplo.com/nota/8821',
-    eyebrow: 'Extensión de navegador',
-    titulo: 'Verificá sin salir de la nota',
+    disponible: 'Ya disponible en la Chrome Web Store',
+    titulo: 'Verificá sin salir',
+    tituloDestacado: 'de la nota',
     bajada:
       'AletheIA se abre en un panel al costado de la página que estás leyendo. Un clic y tenés el veredicto, la confianza y las fuentes al lado del texto, sin copiar enlaces ni cambiar de pestaña.',
-    crearCuenta: 'Crear cuenta y empezar',
-    enCamino: 'La extensión de Chrome está en camino — [LINK DE DESCARGA]',
+    beneficios: [
+      { titulo: 'Un clic, en cualquier página', texto: 'El panel analiza la nota que tenés abierta.' },
+      { titulo: 'También lo que no tiene enlace', texto: 'Recortá una captura o una imagen y la verificás ahí mismo.' },
+      { titulo: 'Tu misma cuenta', texto: 'Si entraste en la web, la extensión ya está lista. Sin otro login.' },
+    ],
+    agregar: 'Agregar a Chrome',
+    crearCuenta: 'Crear cuenta',
+    letraChica: 'Gratis · Chrome, Edge, Brave y otros Chromium en computadora',
+    insignia: 'Disponible en',
+    insigniaTienda: 'Chrome Web Store',
   },
   en: {
     confianza: (nivel: string) => `${nivel} confidence`,
     urlMaqueta: 'example-news.com/article/8821',
-    eyebrow: 'Browser extension',
-    titulo: 'Check without leaving the article',
+    disponible: 'Now on the Chrome Web Store',
+    titulo: 'Check without leaving',
+    tituloDestacado: 'the article',
     bajada:
       "AletheIA opens in a panel next to the page you're reading. One click and you have the verdict, the confidence and the sources right beside the text, without copying links or switching tabs.",
-    crearCuenta: 'Create an account and start',
-    enCamino: 'The Chrome extension is on its way — [DOWNLOAD LINK]',
+    beneficios: [
+      { titulo: 'One click, on any page', texto: 'The panel analyzes the article you have open.' },
+      { titulo: "Even what has no link", texto: 'Crop a screenshot or an image and check it right there.' },
+      { titulo: 'Your same account', texto: "If you're signed in on the web, the extension is ready. No second login." },
+    ],
+    agregar: 'Add to Chrome',
+    crearCuenta: 'Create an account',
+    letraChica: 'Free · Chrome, Edge, Brave and other Chromium browsers on desktop',
+    insignia: 'Available on the',
+    insigniaTienda: 'Chrome Web Store',
   },
 })
+
+/** En el mismo orden que `beneficios` en TEXTOS. */
+const ICONOS_BENEFICIOS = [PanelRight, Crop, KeyRound]
 
 function BarraDeTexto({ ancho, alto = 'h-2' }: { ancho: string; alto?: string }) {
   return <span className={cn(alto, 'block rounded-sm bg-border-strong')} style={{ width: ancho }} />
@@ -144,21 +167,71 @@ export function ExtensionSection() {
     >
       <div className="relative mx-auto grid max-w-shell grid-cols-1 items-center gap-14 lg:grid-cols-[0.95fr_1.05fr]">
         <div>
-          <p className="eyebrow">{t.eyebrow}</p>
-          <h2 id="extension-title" className="mt-4 text-balance font-display text-h2-fluid text-display">
-            {t.titulo}
+          {/* El "ya está" va primero y con el punto vivo: es la novedad de la sección. */}
+          <a
+            href={URL_CHROME_WEB_STORE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2.5 rounded-pill border border-border bg-surface px-3.5 py-1.5 font-mono text-micro uppercase text-accent-text transition-colors duration-150 ease-boreal hover:border-accent-text"
+          >
+            <span className="relative flex size-2" aria-hidden="true">
+              <span className="absolute inset-0 animate-ping rounded-pill bg-verdict-verificado opacity-60" />
+              <span className="relative size-2 rounded-pill bg-verdict-verificado" />
+            </span>
+            {t.disponible}
+          </a>
+          <h2 id="extension-title" className="mt-5 text-balance font-display text-h2-fluid text-display">
+            {t.titulo} <span className="text-aurora">{t.tituloDestacado}</span>
           </h2>
           <p className="mt-4 max-w-texto text-pretty text-muted">{t.bajada}</p>
-          <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Link href="/registro" className="btn-primary">
-              <PanelRight aria-hidden="true" size={16} />
+
+          <ul className="mt-8 flex flex-col gap-4">
+            {t.beneficios.map((b, i) => {
+              const Icono = ICONOS_BENEFICIOS[i]
+              return (
+                <li key={b.titulo} className="flex items-start gap-3.5">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-accent-text">
+                    <Icono aria-hidden="true" size={16} />
+                  </span>
+                  <span className="flex flex-col gap-0.5 pt-0.5">
+                    <span className="font-display text-body-sm font-semibold text-display">{b.titulo}</span>
+                    <span className="text-body-sm text-muted">{b.texto}</span>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+
+          <div className="mt-10 flex flex-wrap items-center gap-4">
+            <a href={URL_CHROME_WEB_STORE} target="_blank" rel="noopener noreferrer" className="btn-primary">
+              <LogoChrome />
+              {t.agregar}
+              <ArrowUpRight aria-hidden="true" size={16} />
+            </a>
+            <Link href="/registro" className="btn-secondary">
               {t.crearCuenta}
             </Link>
           </div>
-          <p className="mt-4 font-mono text-micro uppercase text-disabled">{t.enCamino}</p>
+          <p className="mt-4 font-mono text-micro uppercase text-disabled">{t.letraChica}</p>
         </div>
 
-        <MaquetaPanel />
+        <div className="relative">
+          <MaquetaPanel />
+          {/* La insignia de la tienda flotando sobre la maqueta: el mismo pedido que
+              el botón, dicho como lo dice el resto de la web (sello, no banner). */}
+          <a
+            href={URL_CHROME_WEB_STORE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute -bottom-6 left-4 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-lg transition-transform duration-150 ease-boreal hover:-translate-y-0.5 sm:-left-6"
+          >
+            <LogoChrome className="size-8" />
+            <span className="flex flex-col leading-tight">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-subtle">{t.insignia}</span>
+              <span className="font-display text-body-sm font-semibold text-display">{t.insigniaTienda}</span>
+            </span>
+          </a>
+        </div>
       </div>
     </section>
   )

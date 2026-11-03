@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AnalisisInput } from '@/components/analisis-input'
 import { AuroraBoreal } from '@/components/aurora-boreal'
+import { ExtensionBanner } from '@/components/extension-banner'
 import { apiFetch, type GlobalStats } from '@/lib/api'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
@@ -58,6 +59,8 @@ export default function DashboardPage() {
         </header>
 
         <AnalisisInput />
+
+        <ExtensionBanner />
 
         <RepartoDeVeredictos stats={stats} />
       </div>

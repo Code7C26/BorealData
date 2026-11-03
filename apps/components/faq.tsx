@@ -39,7 +39,7 @@ const TEXTOS = traducciones({
       {
         pregunta: '¿Hay algo para el navegador?',
         respuesta:
-          'Sí: la extensión abre AletheIA en un panel lateral sobre la página que estás leyendo, así verificás sin copiar enlaces ni cambiar de pestaña.',
+          'Sí: la extensión abre AletheIA en un panel lateral sobre la página que estás leyendo, así verificás sin copiar enlaces ni cambiar de pestaña. Es gratis y está en la Chrome Web Store.',
       },
     ],
   },
@@ -75,7 +75,7 @@ const TEXTOS = traducciones({
       {
         pregunta: 'Is there something for the browser?',
         respuesta:
-          "Yes: the extension opens AletheIA in a side panel over the page you're reading, so you can check without copying links or switching tabs.",
+          "Yes: the extension opens AletheIA in a side panel over the page you're reading, so you can check without copying links or switching tabs. It's free on the Chrome Web Store.",
       },
     ],
   },
