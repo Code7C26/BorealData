@@ -17,6 +17,8 @@ const TEXTOS = traducciones({
     verPasos: (n: number) => `Ver los ${n} pasos`,
     copiado: 'Enlace copiado',
     compartir: 'Compartir verificación',
+    copiaManual: 'No se pudo copiar solo. Copiá el enlace de acá:',
+    enlace: 'Enlace de la verificación',
   },
   en: {
     fuentes: 'Sources checked',
@@ -24,6 +26,8 @@ const TEXTOS = traducciones({
     verPasos: (n: number) => `See all ${n} steps`,
     copiado: 'Link copied',
     compartir: 'Share this check',
+    copiaManual: "Couldn't copy it automatically. Copy the link from here:",
+    enlace: 'Link to this check',
   },
 })
 
@@ -304,34 +308,90 @@ function SourceRow({ source }: { source: AnalysisSource }) {
  */
 function BotonCompartir({ id, className }: { id?: string | null; className?: string }) {
   const [copiado, setCopiado] = useState(false)
+  /** El link que no se pudo copiar solo: se muestra para copiarlo a mano. */
+  const [sinCopiar, setSinCopiar] = useState<string | null>(null)
   const t = useTextos(TEXTOS)
 
   const compartir = async () => {
     if (typeof window === 'undefined') return
     const link = id ? `${window.location.origin}/resultado/${id}` : window.location.href
-    try {
-      await navigator.clipboard?.writeText(link)
+    if (await copiarAlPortapapeles(link)) {
+      setSinCopiar(null)
       setCopiado(true)
       setTimeout(() => setCopiado(false), FEEDBACK_COPIADO_MS)
-    } catch {
-      // navigator.clipboard puede no existir (contexto no seguro) o el permiso
-      // puede estar denegado — no rompemos la UI, solo no mostramos el check.
+    } else {
+      // Nunca decir "copiado" si no se copió: antes, en http, el botón lo
+      // anunciaba igual y la persona pegaba lo que tuviera de antes.
+      setSinCopiar(link)
     }
   }
 
   return (
-    <button type="button" onClick={compartir} className={cn('btn-secondary w-full', className)}>
-      {copiado ? (
-        <>
-          <Check aria-hidden="true" size={16} className="text-verdict-verificado" />
-          {t.copiado}
-        </>
-      ) : (
-        <>
-          <Share2 aria-hidden="true" size={16} />
-          {t.compartir}
-        </>
+    // Con el link a la vista ocupa todo el ancho: un enlace cortado no se copia bien.
+    <div className={cn('flex w-full flex-col gap-2', !sinCopiar && className)}>
+      <button type="button" onClick={compartir} className="btn-secondary w-full md:w-auto">
+        {copiado ? (
+          <>
+            <Check aria-hidden="true" size={16} className="text-verdict-verificado" />
+            {t.copiado}
+          </>
+        ) : (
+          <>
+            <Share2 aria-hidden="true" size={16} />
+            {t.compartir}
+          </>
+        )}
+      </button>
+      {sinCopiar && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-caption tracking-normal text-muted">{t.copiaManual}</span>
+          <input
+            readOnly
+            value={sinCopiar}
+            aria-label={t.enlace}
+            // Ya seleccionado: Ctrl+C (o "Copiar" en el celular) y listo.
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+            className="field-input font-mono text-caption tracking-normal"
+          />
+        </label>
       )}
-    </button>
+    </div>
   )
+}
+
+/**
+ * Copia `texto` y dice si de verdad se copió.
+ *
+ * `navigator.clipboard` solo existe en contextos seguros (https o localhost):
+ * en el server, que se sirve por http, es `undefined`. Ahí se cae al
+ * `execCommand('copy')` de siempre, que sí anda en http mientras venga de un
+ * clic. Está deprecado, pero no hay otra forma de copiar en http.
+ */
+async function copiarAlPortapapeles(texto: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(texto)
+      return true
+    } catch {
+      // Permiso denegado: probar el camino viejo antes de rendirse.
+    }
+  }
+
+  const area = document.createElement('textarea')
+  area.value = texto
+  area.setAttribute('readonly', '')
+  // Fuera de pantalla y sin mover el scroll al enfocarla.
+  area.style.position = 'fixed'
+  area.style.top = '0'
+  area.style.left = '-9999px'
+  document.body.appendChild(area)
+  area.select()
+  try {
+    return document.execCommand('copy')
+  } catch {
+    return false
+  } finally {
+    area.remove()
+  }
 }
