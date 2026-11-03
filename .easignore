@@ -68,3 +68,7 @@ node_modules/
 *.p12
 *.key
 *.mobileprovision
+
+# Los worktrees de las sesiones de Claude: 1,2 GB de node_modules ajenos a la app.
+# Sin esto el archivo del build pasa de ~10 MB a 850 MB (medido con eas build:inspect).
+/.claude/

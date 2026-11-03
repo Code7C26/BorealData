@@ -56,6 +56,9 @@ export default function Login() {
     try {
       await iniciarSesion(email, password);
     } catch (err) {
+      // El mensaje genérico tapa el código real: sin esto, un error que no está
+      // en MENSAJES_POR_CODIGO se ve igual que una contraseña mal escrita.
+      console.error('[login] fallo iniciarSesion:', err);
       setError(mensajeErrorFirebase(err, t.error, idioma));
     } finally {
       setEnviando(false);
