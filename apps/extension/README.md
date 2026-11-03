@@ -25,6 +25,10 @@ npm run build   # genera .output/chrome-mv3
 npm run zip     # genera el .zip listo para subir a la Chrome Web Store
 ```
 
+El build toma las URLs de `.env.production` (dominio real); dev sigue
+usando `.env` (localhost). Ver `.env.example`. Para publicar, ver
+[PUBLICAR.md](PUBLICAR.md).
+
 ## Estado actual
 
 - Side panel funcional: precarga la URL de la pestaña activa, analiza y
