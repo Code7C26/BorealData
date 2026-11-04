@@ -153,7 +153,7 @@ export async function readCapture(
   images: CaptureImageInput[],
   options: { model?: string; timeoutMs?: number; language?: Language } = {}
 ): Promise<ReadCaptureResult> {
-  const model = options.model ?? process.env.GEMINI_READ_MODEL ?? DEFAULT_READ_MODEL;
+  const model = options.model || process.env.GEMINI_READ_MODEL?.trim() || DEFAULT_READ_MODEL;
   const timeoutMs = options.timeoutMs ?? DEFAULT_READ_TIMEOUT_MS;
 
   try {
