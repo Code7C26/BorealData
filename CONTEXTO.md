@@ -214,13 +214,15 @@ La extensión corre con `npm run dev` (WXT) desde la misma carpeta y se carga "u
 
 | Documento | Descripción |
 |---|---|
-| `docs/Analisis_Competencia_AletheIA.pdf` | Tabla comparativa de competidores |
-| `docs/BRAINSTORM_empresa.pdf` / `BRAINSTORM_producto.pdf` | Brainstorms iniciales |
-| `docs/FODA.png` | FODA del equipo |
-| `docs/MVP-BorealData.pdf` | Definición del MVP |
-| `docs/TECHNOLOGICAL_STACK.pdf` | Stack tecnológico |
-| `docs/validacion y empatia.pdf` | Mapa de empatía del usuario |
-| `docs/reporte-cierre-mes-aletheia.pdf` | Reporte de cierre de mes |
+| `docs/manual-de-usuario.pdf` | Manual de usuario (web + extensión) |
+| `docs/negocio/analisis-de-competencia.pdf` | Tabla comparativa de competidores |
+| `docs/negocio/brainstorm-empresa.pdf` / `docs/producto/brainstorm-producto.pdf` | Brainstorms iniciales |
+| `docs/negocio/foda.png` | FODA del equipo |
+| `docs/producto/mvp.pdf` | Definición del MVP |
+| `docs/tecnico/stack-tecnologico.pdf` | Stack tecnológico |
+| `docs/negocio/validacion-y-empatia.pdf` | Mapa de empatía del usuario |
+| `docs/reportes/2026-08-reporte-cierre-de-mes.pdf` | Reporte de cierre de mes |
+| `docs/README.md` | Índice de toda la carpeta `docs/` |
 | `design/DESIGN_SYSTEM.md` | Design System V1 en código |
 
 ---

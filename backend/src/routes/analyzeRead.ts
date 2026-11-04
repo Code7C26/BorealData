@@ -21,7 +21,7 @@ const router = Router();
  *
  * Lee la imagen con un modelo multimodal y devuelve la transcripción ({ reading }) SIN
  * veredicto, para que la persona la revise/corrija ("Esto es lo que leímos") antes de
- * verificarla con POST /analyze/content. Ver DOCS/BRIEF-captura-contenido-privado.md.
+ * verificarla con POST /analyze/content. Ver docs/producto/brief-captura-contenido-privado.md.
  *
  * Privacidad: la imagen vive solo en memoria mientras dura esta request. No se guarda en
  * ningún lado y no se loguea (ni el body ni el resultado): esta ruta no toca la base.
