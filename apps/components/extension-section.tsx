@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { PanelRight } from 'lucide-react'
+import { PanelRight, Puzzle } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
+import { CHROME_EXTENSION_URL } from '@/lib/extension'
 import { ANALISIS_EJEMPLO as EJEMPLO_POR_IDIOMA } from '@/lib/ejemplo'
 import { traducciones } from '@/lib/idioma'
 import { useTextos } from '@/lib/use-idioma'
@@ -18,7 +19,8 @@ const TEXTOS = traducciones({
     bajada:
       'AletheIA se abre en un panel al costado de la página que estás leyendo. Un clic y tenés el veredicto, la confianza y las fuentes al lado del texto, sin copiar enlaces ni cambiar de pestaña.',
     crearCuenta: 'Crear cuenta y empezar',
-    enCamino: 'La extensión de Chrome está en camino — [LINK DE DESCARGA]',
+    agregarAChrome: 'Agregar a Chrome',
+    nota: 'Gratis · usa la misma cuenta que la web',
   },
   en: {
     confianza: (nivel: string) => `${nivel} confidence`,
@@ -28,7 +30,8 @@ const TEXTOS = traducciones({
     bajada:
       "AletheIA opens in a panel next to the page you're reading. One click and you have the verdict, the confidence and the sources right beside the text, without copying links or switching tabs.",
     crearCuenta: 'Create an account and start',
-    enCamino: 'The Chrome extension is on its way — [DOWNLOAD LINK]',
+    agregarAChrome: 'Add to Chrome',
+    nota: 'Free · uses the same account as the web app',
   },
 })
 
@@ -150,12 +153,18 @@ export function ExtensionSection() {
           </h2>
           <p className="mt-4 max-w-texto text-pretty text-muted">{t.bajada}</p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Link href="/registro" className="btn-primary">
+            {/* Crear cuenta primero: la extensión toma la sesión de la web, así que
+                sin cuenta no sirve. Al terminar el registro se manda a la Web Store. */}
+            <Link href="/registro?siguiente=extension" className="btn-primary">
               <PanelRight aria-hidden="true" size={16} />
               {t.crearCuenta}
             </Link>
+            <a href={CHROME_EXTENSION_URL} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+              <Puzzle aria-hidden="true" size={16} />
+              {t.agregarAChrome}
+            </a>
           </div>
-          <p className="mt-4 font-mono text-micro uppercase text-disabled">{t.enCamino}</p>
+          <p className="mt-4 font-mono text-micro uppercase text-disabled">{t.nota}</p>
         </div>
 
         <MaquetaPanel />

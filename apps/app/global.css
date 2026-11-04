@@ -907,3 +907,41 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Celulares: el fondo, a dieta.
+
+   Safari en iPhone mataba la pestaña ("Ocurrió un problema repetidamente"):
+   la home junta 4 cortinas de aurora (SVG con blur + máscara, cada una su capa
+   de GPU y al 240 % del ancho en mobile), 6 SVG de estrellas animados del tamaño
+   del viewport y bandas con blur(90px), todo multiplicado por el DPR 3 de la
+   pantalla. Se pasa del límite de memoria de WebKit y el proceso se cae.
+
+   En pantallas táctiles o angostas queda lo mismo que se ve, pero liviano:
+   una sola cortina, sin la capa de linterna (sin cursor nunca se revela), sin
+   grano y con blur más chico. La compu no cambia.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (hover: none), (max-width: 767px) {
+  .aurora-boreal .ab-capa-apoyo,
+  .cielo-estrellado .ce-brillo,
+  .noise-field {
+    display: none;
+  }
+  .aurora-boreal .ab-capa {
+    left: -30%;
+    width: 160%;
+    will-change: auto;
+  }
+  .cielo-estrellado .ce-capa {
+    inset: 0;
+    will-change: auto;
+  }
+  /* Estrellas quietas: el titileo de las tres tandas era una capa animada más cada una. */
+  .cielo-estrellado .ce-tanda {
+    animation: none;
+  }
+  .aurora-band {
+    filter: blur(48px);
+    will-change: auto;
+  }
+}
