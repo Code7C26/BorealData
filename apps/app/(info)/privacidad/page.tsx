@@ -53,8 +53,8 @@ function ContenidoEs() {
         <p>
           AletheIA es un producto de <strong>Boreal Data</strong>, un proyecto desarrollado por
           Renzo Lanata y Ciro Di Marsico. Para cualquier tema de datos personales escribinos a{' '}
-          <a href="mailto:contacto@borealdata.com" className="text-accent-text underline">
-            contacto@borealdata.com
+          <a href="mailto:soporte@aletheiainc.online" className="text-accent-text underline">
+            soporte@aletheiainc.online
           </a>
           .
         </p>
@@ -169,8 +169,8 @@ function ContenidoEs() {
           La Ley 25.326 de Protección de los Datos Personales te da derecho a acceder a tus
           datos, a corregirlos y a pedir que se borren, gratis. Lo primero y lo último podés
           hacerlo vos desde Configuración; para cualquier otra cosa escribinos a{' '}
-          <a href="mailto:contacto@borealdata.com" className="text-accent-text underline">
-            contacto@borealdata.com
+          <a href="mailto:soporte@aletheiainc.online" className="text-accent-text underline">
+            soporte@aletheiainc.online
           </a>{' '}
           desde el correo de tu cuenta y te respondemos dentro de 10 días hábiles.
         </p>
@@ -227,8 +227,8 @@ function ContenidoEn() {
         <p>
           AletheIA is a product of <strong>Boreal Data</strong>, a project developed by Renzo
           Lanata and Ciro Di Marsico. For anything related to personal data, write to us at{' '}
-          <a href="mailto:contacto@borealdata.com" className="text-accent-text underline">
-            contacto@borealdata.com
+          <a href="mailto:soporte@aletheiainc.online" className="text-accent-text underline">
+            soporte@aletheiainc.online
           </a>
           .
         </p>
@@ -348,8 +348,8 @@ function ContenidoEn() {
           Argentina&apos;s Personal Data Protection Law 25.326 gives you the right to access
           your data, to correct it and to ask for it to be deleted, free of charge. You can do
           the first and the last yourself from Settings; for anything else write to us at{' '}
-          <a href="mailto:contacto@borealdata.com" className="text-accent-text underline">
-            contacto@borealdata.com
+          <a href="mailto:soporte@aletheiainc.online" className="text-accent-text underline">
+            soporte@aletheiainc.online
           </a>{' '}
           from your account&apos;s email and we will reply within 10 business days.
         </p>

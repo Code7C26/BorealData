@@ -6,7 +6,7 @@
  * depende del cliente de correo que tenga configurado el sistema —en Windows suele ser
  * Outlook o nada— y la idea es que el enlace lleve a Gmail.
  */
-export const REPORTES_EMAIL = 'aletheia@gmail.com'
+export const REPORTES_EMAIL = 'soporte@aletheiainc.online'
 
 /** URL del redactor de Gmail con destinatario, asunto y cuerpo ya cargados. */
 export function urlReporteGmail(asunto: string, cuerpo: string): string {
