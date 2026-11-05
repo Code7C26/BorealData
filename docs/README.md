@@ -1,5 +1,8 @@
 # Documentación de AletheIA
 
+El contexto general del proyecto (estado, decisiones y pendientes) está en
+[`CONTEXTO.md`](../CONTEXTO.md), en la raíz del repositorio.
+
 | Carpeta / archivo | Contenido |
 |---|---|
 | [`manual-de-usuario.pdf`](manual-de-usuario.pdf) | Manual de uso de la web y la extensión de Chrome |
