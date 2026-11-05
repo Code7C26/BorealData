@@ -1,37 +1,11 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { ScrapedContent, ScraperOptions } from "./types";
-import { stripControlChars } from "../utils/sanitize";
+import { bodyMatchesTitle, extractArticle } from "./extractArticle";
 
 // Selectores que indican una SPA sin contenido renderizado en el servidor.
 // Estos sitios se consideran "empty" y se rechazan.
 const SPA_ROOT_SELECTORS = ["#root", "#app", "#__next", "[data-reactroot]"];
-
-// Extrae texto limpio del HTML saca scripts, estilos, nav, footer, etc
-function extractCleanText($: cheerio.CheerioAPI): { title: string; text: string } {
-  // saca scripts, estilos, nav, footer, etc
-  $("script, style, noscript, iframe, svg, nav, footer, header, form, aside").remove();
-
-  // obtiene el title
-  const title = $("title").first().text().trim() || $("h1").first().text().trim();
-
-  // obtiene el contenido
-  const container = $("article").length
-    ? $("article")
-    : $("main").length
-    ? $("main")
-    : $("body");
-
-  // obtiene el texto de parrafos, encabezados y listas
-  const text = container
-    .find("p, h1, h2, h3, li")
-    .map((_, el) => $(el).text().trim())
-    .get()
-    .filter(Boolean)
-    .join("\n");
-
-  return { title: stripControlChars(title), text: stripControlChars(text, true) };
-}
 
 function looksLikeEmptySpa($: cheerio.CheerioAPI): boolean {
   // si hay alguno de estos selectores con menos de 50 caracteres es una SPA
@@ -66,9 +40,10 @@ export async function scrapeWithCheerio(
     // parsea el HTML
     const $ = cheerio.load(html);
     // limpia el HTML
-    const { title, text } = extractCleanText($);
-    // verifica si el contenido es suficiente
-    const insufficient = text.length < minTextLength || looksLikeEmptySpa($);
+    const { title, text } = extractArticle($);
+    // verifica si el contenido es suficiente (y si es la nota y no otra cosa)
+    const insufficient =
+      text.length < minTextLength || looksLikeEmptySpa($) || !bodyMatchesTitle(title, text);
 
     return {
       url,
