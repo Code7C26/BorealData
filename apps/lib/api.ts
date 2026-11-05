@@ -19,11 +19,8 @@ export interface AnalysisSource {
 /**
  * Respuesta 200 de POST /analyze (backend/src/routes/analyze.ts).
  *
- * Rediseño V1 (sep-2026): salieron `score` (0-100), `label` (6 valores),
- * `explanation` y `claimVsEvidence`. Entraron `verdict` (4 valores),
- * `confidence` (1-5), `headline` en lenguaje natural, `lead` y los pasos de
- * `reasoning`. El backend traduce solo las filas viejas al leerlas, así que
- * acá ya no hay nada del esquema anterior.
+ * El backend traduce las filas con el esquema anterior (score 0-100) al leerlas, así
+ * que el front solo conoce `verdict` y `confidence`.
  */
 export interface AnalyzeResponse {
   /**
@@ -56,9 +53,9 @@ export interface AnalyzeResponse {
    */
   shareable?: boolean
   /**
-   * Idioma en que escribió Gemini. Falta en el ejemplo precargado y en resultados viejos
-   * guardados en sessionStorage; el backend lo manda siempre ('es' para todo lo anterior
-   * a oct-2026).
+   * Idioma en que escribió Gemini. Falta en el análisis de ejemplo y en resultados
+   * antiguos guardados en sessionStorage; el backend lo envía siempre ('es' para las
+   * filas anteriores a la columna `language`).
    */
   language?: Idioma
 }
@@ -151,7 +148,7 @@ export async function apiFetch<T>(
 // Espejo de la sección homónima de backend/src/gemini/types.ts. Una captura de
 // un posteo privado no tiene URL que el servidor pueda ir a buscar: lo que se
 // manda es la evidencia que la persona ya tiene. Ver
-// DOCS/BRIEF-captura-contenido-privado.md.
+// docs/tecnico/arquitectura.md ("Análisis de contenido del cliente").
 
 /** Plataformas que el backend reconoce (KNOWN_PLATFORMS). */
 export type Platform = 'facebook' | 'instagram' | 'x' | 'whatsapp' | 'tiktok' | 'otro'

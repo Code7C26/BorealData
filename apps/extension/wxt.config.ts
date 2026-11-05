@@ -1,16 +1,13 @@
 import { defineConfig } from 'wxt';
 
-// Tiene que matchear WXT_API_URL en apps/extension/.env — se repite acá
-// literal porque el manifest se resuelve antes de que WXT termine de cargar
-// el .env para el bundle en runtime. El origen de la web (WXT_WEB_ORIGIN) se
-// declara aparte, como `matches` del content script en
-// entrypoints/auth-bridge.content.ts.
-const API_URL = 'http://localhost:4000';
-
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
-  manifest: {
+  // El manifest va como función: WXT carga .env / .env.{mode} en process.env
+  // después de leer este archivo pero antes de llamarla. Así `wxt` (dev) toma
+  // localhost de .env y `wxt build|zip` toma el dominio de .env.production,
+  // sin repetir la URL literal acá.
+  manifest: () => ({
     // Nombre y descripción salen de public/_locales/{es,en}/messages.json: es lo que
     // muestran la Chrome Web Store y chrome://extensions, y eso sigue el idioma del
     // NAVEGADOR (lo resuelve Chrome, no la extensión). Todo lo demás —el panel y el menú
@@ -44,7 +41,7 @@ export default defineConfig({
     // y así capturar ahí no dispara ningún diálogo de permiso. Tienen que
     // coincidir con PLATAFORMAS_POR_DOMINIO en lib/platform.ts.
     host_permissions: [
-      `${API_URL}/*`,
+      `${process.env.WXT_API_URL}/*`,
       'https://securetoken.googleapis.com/*',
       '*://*.facebook.com/*',
       '*://*.instagram.com/*',
@@ -59,7 +56,7 @@ export default defineConfig({
     // revisión de la Web Store; como permiso opcional, el usuario lo concede
     // para el sitio donde realmente lo necesita. Ver sección 6 del brief.
     optional_host_permissions: ['*://*/*'],
-  },
+  }),
   dev: {
     server: {
       // Por defecto WXT usa el primer puerto libre entre 3000 y 3010,

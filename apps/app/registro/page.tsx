@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Eye, EyeOff } from 'lucide-react'
@@ -12,7 +12,6 @@ import { traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { AuthRedirect } from '@/components/auth-redirect'
 import { AuthShell, Campo } from '@/components/auth-shell'
-import { CHROME_EXTENSION_URL } from '@/lib/extension'
 
 const MIN_PASSWORD = 8
 
@@ -94,15 +93,6 @@ export default function RegistroPage() {
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
 
-  // Viene del botón "Crear cuenta y empezar" de la sección de la extensión
-  // (/registro?siguiente=extension): al terminar el registro va a la Chrome Web Store
-  // en vez de al dashboard. Se lee de window.location en vez de useSearchParams para
-  // no tener que envolver la página en <Suspense> (Next lo exige en el build).
-  const [paraExtension, setParaExtension] = useState(false)
-  useEffect(() => {
-    setParaExtension(new URLSearchParams(window.location.search).get('siguiente') === 'extension')
-  }, [])
-
   const emailValido = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,10 +126,6 @@ export default function RegistroPage() {
       const credential = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(credential.user, { displayName: nombre.trim() })
       await apiFetch('/me', { method: 'POST', body: { fullName: nombre.trim() } })
-      if (paraExtension) {
-        window.location.assign(CHROME_EXTENSION_URL)
-        return
-      }
       router.push('/dashboard')
     } catch (err) {
       setError(mensajeErrorFirebase(err, t.noPudimos, idioma))
@@ -166,8 +152,8 @@ export default function RegistroPage() {
       }
     >
       {/* Apagado mientras se crea la cuenta: si no, apenas Firebase loguea al usuario
-          redirige al dashboard antes de guardar el nombre (y de ir a la Web Store). */}
-      {!enviando && <AuthRedirect to={paraExtension ? '/dashboard#extension' : '/dashboard'} />}
+          redirige al dashboard antes de guardar el nombre. */}
+      {!enviando && <AuthRedirect to="/dashboard" />}
 
       {error && (
         <p role="alert" className="alert-form">

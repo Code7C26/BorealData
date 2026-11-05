@@ -26,13 +26,11 @@ function paragraphScore($: cheerio.CheerioAPI, el: cheerio.Cheerio<any>): number
 /**
  * Elige el elemento que contiene el cuerpo de la nota.
  *
- * Antes se tomaba `$("article")` entero si había alguno. Falla en sitios como La Nación
- * (5-nov-2026): sus únicos `<article>` son las tarjetas de "notas relacionadas", y el
- * cuerpo vive en `<p>` sueltos dentro de `<main>`. El scraper le pasaba a Gemini cuatro
- * titulares ajenos (Everest, Paraguay, Brasil...) y el análisis salía falso.
- *
- * Ahora se puntúa cada candidato por el texto de sus párrafos largos y se usa el más
- * específico que concentre al menos la mitad del texto de la página.
+ * Se puntúa cada candidato por el texto de sus párrafos largos y se usa el más
+ * específico que concentre al menos la mitad del texto de la página. Tomar `$("article")`
+ * sin más falla en sitios como La Nación: sus únicos `<article>` son las tarjetas de
+ * "notas relacionadas" y el cuerpo vive en `<p>` sueltos dentro de `<main>`, así que el
+ * análisis se hacía sobre titulares ajenos.
  */
 export function pickArticleContainer($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
   const body = $("body").length ? $("body").first() : $.root();

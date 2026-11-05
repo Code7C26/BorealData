@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS analyses (
 
 CREATE INDEX IF NOT EXISTS analyses_created_at_idx ON analyses (created_at DESC);
 
--- ── Firebase Auth (ago-2026) ────────────────────────────────────────────────
+-- ── Firebase Auth ────────────────────────────────────────────────
 -- Tabla `users`: id interno (uuid) propio de la app, separado del uid de Firebase.
 -- `firebase_uid` es el `decodedToken.uid` que devuelve verifyIdToken() en el backend
 -- (ver src/auth/verifyAuth.ts) — es un string, NO un uuid, por eso va en columna `text`
@@ -32,39 +32,34 @@ CREATE TABLE IF NOT EXISTS users (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   firebase_uid text NOT NULL UNIQUE,
   email        text,
-  full_name    text, -- nombre y apellido juntos, un solo campo (31-ago-2026). Nullable:
+  full_name    text, -- nombre y apellido juntos, un solo campo. Nullable:
                       -- se completa recién cuando el usuario pasa por POST /me (después
                       -- del registro/login), no en el upsert automático de /analyze o
                       -- /history, que solo conocen uid/email.
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
--- FK de analyses.user_id -> users.id. Si ya corriste este schema.sql antes de esta
--- fecha, la tabla `analyses` ya existe sin esta constraint: correla a mano.
--- (No hay "ADD CONSTRAINT IF NOT EXISTS" en Postgres; si ya la corriste una vez y la
--- volvés a correr, va a tirar error de "constraint already exists" — ignorable.)
+-- FK de analyses.user_id -> users.id, para bases donde `analyses` se creó antes que
+-- `users`. Postgres no tiene "ADD CONSTRAINT IF NOT EXISTS": al re-ejecutarlo, el error
+-- "constraint already exists" es ignorable.
 ALTER TABLE analyses
   ADD CONSTRAINT analyses_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id);
 
--- Columna `full_name` (31-ago-2026): si ya tenías `users` creada de antes (como en el
--- Postgres local de Ciro), correr esto una vez para agregarla. `ADD COLUMN IF NOT EXISTS`
--- sí existe en Postgres (a diferencia de ADD CONSTRAINT), así que es seguro re-correrlo.
+-- Columna `full_name` para bases donde `users` ya existía. `ADD COLUMN IF NOT EXISTS`
+-- es seguro de re-ejecutar.
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS full_name text;
 
--- ── Caché de análisis por URL (10-sep-2026) ─────────────────────────────────
+-- ── Caché de análisis por URL ─────────────────────────────────
 -- POST /analyze busca por `url` exacta antes de scrapear/llamar a Gemini (ver
 -- analysesRepository.ts::getLatestAnalysisByUrl y routes/analyze.ts). Índice no-único:
 -- se sigue guardando una fila por cada usuario que pide una URL ya analizada (para que
 -- le aparezca en su propio /history), pero sin repetir el scrape ni el llamado a Gemini.
 CREATE INDEX IF NOT EXISTS analyses_url_idx ON analyses (url);
 
--- Limpieza única (10-sep-2026): antes del caché de arriba, cada re-análisis de una URL ya
--- vista insertaba una fila nueva — quien probó la app varias veces con la misma noticia
--- terminó con esa noticia repetida en su /historial y en "Recientes" del sidebar. Este
--- DELETE deja una sola fila por (usuario, URL) —la más reciente de cada grupo—, igual que
--- de ahora en más hace getAnalysisForUserByUrl() en cada request nueva. Correr una sola
--- vez; si se re-corre no hace nada (ya no quedan duplicados que borrar).
+-- Limpieza de duplicados previos a la caché: deja una sola fila por (usuario, URL), la
+-- más reciente de cada grupo, igual que getAnalysisForUserByUrl() en cada request.
+-- Re-ejecutarlo no tiene efecto.
 DELETE FROM analyses a
 USING analyses b
 WHERE a.url = b.url
@@ -72,7 +67,7 @@ WHERE a.url = b.url
   AND (a.created_at < b.created_at
        OR (a.created_at = b.created_at AND a.id < b.id));
 
--- ── Rediseño V1: veredicto + confianza (11-sep-2026) ────────────────────────
+-- ── Rediseño V1: veredicto + confianza ────────────────────────
 -- El porcentaje de veracidad (`score`, 0-100) se eliminó del producto: fingía una
 -- precisión decimal que el análisis no tiene. Lo reemplazan dos campos:
 --   `verdict`     una de cuatro etiquetas cerradas (verificado/dudoso/falso/sin-datos)
@@ -101,7 +96,7 @@ ALTER TABLE analyses ALTER COLUMN label DROP NOT NULL;
 -- falso/verificado nunca bajan de 3. Si el motor devuelve una combinación fuera de tabla,
 -- el backend ya la degrada a sin-datos antes de insertar (normalizeVerdict en
 -- gemini/types.ts); esta constraint es la red por si alguien escribe a mano.
--- (No hay ADD CONSTRAINT IF NOT EXISTS en Postgres: si ya la corriste, el error de
+-- (No hay ADD CONSTRAINT IF NOT EXISTS en Postgres: si ya existe, el error de
 -- "constraint already exists" es ignorable.)
 ALTER TABLE analyses
   ADD CONSTRAINT analyses_verdict_confidence_chk CHECK (
@@ -112,7 +107,7 @@ ALTER TABLE analyses
     OR (verdict = 'sin-datos'  AND confidence BETWEEN 1 AND 2)
   );
 
--- ── Row Level Security (13-sep-2026) ────────────────────────────────────────
+-- ── Row Level Security ────────────────────────────────────────
 -- Objetivo: que cada usuario solo pueda leer/escribir sus propias filas, incluso si
 -- algún día un endpoint nuevo se olvida del WHERE user_id = ... — RLS es la segunda
 -- capa, no reemplaza el filtro que ya hace cada función de db/analysesRepository.ts
@@ -194,7 +189,7 @@ CREATE POLICY analyses_insert_own ON analyses
 -- para un comando lo deniega por completo para aletheia_app — correcto, el backend
 -- nunca actualiza ni borra filas de `analyses`.
 
--- ── Contenido que el scraper no puede ver (23-sep-2026) ─────────────────────
+-- ── Contenido que el scraper no puede ver ─────────────────────
 -- POST /analyze/content analiza evidencia que arma la extensión dentro de la pestaña de la
 -- persona (captura, selección, texto pegado), no una URL pública. Ese contenido puede ser un
 -- posteo privado, así que NUNCA puede entrar por los caminos que comparten análisis entre
@@ -209,8 +204,8 @@ ALTER TABLE analyses
   ADD COLUMN IF NOT EXISTS source_type      text NOT NULL DEFAULT 'url',
   ADD COLUMN IF NOT EXISTS capture_platform text;
 
--- (Sin ADD CONSTRAINT IF NOT EXISTS: si ya la corriste, el error "already exists" es ignorable.)
--- Actualizada en oct-2026 con 'question' (ver la sección "Preguntas" al final).
+-- (Sin ADD CONSTRAINT IF NOT EXISTS: si ya existe, el error "already exists" es ignorable.)
+-- Incluye 'question' (ver la sección "Preguntas" al final).
 ALTER TABLE analyses
   ADD CONSTRAINT analyses_source_type_chk
   CHECK (source_type IN ('url', 'capture', 'selection', 'image', 'text', 'question'));
@@ -231,7 +226,7 @@ CREATE POLICY analyses_select_own_or_shared ON analyses
     )
   );
 
--- ── Idioma del análisis (22-oct-2026) ───────────────────────────────────────
+-- ── Idioma del análisis ───────────────────────────────────────
 -- La web es bilingüe y le pide a Gemini el análisis en el idioma de la persona (`language`
 -- en el body de /analyze y /analyze/content). La caché de /analyze reusa análisis por URL
 -- entre usuarios, así que matchea por (url, language): sin esto, quien usa la web en inglés
@@ -241,13 +236,13 @@ CREATE POLICY analyses_select_own_or_shared ON analyses
 ALTER TABLE analyses
   ADD COLUMN IF NOT EXISTS language text NOT NULL DEFAULT 'es';
 
--- (Sin ADD CONSTRAINT IF NOT EXISTS: si ya la corriste, el error "already exists" es ignorable.)
+-- (Sin ADD CONSTRAINT IF NOT EXISTS: si ya existe, el error "already exists" es ignorable.)
 ALTER TABLE analyses
   ADD CONSTRAINT analyses_language_chk CHECK (language IN ('es', 'en'));
 
 CREATE INDEX IF NOT EXISTS analyses_url_language_idx ON analyses (url, language);
 
--- ── Preguntas de la persona (27-oct-2026) ───────────────────────────────────
+-- ── Preguntas de la persona ───────────────────────────────────
 -- La desinformación no siempre llega como una noticia: muchas veces es algo que alguien
 -- escuchó o le contaron. La app y la web ahora dejan escribir esa duda con palabras
 -- propias ("¿es verdad que…?", "escuché que…") y el análisis se guarda con

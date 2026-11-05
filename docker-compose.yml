@@ -71,7 +71,7 @@ services:
     networks:
       - truconet
       - boreal-internal-net
-      - Kobacnet  # <--- Conectado a Traefik
+      - Kobacnet
     deploy:
       restart_policy:
         condition: on-failure

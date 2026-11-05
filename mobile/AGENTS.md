@@ -1,20 +1,20 @@
 # AletheIA — app móvil
 
-App de AletheIA (Boreal Data). Pega contra `backend/` y comparte cuenta,
+App de AletheIA (Boreal Data). Usa el backend de `backend/` y comparte cuenta,
 proyecto de Firebase e historial con la web de `apps/`.
 
-**Antes de tocar nada, leer `README.md` de esta carpeta**: tiene cómo correrla,
-las decisiones tomadas y las trampas que ya nos costaron tiempo.
+Antes de modificar código, leer `README.md` de esta carpeta: describe cómo
+ejecutar la app, los criterios de implementación y las particularidades conocidas.
 
-Reglas propias de este proyecto, además de las de Expo que siguen abajo:
+Reglas del proyecto, además de las de Expo que siguen:
 
-- `src/lib/verdict.ts` y `src/lib/api.ts` son **espejos** de `apps/lib/`. Si
-  cambia el contrato del análisis, se cambian los dos (y `backend/src/gemini/types.ts`).
+- `src/lib/verdict.ts`, `src/lib/api.ts` y `src/lib/idioma.ts` replican `apps/lib/`. Si
+  cambia el contrato del análisis, se actualizan todos (y `backend/src/gemini/types.ts`).
 - Ningún componente escribe un hex ni un número de radio suelto: todo sale de
   `src/theme/tokens.ts` (roles semánticos del Design System V1).
 - El veredicto nunca es color solo: siempre color + ícono + etiqueta.
 - El fondo se anima siempre, incluso con "reducir movimiento" activado. Es una
-  decisión de diseño tomada, no un descuido (de ahí los `ReduceMotion.Never`).
+  decisión de diseño (de ahí los `ReduceMotion.Never`).
 - Los textos de interfaz van en los DOS idiomas, en un `traducciones({ es, en })`
   al lado de cada pantalla (`src/lib/idioma.ts`, espejo de `apps/lib/idioma.ts`).
   El castellano es rioplatense ("verificá", "pegá") y es el canónico: TypeScript

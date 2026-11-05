@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AletheIA — Web
 
-## Getting Started
+Frontend web de AletheIA: Next.js 16 (App Router), React 19, TypeScript y Tailwind CSS v4.
 
-First, run the development server:
+## Desarrollo
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Variables (`.env.example`):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Descripción |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | URL del backend. |
+| `NEXT_PUBLIC_FIREBASE_*` | Configuración del SDK web de Firebase. |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Todas las variables `NEXT_PUBLIC_*` se incluyen en el bundle del navegador y no deben
+contener secretos.
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Comando | Descripción |
+|---|---|
+| `npm run dev` | Servidor de desarrollo. |
+| `npm run build` | Build de producción (`output: "standalone"`). |
+| `npm start` | Sirve el build. |
+| `npm run lint` | ESLint. |
+| `npm test` | Tests con Vitest. |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estructura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Carpeta | Contenido |
+|---|---|
+| `app/(autenticado)/` | Dashboard, análisis en curso, resultado sin guardar, historial, perfil, configuración. |
+| `app/(info)/` | Contacto, privacidad y términos (públicas). |
+| `app/resultado/[id]/` | Vista canónica y compartible de un análisis guardado. |
+| `app/login/`, `app/registro/` | Autenticación con Firebase. |
+| `app/ejemplo/` | Análisis de ejemplo para visitantes sin cuenta. |
+| `components/` | Componentes de interfaz; `components/result/` contiene la vista de resultado. |
+| `lib/` | Cliente de la API, sesión, vocabulario de veredictos, idioma, tema y puente con la extensión. |
+| `extension/` | Extensión de Chrome, con su propio `package.json` (ver `extension/README.md`). |
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Los tokens de diseño están en `app/global.css`; ver `design/DESIGN_SYSTEM.md` en la raíz
+del repositorio.

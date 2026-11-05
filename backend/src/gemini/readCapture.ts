@@ -153,6 +153,8 @@ export async function readCapture(
   images: CaptureImageInput[],
   options: { model?: string; timeoutMs?: number; language?: Language } = {}
 ): Promise<ReadCaptureResult> {
+  // `||` y no `??`: el docker-compose pasa GEMINI_READ_MODEL vacía cuando no tiene valor,
+  // y "" llegaría a Gemini como modelo ("model is required and must be a string").
   const model = options.model || process.env.GEMINI_READ_MODEL?.trim() || DEFAULT_READ_MODEL;
   const timeoutMs = options.timeoutMs ?? DEFAULT_READ_TIMEOUT_MS;
 

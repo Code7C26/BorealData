@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Flag, PanelRight } from 'lucide-react'
+import { ArrowUpRight, Flag } from 'lucide-react'
 import { AnalisisInput } from '@/components/analisis-input'
 import { AuroraBoreal } from '@/components/aurora-boreal'
+import { ExtensionBanner } from '@/components/extension-banner'
 import { apiFetch, type GlobalStats } from '@/lib/api'
-import { CHROME_EXTENSION_URL } from '@/lib/extension'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
 import { REPORTES_EMAIL, urlReporteGmail } from '@/lib/reportes'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
@@ -24,11 +24,6 @@ const TEXTOS = traducciones({
     hastaHoy: 'En AletheIA hasta hoy',
     resumen: (notas: string, fuentes: string, confianza: string) =>
       `${notas} notas · ${fuentes} fuentes · confianza media ${confianza} de 5`,
-    extEyebrow: 'Extensión de Chrome',
-    extTitulo: 'Verificá sin salir de la nota',
-    extBajada:
-      'Instalá AletheIA en Chrome y abrí el análisis en un panel al costado de la página que estás leyendo. Usa esta misma cuenta: no tenés que volver a iniciar sesión.',
-    extBoton: 'Agregar a Chrome',
     repEyebrow: 'Reportes',
     repTitulo: '¿Algo no cerró?',
     repBajada:
@@ -46,11 +41,6 @@ const TEXTOS = traducciones({
     hastaHoy: 'On AletheIA so far',
     resumen: (notas: string, fuentes: string, confianza: string) =>
       `${notas} articles · ${fuentes} sources · average confidence ${confianza} out of 5`,
-    extEyebrow: 'Chrome extension',
-    extTitulo: 'Check without leaving the article',
-    extBajada:
-      "Install AletheIA in Chrome and open the analysis in a panel next to the page you're reading. It uses this same account: no need to sign in again.",
-    extBoton: 'Add to Chrome',
     repEyebrow: 'Reports',
     repTitulo: 'Something off?',
     repBajada:
@@ -88,58 +78,13 @@ export default function DashboardPage() {
 
         <AnalisisInput />
 
-        <ExtensionCard />
+        <ExtensionBanner />
 
         <RepartoDeVeredictos stats={stats} />
 
         <ReportesCard />
       </div>
     </div>
-  )
-}
-
-/**
- * Invitación a instalar la extensión, justo debajo del input. Si se llega con
- * #extension (registro desde la sección de la extensión de la landing), se scrollea
- * hasta acá: el bloque se monta después de que el navegador intenta saltar al ancla.
- */
-function ExtensionCard() {
-  const t = useTextos(TEXTOS)
-
-  useEffect(() => {
-    if (window.location.hash === '#extension') {
-      document.getElementById('extension')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }, [])
-
-  return (
-    <section
-      id="extension"
-      aria-labelledby="extension-title"
-      className="flex scroll-mt-24 flex-col gap-5 rounded-2xl border border-border bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-8"
-    >
-      <div className="flex items-start gap-4">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-sunk text-accent-text">
-          <PanelRight aria-hidden="true" size={18} />
-        </span>
-        <div className="flex flex-col gap-1.5">
-          <p className="eyebrow">{t.extEyebrow}</p>
-          <h2 id="extension-title" className="font-display text-h3 font-semibold text-display">
-            {t.extTitulo}
-          </h2>
-          <p className="max-w-texto text-body-sm text-muted">{t.extBajada}</p>
-        </div>
-      </div>
-      <a
-        href={CHROME_EXTENSION_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="btn-primary shrink-0 self-start md:self-center"
-      >
-        {t.extBoton}
-        <ArrowUpRight aria-hidden="true" size={16} />
-      </a>
-    </section>
   )
 }
 
@@ -189,9 +134,8 @@ function ReportesCard() {
 /**
  * Los números de la plataforma entera, desde siempre.
  *
- * Antes había un bloque de "confiabilidad promedio" en porcentaje. Se cayó con
- * el score: promediar veredictos no da un porcentaje que signifique algo. En su
- * lugar va el reparto real de los cuatro estados, que además explica el
+ * Muestra el reparto de los cuatro veredictos en lugar de un promedio: promediar
+ * veredictos no produce un porcentaje con significado. El reparto además presenta el
  * vocabulario del producto a quien recién llega.
  */
 function RepartoDeVeredictos({ stats }: { stats: GlobalStats | null }) {

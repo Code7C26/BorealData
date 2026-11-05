@@ -1,9 +1,8 @@
-# Lo que NO entra en el contexto de build de la imagen del front.
+# Archivos excluidos del contexto de build de la imagen web.
 #
-# Sin esto, `COPY apps/ .` del Dockerfile pisa el node_modules que armó la etapa
-# `deps` (npm ci dentro de Linux) con el node_modules de Windows del disco local:
-# los binarios no son compatibles y el `npm run build` falla o produce una imagen
-# rota. Además el contexto pesaría cientos de MB.
+# Excluir node_modules evita que `COPY apps/ .` reemplace las dependencias instaladas
+# en la etapa `deps` (Linux) por las del equipo local, cuyos binarios no son
+# compatibles.
 
 **/node_modules/
 **/.next/
@@ -18,7 +17,7 @@
 # Lo que la imagen del front no necesita
 backend/
 mobile/
-DOCS/
+docs/
 design/
 assets/
 .git/

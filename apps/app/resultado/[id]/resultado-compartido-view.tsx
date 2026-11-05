@@ -65,11 +65,8 @@ const TEXTOS = traducciones({
  *  - **Con sesión:** tu propio análisis, con el sidebar, el botón de volver al historial
  *    y el de borrarlo.
  *
- * Antes el resultado propio vivía en `/resultado` leyendo sessionStorage: recargar la
- * página lo perdía, no se podía guardar en favoritos, y había DOS vistas distintas
- * (ésta mostraba solo la card). Ahora `/analizando` redirige acá en cuanto el análisis
- * se guardó, y `/resultado` quedó solo para lo que no tiene id (el ejemplo y los
- * análisis cuyo guardado falló).
+ * `/analizando` redirige acá en cuanto el análisis se guarda; `/resultado` queda solo
+ * para lo que no tiene id (análisis cuyo guardado falló).
  *
  * El `id` llega como prop en vez de leerse de `params` acá: ese trabajo lo hace el
  * `page.tsx` del server, que además usa el mismo id para armar la preview de Open Graph

@@ -9,7 +9,7 @@
  * permiso para crear policies ni para repartir privilegios — con ese rol, este script
  * corta con un mensaje explicándolo.
  *
- * Para no tener que editar el .env (y después olvidarse de volverlo atrás, que ya pasó),
+ * Para no tener que editar el .env,
  * la conexión del dueño se pasa aparte. La forma recomendada deja la contraseña fuera
  * del comando y del historial del shell:
  *

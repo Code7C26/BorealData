@@ -10,7 +10,7 @@
  *
  * Correr con: npx tsx migrate-rls.ts
  *
- * OJO: esto NO activa el uso del rol nuevo todavía. El backend sigue conectándose con
+ * Esto NO activa el uso del rol nuevo todavía. El backend sigue conectándose con
  * el usuario de siempre (dueño de las tablas, que Postgres deja pasar sin chequear las
  * policies) hasta que se actualice DATABASE_URL/DB_USER en el .env — eso es un paso
  * aparte, después de confirmar que este script corrió bien.

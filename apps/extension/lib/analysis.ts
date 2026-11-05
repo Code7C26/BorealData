@@ -1,15 +1,13 @@
 /**
  * Tipos y helpers del veredicto — compartidos entre el side panel y el
- * background script. El análisis ahora se dispara y se cachea en
+ * background script. El análisis se dispara y se cachea en
  * background.ts (ver ese archivo) para sobrevivir al cierre del panel al
  * cambiar de pestaña; este módulo es lo que ambos lados necesitan en común.
  *
  * Espejo de backend/src/gemini/types.ts y de apps/lib/verdict.ts en la web.
  *
- * Rediseño V1 (sep-2026): se cayó el `score` 0-100 y los 6 labels viejos.
- * Ahora son cuatro veredictos cerrados y cinco niveles de confianza, que son
- * cosas distintas: el veredicto habla de la nota, la confianza habla de qué
- * tan sólida es la evidencia que conseguimos.
+ * Cuatro veredictos cerrados y cinco niveles de confianza, independientes: el
+ * veredicto habla de la nota y la confianza, de la solidez de la evidencia.
  */
 export type Verdict = 'verificado' | 'dudoso' | 'falso' | 'sin-datos';
 export type Confidence = 1 | 2 | 3 | 4 | 5;
@@ -131,7 +129,7 @@ export function mapBackendResult(data: BackendAnalyzeResponse): AnalysisResult {
 // manda la evidencia que el usuario ya tiene delante (una captura de su propia
 // pantalla) en vez de una URL que el servidor tendría que ir a buscar y que,
 // si es privada, solo le devolvería el muro de login.
-// Ver DOCS/BRIEF-captura-contenido-privado.md.
+// Ver docs/tecnico/arquitectura.md ("Análisis de contenido del cliente").
 
 /** Plataformas que el backend reconoce (KNOWN_PLATFORMS). */
 export type Platform = 'facebook' | 'instagram' | 'x' | 'whatsapp' | 'tiktok' | 'otro';

@@ -1,5 +1,5 @@
 /**
- * Habilita el tipo de origen `question` en la tabla `analyses` (oct-2026).
+ * Habilita el tipo de origen `question` en la tabla `analyses`.
  *
  * La app y la web ahora dejan preguntar una duda con palabras propias — "¿es verdad
  * que…?", "escuché que…" — en vez de pegar solamente el texto de una noticia. Ese análisis

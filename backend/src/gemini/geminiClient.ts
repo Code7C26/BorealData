@@ -145,7 +145,7 @@ const LANGUAGE_OUTPUT_RULE: Record<Language, string> = {
 };
 
 /**
- * Probado contra la API real (22-oct-2026): con solo la regla general de arriba, Gemini
+ * Probado contra la API real: con solo la regla general de arriba, Gemini
  * devolvía `summary`, `reasoning` y `note` en inglés pero `headline` y `lead` en
  * castellano — son los campos con descripción más larga y ejemplos en castellano, y el
  * modelo los imita. Por eso en inglés cada campo de texto del formato lleva la marca, y
@@ -159,7 +159,7 @@ const LANGUAGE_FIELD_TAG: Record<Language, string> = {
 /**
  * La descripción de `toneFlags` va entera en el idioma pedido, no solo con la marca: son
  * etiquetas cortas y el modelo copia los ejemplos tal cual. Medido contra la API real
- * (22-oct-2026): con los ejemplos en castellano, un análisis en inglés devolvió
+ * con los ejemplos en castellano, un análisis en inglés devolvió
  * `["sensationalism", "apelación emocional"]`.
  */
 const TONE_FLAGS_FIELD: Record<Language, string> = {
@@ -169,7 +169,7 @@ const TONE_FLAGS_FIELD: Record<Language, string> = {
 
 /**
  * Titular y bajada, también enteros en el idioma pedido. La marca `IN ENGLISH —` sola no
- * alcanzó: medido en uso real (22-oct-2026, una nota de Univision en castellano pedida en
+ * alcanzó: medido en uso real (una nota de Univision en castellano pedida en
  * inglés desde la extensión) Gemini escribió `headline` y `lead` en castellano y el resto
  * en inglés. Son los campos con la descripción más larga y con ejemplos de titulares en
  * castellano ("No encontramos respaldo…"), y el modelo calcaba ese idioma. El castellano
@@ -194,7 +194,7 @@ Recordatorio final: every text field of your JSON goes in English, "headline" an
 
 /**
  * "5 de noviembre de 2026", en hora de Argentina. Sin la fecha, el modelo asume que está
- * en su fecha de corte: medido en uso real (5-nov-2026), un análisis en inglés afirmó que
+ * en su fecha de corte: medido en uso real, un análisis en inglés afirmó que
  * "no existe un papa León XIV" y descartó a Clarín y Zenit como "noticias especulativas
  * de 2025 y 2026". La regla anti-corte de abajo sola no alcanzaba.
  */
@@ -311,7 +311,7 @@ interface RawSource {
 /**
  * Un link real de la búsqueda de Google, sacado de un groundingChunk.
  *
- * Importante y poco obvio (medido contra la API real, 8-oct-2026): `web.uri` NUNCA es la
+ * Importante y poco obvio (medido contra la API real): `web.uri` NUNCA es la
  * URL del medio. Siempre es un redirect de Google con forma
  * `https://vertexaisearch.cloud.google.com/grounding-api-redirect/<token>`, y el dominio
  * del medio viene en `web.title` ("indec.gob.ar", "cronista.com"). Google pide usar esas
@@ -382,7 +382,7 @@ function cleanDomain(raw: string): string {
  * reales de groundingChunks. Sin match — o sin búsqueda — la fuente queda con url: null en
  * vez de inventar un link.
  *
- * Por qué el cruce es por `link.domain` y no por el hostname de `link.url` (8-oct-2026):
+ * Por qué el cruce es por `link.domain` y no por el hostname de `link.url`:
  * `link.url` es siempre un redirect de `vertexaisearch.cloud.google.com`, así que su
  * hostname es ese para TODAS las fuentes. La versión anterior comparaba justamente eso
  * contra el dominio que escribía el modelo ("indec.gob.ar"), así que el cruce por dominio

@@ -1,5 +1,5 @@
 /**
- * Agrega el idioma del análisis a la tabla `analyses` (oct-2026).
+ * Agrega el idioma del análisis a la tabla `analyses`.
  *
  * La web es bilingüe y ahora le pide a Gemini el análisis en el idioma de la persona
  * (`language` en el body de /analyze). La caché de /analyze reusa análisis por URL entre

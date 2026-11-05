@@ -38,7 +38,7 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
 /**
  * POST /me
  * Header obligatorio: Authorization: Bearer <Firebase ID token>.
- * Body: { "fullName": "Ciro Di Marsico" }
+ * Body: { "fullName": "Nombre Apellido" }
  *
  * Guarda (o actualiza) el nombre completo del usuario autenticado. Pensado para
  * llamarse justo después del registro con email/contraseña (con lo que tipeó el

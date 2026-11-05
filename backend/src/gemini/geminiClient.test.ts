@@ -4,8 +4,8 @@ import { buildReadPrompt } from "./readCapture.js";
 import { parseLanguage } from "./types.js";
 
 /**
- * Chunks de grounding con la forma REAL de la API de Gemini, medida contra ella el
- * 8-oct-2026: `web.title` es el DOMINIO del medio y `web.uri` es siempre un redirect de
+ * Chunks de grounding con la forma REAL de la API de Gemini, medida contra ella:
+ * `web.title` es el DOMINIO del medio y `web.uri` es siempre un redirect de
  * `vertexaisearch.cloud.google.com`. Toda la lógica de cruce de fuentes depende de eso,
  * así que los fixtures lo replican literalmente en vez de inventar URLs lindas.
  */
@@ -75,7 +75,7 @@ describe("parseGeminiResponse — fuentes", () => {
   });
 
   /**
-   * La regresión que motivó el fix del 8-oct-2026: el cruce comparaba el dominio que
+   * Regresión: el cruce comparaba el dominio que
    * escribía el modelo contra el hostname de `web.uri`, que es SIEMPRE el del redirect de
    * Google. Nunca podía acertar, y cuando pegaba por el fallback de título mostraba
    * "vertexaisearch.cloud.google.com" como dominio de la fuente.
@@ -311,7 +311,7 @@ describe("buildPrompt — idioma", () => {
   });
 
   /**
-   * Regresión medida contra la API real (22-oct-2026): con solo la regla general, el
+   * Regresión medida contra la API real: con solo la regla general, el
    * modelo escribía summary/reasoning/note en inglés pero headline y lead en castellano.
    */
   it("en inglés marca headline y lead en el formato y cierra con un recordatorio", () => {
@@ -323,7 +323,7 @@ describe("buildPrompt — idioma", () => {
   });
 
   /**
-   * Regresión medida contra la API real (22-oct-2026): con los ejemplos de toneFlags en
+   * Regresión medida contra la API real: con los ejemplos de toneFlags en
    * castellano, un análisis en inglés devolvió "apelación emocional" copiado del ejemplo.
    */
   it("en inglés los ejemplos de toneFlags van en inglés", () => {

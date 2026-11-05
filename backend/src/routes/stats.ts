@@ -12,8 +12,7 @@ const router = Router();
  * siempre: ni "de hoy" ni "de este usuario". Son los números que muestran los bloques del
  * dashboard y la landing, y suben con cada análisis nuevo que se guarda en /analyze.
  *
- * Rediseño V1 (sep-2026): `averageScore` (porcentaje) salió del contrato junto con el
- * score. Lo reemplazan `averageConfidence` (1 a 5) y el reparto por veredicto.
+ * Incluye `averageConfidence` (1 a 5) y el reparto por veredicto.
  */
 router.get("/stats", async (_req: Request, res: Response) => {
   try {

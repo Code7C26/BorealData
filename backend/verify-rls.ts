@@ -4,8 +4,8 @@
  * dueño de las tablas, que ignora RLS). Solo lee datos, no modifica nada.
  *
  * Correr con: npx tsx verify-rls.ts
- * (usa la misma $env:DATABASE_URL que ya tenés seteada en esta terminal, más la
- * password de aletheia_app que imprimió migrate-rls.ts)
+ * (usa DATABASE_URL del entorno y la contraseña de aletheia_app que imprime
+ * migrate-rls.ts)
  */
 import "dotenv/config";
 import pg from "pg";

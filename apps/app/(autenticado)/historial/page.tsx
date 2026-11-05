@@ -103,11 +103,9 @@ function hostnameDe(url: string): string {
  * que tres columnas de cards. El borde izquierdo lleva el color del veredicto —
  * el mismo rol que el borde superior en la card de resultado.
  *
- * Es un `<a>` y no un `<button>`: desde el 8-oct-2026 cada análisis tiene su propia URL
- * (`/resultado/:id`), así que la fila puede ser un enlace de verdad — se abre en otra
- * pestaña con el clic del medio, se copia con clic derecho, y el navegador la marca como
- * visitada. Antes guardaba el item en sessionStorage y navegaba por JS a `/resultado`,
- * que no se podía ni recargar.
+ * Es un `<a>` y no un `<button>`: cada análisis tiene su propia URL (`/resultado/:id`),
+ * así que la fila se abre en otra pestaña con el clic del medio, se copia con clic
+ * derecho y el navegador la marca como visitada.
  */
 function FilaHistorial({ item, onBorrar }: { item: HistoryItem; onBorrar: () => void }) {
   const t = useTextos(TEXTOS)
@@ -354,9 +352,8 @@ export default function HistorialPage() {
     pedirHistorial()
   }
 
-  // El efecto solo dispara el pedido. El `setEstado('cargando')` que tenía antes era
-  // redundante —ese ya es el estado inicial— y es lo que lo convertía en un setState
-  // síncrono dentro de un efecto.
+  // El efecto solo dispara el pedido: 'cargando' ya es el estado inicial, así que no hace
+  // falta un setState síncrono dentro del efecto.
   useEffect(() => {
     pedirHistorial()
   }, [])

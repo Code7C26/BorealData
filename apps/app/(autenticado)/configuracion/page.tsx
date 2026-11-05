@@ -132,10 +132,8 @@ function OpcionPreferencia({
 /**
  * Idioma de la interfaz.
  *
- * Antes esta fila decía "Español (Argentina)" y no se podía tocar. Ahora es el control
- * real, el mismo que tiene la landing para quien todavía no tiene cuenta (ver
- * SelectorIdioma): los dos escriben la misma cookie, así que lo que se eligió antes de
- * registrarse sigue elegido acá. Cada opción va escrita en su propio idioma.
+ * Escribe la misma cookie que el selector de la landing (SelectorIdioma), así que lo
+ * elegido antes de registrarse se conserva. Cada opción va escrita en su propio idioma.
  */
 function SelectorDeIdioma() {
   const { idioma, setIdioma } = useIdioma()
@@ -166,14 +164,11 @@ function SelectorDeIdioma() {
 /**
  * Modo de lectura.
  *
- * Antes esta fila decía "Oscuro" y no hacía nada. Ahora es el control real: el
- * modo claro es obligatorio en el sistema (aula, informe impreso, captura para
- * compartir, astigmatismo), así que tiene que poder elegirse acá y no solo
- * desde el ícono del sidebar.
+ * El modo claro es obligatorio en el sistema (aula, informe impreso, captura para
+ * compartir, astigmatismo), así que se puede elegir acá además de en el sidebar.
  */
 function SelectorDeModo() {
-  // Mismo hook que el toggle de la barra: antes acá estaba el mismo useState +
-  // useEffect copiado, y los dos controles podían quedar diciendo cosas distintas.
+  // Mismo hook que el toggle del sidebar, para que ambos controles estén sincronizados.
   const { theme, setTheme: elegir } = useTheme()
   const t = useTextos(TEXTOS)
 
@@ -202,8 +197,8 @@ function SelectorDeModo() {
 
 export default function ConfiguracionPage() {
   const t = useTextos(TEXTOS)
-  // Mock — sin persistencia real todavía, solo estado local de UI.
-  // (El idioma y el modo de lectura sí persisten: ver SelectorDeIdioma y SelectorDeModo.)
+  // Estas preferencias son solo estado local de UI, sin persistencia.
+  // El idioma y el modo de lectura sí persisten (SelectorDeIdioma, SelectorDeModo).
   const [emailAnalisis, setEmailAnalisis] = useState(true)
   const [novedades, setNovedades] = useState(false)
   const [guardarHistorial, setGuardarHistorial] = useState(true)

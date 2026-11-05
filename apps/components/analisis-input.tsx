@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils'
  * una historia, una cadena de WhatsApp. Ese camino es de dos pasos (leer la
  * imagen, confirmar lo leído) y recién después verifica, porque el veredicto
  * sale del texto confirmado y no de los píxeles. Ver
- * docs/producto/brief-captura-contenido-privado.md.
+ * docs/tecnico/arquitectura.md ("Análisis de contenido del cliente").
  *
  * El tercero es la pregunta: la persona escribe con sus palabras lo que le
  * contaron o lo que quiere comprobar ("¿es verdad que…?"). No es un chat —no

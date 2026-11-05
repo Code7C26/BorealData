@@ -68,9 +68,7 @@ export async function generateMetadata(): Promise<Metadata> {
  *
  * Vive en (info) y no en (autenticado): quien quiere escribirnos por algo que
  * no funciona es, muy posiblemente, alguien que todavía no pudo crear una
- * cuenta. Antes estaba detrás del guard de auth y el enlace del pie de la
- * landing lo mandaba al login. El layout del grupo le pone el sidebar si hay
- * sesión, así que para alguien logueado se ve igual que antes.
+ * cuenta. El layout del grupo agrega el sidebar cuando hay sesión.
  */
 export default async function ContactoPage() {
   const t = TEXTOS[await leerIdioma()]

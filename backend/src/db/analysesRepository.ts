@@ -174,7 +174,7 @@ export interface AnalysisHistoryItem {
   shareable: boolean;
   /**
    * Idioma en que escribió Gemini. El front lo usa para avisar cuando un análisis está en
-   * otro idioma que la interfaz (los guardados antes de oct-2026 son todos 'es').
+   * otro idioma que la interfaz (las filas anteriores a la columna `language` son 'es').
    */
   language: Language;
 }
@@ -216,10 +216,9 @@ const SELECT_COLUMNS = `id, url, title, scrape_method, verdict, confidence, head
 // ─────────────────────────────────────────────────────────────────────────────
 // Compatibilidad con el esquema viejo (score 0-100 + label de 6 valores)
 //
-// El rediseño V1 (sep-2026) reemplazó el porcentaje por veredicto + confianza.
-// Las filas guardadas antes de ese cambio tienen `verdict` en NULL y siguen en la
-// tabla: el historial de la gente no se tira. Se traducen al leerlas, nunca se
-// reescriben en la DB — así el mapeo vive en un solo lugar y se puede corregir.
+// Las filas guardadas con el esquema anterior tienen `verdict` en NULL y se conservan
+// en la tabla. Se traducen al leerlas y nunca se reescriben en la DB, así el mapeo vive
+// en un solo lugar y se puede corregir.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LEGACY_LABEL_TO_VERDICT: Record<string, Verdict> = {
@@ -274,10 +273,10 @@ function esDominioDeRedireccion(domain: string): boolean {
  * "https://www.uio.no/algo" -> "uio.no". Duplicado chico a propósito: el repo no importa
  * del módulo Gemini.
  *
- * Devuelve null para los links de redirección: hasta el 8-oct-2026 el dominio se guardaba
- * derivado de la URL, así que todas las filas viejas tienen `domain` =
- * "vertexaisearch.cloud.google.com" (medido: 430 de 430 fuentes en la base local). Esas
- * filas no se tocan —se traducen al leerlas, como el resto del esquema viejo— y devolver
+ * Devuelve null para los links de redirección: las filas guardadas antes de cruzar por
+ * `web.title` tienen `domain` = "vertexaisearch.cloud.google.com", porque el dominio
+ * se derivaba de la URL. Esas filas no se tocan —se traducen al leerlas, como el resto
+ * del esquema anterior— y devolver
  * null acá hace que la card muestre el título de la fuente en vez de un host de Google
  * que no le dice nada a nadie. El link sigue funcionando: el redirect lleva al medio.
  */
@@ -358,7 +357,7 @@ function mapAnalysisRow(row: AnalysisRow): AnalysisHistoryItem {
   // traer una combinación imposible: se degrada acá y no llega nunca al front.
   const { verdict, confidence } = normalizeVerdict(verdictBruto, confianzaBruta);
 
-  // Ojo: la migración creó `reasoning` con DEFAULT '[]', así que una fila vieja
+  // La migración creó `reasoning` con DEFAULT '[]', así que una fila vieja
   // también trae un array (vacío) acá. Por eso el fallback se decide por `esNueva`
   // y no por la forma del campo: mirando el array, las filas viejas se quedaban
   // sin razonamiento en vez de mostrar lo que sí tenían guardado.
@@ -478,7 +477,7 @@ export async function getAnalysisById(
  * única fuente del dato como en /history, así que si la DB falla acá /analyze tiene que
  * poder seguir con el flujo normal (scrapear + analizar) en vez de romperse con un 500.
  *
- * Idioma (oct-2026): las dos matchean por (url, language). El análisis es texto que
+ * Idioma: las dos matchean por (url, language). El análisis es texto que
  * escribió Gemini en un idioma; sin este filtro, quien usa la web en inglés recibiría el
  * análisis en castellano que pidió otra persona (o él mismo antes de cambiar el idioma).
  * Una misma URL puede tener entonces una fila por idioma en el historial: es a propósito.
@@ -555,8 +554,6 @@ export interface GlobalStats {
   totalSources: number;
   /**
    * Promedio del nivel de confianza (1 a 5) con un decimal. 0 si todavía no hay análisis.
-   * Reemplaza al viejo `averageScore` en porcentaje: el porcentaje dejó de existir en el
-   * rediseño V1 y un "78 % de confiabilidad promedio" ya no significaba nada.
    */
   averageConfidence: number;
   /** Cuántos análisis cayeron en cada veredicto. */
@@ -660,8 +657,7 @@ export async function getGlobalStats(): Promise<GlobalStats> {
  * Código de error de Postgres cuando al rol le falta un permiso (insufficient_privilege).
  * Pasa si todavía no corrió `migrate-delete.ts`: el rol de la app arranca con
  * SELECT/INSERT/UPDATE y sin DELETE. Se distingue a propósito de cualquier otro fallo
- * para poder responder "falta correr la migración" en vez de un 500 sin explicación —
- * es el modo de falla que ya nos costó una tarde de debug del front.
+ * para poder responder "falta correr la migración" en vez de un 500 sin explicación.
  */
 export const SIN_PERMISO_DELETE = "42501";
 

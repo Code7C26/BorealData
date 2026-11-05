@@ -1,13 +1,9 @@
 # Imagen del backend de AletheIA.
-# Lo que la hace distinta de un Dockerfile de Node cualquiera es Puppeteer: el
-# scraper cae en un navegador real cuando la nota necesita JavaScript para
-# renderizarse (`src/scraper/puppeteerScraper.ts`). Eso obliga a tener Chromium
-# adentro de la imagen.
 #
-# Se instala Chromium de Debian en vez de dejar que Puppeteer se lo baje solo:
-# el npm de este proyecto bloquea los scripts de instalación (ver `allowScripts`
-# en los package.json), así que el postinstall que descarga el navegador no
-# correría y la imagen quedaría sin browser, fallando recién en runtime.
+# El scraper recurre a Puppeteer cuando una página necesita JavaScript para
+# renderizarse (`src/scraper/puppeteerScraper.ts`), por lo que la imagen incluye
+# Chromium. Se usa el paquete de Debian, que trae sus dependencias de sistema, en
+# lugar del navegador que descarga Puppeteer (PUPPETEER_SKIP_DOWNLOAD).
 FROM node:24-bookworm-slim
 
 # Chromium y las fuentes mínimas para que renderice texto. `--no-install-recommends`

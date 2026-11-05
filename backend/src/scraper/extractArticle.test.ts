@@ -4,7 +4,7 @@ import { bodyMatchesTitle, extractArticle } from "./extractArticle";
 
 const parrafo = (s: string) => `<p>${s} ${"Texto de relleno para que el párrafo sea largo. ".repeat(3)}</p>`;
 
-/** Estructura de La Nación (5-nov-2026): los <article> son tarjetas, el cuerpo está suelto en <main>. */
+/** Estructura de La Nación: los <article> son tarjetas, el cuerpo está suelto en <main>. */
 const LA_NACION = `<html><head><title>Paul Gallagher, canciller del Vaticano: “El papa Francisco va a ser el elefante en el cuarto” - LA NACION</title></head>
 <body><main>
   <h1>Paul Gallagher, canciller del Vaticano</h1>

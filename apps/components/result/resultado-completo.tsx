@@ -42,10 +42,9 @@ const TEXTOS = traducciones({
  *
  * Vive acá y no dentro de una página porque la misma vista se usa en dos rutas:
  * `/resultado/[id]` (un análisis guardado — el caso normal, y también el link público de
- * compartir) y `/resultado` (el caso sin id: el ejemplo precargado y los análisis cuyo
- * guardado falló). Antes estaban escritas dos veces, y la versión del link compartido
- * mostraba solo la card: quien recibía una verificación por WhatsApp veía el veredicto
- * sin el razonamiento, justo lo contrario de lo que el producto promete.
+ * compartir) y `/resultado` (el caso sin id: los análisis cuyo
+ * guardado falló). Quien recibe un enlace compartido ve también el razonamiento, no
+ * solo el veredicto.
  *
  * A 1280 es una grilla de minmax(0,720px) + 380 con gap 32 dentro del shell de 1120: la
  * card se queda en 720 y el razonamiento entero va al panel lateral, que scrollea
@@ -94,7 +93,7 @@ function PanelRazonamiento({ analysis }: { analysis: AnalyzeResponse }) {
   // Lo que escribió Gemini queda en el idioma en que se pidió. Si no coincide con el de la
   // interfaz (un análisis viejo, siempre en castellano, visto con la web en inglés, o al
   // revés), se dice arriba de todo: si no, la pantalla parece traducida a medias.
-  // Sin `language` (el ejemplo precargado) no se avisa nada.
+  // Sin `language` no se avisa nada.
   const avisoIdioma =
     analysis.language && analysis.language !== idioma ? t.otroIdioma[analysis.language] : ''
 

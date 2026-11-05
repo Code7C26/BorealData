@@ -1,6 +1,6 @@
 # Documentación de AletheIA
 
-| Carpeta / archivo | Qué hay |
+| Carpeta / archivo | Contenido |
 |---|---|
 | [`manual-de-usuario.pdf`](manual-de-usuario.pdf) | Manual de uso de la web y la extensión de Chrome |
 | **`negocio/`** | |
@@ -16,11 +16,11 @@
 | [`brainstorm-producto.pdf`](producto/brainstorm-producto.pdf) | Brainstorm inicial del producto |
 | [`funciones-principales.pdf`](producto/funciones-principales.pdf) | Funciones principales |
 | [`mvp.pdf`](producto/mvp.pdf) | Definición del MVP |
-| [`brief-captura-contenido-privado.md`](producto/brief-captura-contenido-privado.md) | Brief del análisis de capturas y contenido privado |
 | **`tecnico/`** | |
-| [`stack-tecnologico.pdf`](tecnico/stack-tecnologico.pdf) | Stack tecnológico inicial (el actual está en el README de la raíz) |
+| [`arquitectura.md`](tecnico/arquitectura.md) | Arquitectura, contrato del análisis, base de datos, despliegue y decisiones técnicas |
+| [`stack-tecnologico.pdf`](tecnico/stack-tecnologico.pdf) | Stack tecnológico inicial (el vigente está en el README de la raíz) |
 | **`reportes/`** | |
-| [`2026-08-reporte-cierre-de-mes.pdf`](reportes/2026-08-reporte-cierre-de-mes.pdf) | Reporte de cierre de agosto 2026 |
+| [`2026-08-reporte-cierre-de-mes.pdf`](reportes/2026-08-reporte-cierre-de-mes.pdf) | Reporte de cierre de agosto de 2026 |
 
-Convención: nombres en minúscula, separados con guiones, sin espacios ni tildes. Los
-reportes con fecha llevan `AAAA-MM-` adelante para que se ordenen solos.
+Convención de nombres: minúsculas, palabras separadas con guiones, sin espacios ni
+tildes. Los reportes llevan el prefijo `AAAA-MM-` para ordenarse cronológicamente.

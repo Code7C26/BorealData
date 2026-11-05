@@ -9,11 +9,10 @@ let app: App | null = null;
  * arranque del server si FIREBASE_PROJECT_ID todavía no está seteada, recién falla
  * cuando /analyze necesita verificar un token de verdad.
  *
- * Usa applicationDefault(): reutiliza las mismas credenciales ADC generadas con
- * `gcloud auth application-default login` (ya configuradas para el conector de Cloud
- * SQL, ver db/pool.ts). No hace falta descargar una clave de service account — sigue
- * bloqueado por la política de organización `iam.disableServiceAccountKeyCreation`
- * (ver troubleshooting de Cloud SQL en el contexto del proyecto).
+ * Usa applicationDefault(): reutiliza las credenciales ADC (`gcloud auth
+ * application-default login` o la cuenta de servicio del entorno). No requiere una clave
+ * de service account descargada, que la política de organización
+ * `iam.disableServiceAccountKeyCreation` no permite crear.
  *
  * verifyIdToken() (sin `checkRevoked: true`) es una verificación criptográfica del JWT
  * contra las claves públicas de Google — no hace una llamada autenticada a la API de
