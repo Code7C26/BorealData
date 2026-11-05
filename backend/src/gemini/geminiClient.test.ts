@@ -263,6 +263,18 @@ describe("parseGeminiResponse — contrato del análisis", () => {
   });
 });
 
+describe("buildPrompt — fecha de hoy", () => {
+  it("le dice al modelo qué día es, en hora de Argentina", () => {
+    // 02:00 UTC del 6-nov son las 23:00 del 5-nov en Buenos Aires.
+    const prompt = buildPrompt("t", "cuerpo", "url", "en", new Date("2026-11-06T02:00:00Z"));
+    expect(prompt).toContain("FECHA DE HOY: 5 de noviembre de 2026.");
+  });
+
+  it("pide que la búsqueda gane sobre el conocimiento previo", () => {
+    expect(buildPrompt("t", "cuerpo")).toContain("gana la búsqueda");
+  });
+});
+
 describe("buildPrompt — idioma", () => {
   const TITULO = "Sube la inflación";
   const CUERPO = "El INDEC informó 1,7% en agosto.";
