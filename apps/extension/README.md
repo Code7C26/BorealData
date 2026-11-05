@@ -1,50 +1,56 @@
 # AletheIA — Extensión de Chrome
 
-Manifest V3 + React + TypeScript, con [WXT](https://wxt.dev). Es un **side
-panel** (`chrome.sidePanel`), no un popup — se ancla a la derecha y no se
-cierra al perder foco, igual que la extensión de Claude. Entrypoint:
-`entrypoints/sidepanel/`.
+Manifest V3, React y TypeScript sobre [WXT](https://wxt.dev). La interfaz es un side
+panel (`chrome.sidePanel`) que permanece abierto mientras se navega.
 
 ## Desarrollo
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
-Esto compila con hot-reload en `apps/extension/.output/chrome-mv3-dev`.
-Cargarla como "unpacked" en `chrome://extensions` apuntando a esa carpeta.
-
-Si se toca `entrypoints/background.ts`, hay que recargar la extensión a mano
-en `chrome://extensions` — el service worker no tiene hot-reload.
+La salida queda en `.output/chrome-mv3-dev` y se carga como extensión sin empaquetar en
+`chrome://extensions`. Los cambios en `entrypoints/background.ts` requieren recargar la
+extensión manualmente: el service worker no tiene hot reload.
 
 ## Build
 
 ```bash
-npm run build   # genera .output/chrome-mv3
-npm run zip     # genera el .zip listo para subir a la Chrome Web Store
+npm run build      # .output/chrome-mv3
+npm run zip        # paquete para la Chrome Web Store
+npm run compile    # chequeo de tipos
 ```
 
-El build toma las URLs de `.env.production` (dominio real); dev sigue
-usando `.env` (localhost). Ver `.env.example`. Para publicar, ver
+El build lee `.env` y `.env.production`. Los permisos de host del manifest se derivan de
+`WXT_API_URL` y `WXT_WEB_ORIGIN`. El procedimiento de publicación está en
 [PUBLICAR.md](PUBLICAR.md).
 
-## Estado actual
+## Estructura
 
-- Side panel funcional: precarga la URL de la pestaña activa, analiza y
-  muestra el resultado (`ResultView.tsx`) con el mismo vocabulario de
-  veredictos que la web (`verificado` / `dudoso` / `falso` / `sin-datos` +
-  confianza 1-5).
-- "Ver análisis completo" abre `${WEB_ORIGIN}/resultado/{id}` (la vista
-  pública sin login del análisis puntual); si el guardado no devolvió id,
-  cae a `${WEB_ORIGIN}/historial`.
-- Comparte sesión con la web vía `extension-bridge.ts` (Firebase Auth).
-- Íconos en `public/icon/` ya son el logo de AletheIA (isotipo "Umbral").
+| Archivo | Responsabilidad |
+|---|---|
+| `entrypoints/background.ts` | Análisis, menú contextual, captura con recorte y cierre del panel. |
+| `entrypoints/auth-bridge.content.ts` | Recibe la sesión iniciada en la web. |
+| `entrypoints/sidepanel/` | Interfaz: análisis, recorte, revisión de la lectura y resultado. |
+| `lib/analysis.ts` | Tipos y llamadas a la API. |
+| `lib/capture.ts` | Captura de la pestaña y procesamiento de imágenes. |
+| `lib/platform.ts` | Detección de redes sociales con sesión. |
+| `lib/idioma.ts` | Textos en castellano e inglés. |
+| `public/_locales/` | Nombre y descripción localizados del manifest. |
 
-## Gotcha: cerrar el side panel
+## Funcionamiento
 
-`chrome.sidePanel.close()` llamado desde el propio panel no cierra nada
-(resuelve la promesa pero no hace nada visible). Tiene que llamarse **desde
-`entrypoints/background.ts`**, en respuesta a un evento como
-`tabs.onActivated` — a diferencia de `open()`, `close()` no requiere un
-gesto directo del usuario.
+- El panel precarga la URL de la pestaña activa y muestra el resultado con el mismo
+  vocabulario de veredictos que la web.
+- En sitios con login, el contenido se envía como captura o selección mediante
+  `POST /analyze/read` y `POST /analyze/content` (ver `DOCS/ARQUITECTURA.md`).
+- "Ver análisis completo" abre `${WEB_ORIGIN}/resultado/{id}`; si el análisis no se
+  guardó, abre `${WEB_ORIGIN}/historial`.
+
+## Cierre del side panel
+
+`chrome.sidePanel.close()` no tiene efecto si se llama desde el propio panel. Se invoca
+desde `background.ts` en respuesta a eventos como `tabs.onActivated`; a diferencia de
+`open()`, no requiere un gesto del usuario.

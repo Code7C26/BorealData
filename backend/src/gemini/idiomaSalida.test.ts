@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { asegurarIdioma, pareceCastellano } from "./idiomaSalida.js";
 import type { AnalysisResult } from "./types.js";
 
-/** Los textos del caso real que motivó la red (Univision, 22-oct-2026). */
+/** Los textos del caso real que motivó la red (Univision). */
 const TITULAR_ES =
   "Encontramos respaldo para la red de matrimonios fraudulentos y las acusaciones contra Jennifer González en Massachusetts.";
 const BAJADA_ES =

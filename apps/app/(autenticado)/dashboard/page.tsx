@@ -71,9 +71,8 @@ export default function DashboardPage() {
 /**
  * Los números de la plataforma entera, desde siempre.
  *
- * Antes había un bloque de "confiabilidad promedio" en porcentaje. Se cayó con
- * el score: promediar veredictos no da un porcentaje que signifique algo. En su
- * lugar va el reparto real de los cuatro estados, que además explica el
+ * Muestra el reparto de los cuatro veredictos en lugar de un promedio: promediar
+ * veredictos no produce un porcentaje con significado. El reparto además presenta el
  * vocabulario del producto a quien recién llega.
  */
 function RepartoDeVeredictos({ stats }: { stats: GlobalStats | null }) {

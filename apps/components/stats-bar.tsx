@@ -32,11 +32,8 @@ const DURACION_CONTEO_MS = 1200
 /**
  * Los números reales de la plataforma.
  *
- * Antes esta barra mostraba cifras de utilería ("+12.000 noticias", "94 % de
- * precisión"). Una herramienta cuyo argumento es "mirá la evidencia" no puede
- * abrir con datos inventados, así que ahora sale todo de GET /stats — que es
- * público y no necesita sesión. Si el endpoint falla, la sección no se
- * renderiza: mejor no decir nada que decir un número que no medimos.
+ * Los datos salen de GET /stats, que es público. Si el endpoint falla, la sección
+ * no se renderiza en lugar de mostrar cifras no medidas.
  */
 export function StatsBar() {
   const [stats, setStats] = useState<GlobalStats | null>(null)

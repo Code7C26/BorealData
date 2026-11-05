@@ -221,15 +221,9 @@ async function handleGetIdToken() {
 /**
  * Análisis en background
  * -----------------------
- * Antes el fetch a POST /analyze vivía en el panel (ver git history de
- * entrypoints/sidepanel/App.tsx). El problema: el panel se cierra solo al
- * cambiar de pestaña (ver tabs.onActivated más abajo, es a propósito), y
- * cerrarlo destruye su documento — cualquier fetch en curso ahí se aborta.
- * El usuario perdía el análisis que estaba esperando apenas cambiaba de
- * pantalla un segundo.
- *
- * La solución: el fetch corre acá, en el service worker, que no se destruye
- * cuando el panel se cierra. Chrome además extiende la vida del service
+ * El panel se cierra al cambiar de pestaña (ver tabs.onActivated más abajo) y
+ * cerrarlo destruye su documento, abortando cualquier fetch en curso. Por eso el
+ * fetch corre acá, en el service worker, que no se destruye con el panel. Chrome además extiende la vida del service
  * worker mientras haya un fetch en curso iniciado por él (ver "Extend a
  * service worker's lifetime with fetch" en la doc de Chrome for MV3), así
  * que un análisis largo (scraping + Gemini) no se corta por inactividad.
@@ -270,8 +264,8 @@ const BADGE_COLOR = '#2563eb';
 const inFlight = new Map<string, Promise<AnalysisResult>>();
 
 /**
- * Clave del caché y de `inFlight`. Las entradas de antes del idioma estaban guardadas
- * por URL sola: ya no matchean con nada y se van solas por MAX_CACHE_ENTRIES.
+ * Clave del caché y de `inFlight`. Las entradas con formato anterior (solo URL) no
+ * coinciden con ninguna clave y se descartan por MAX_CACHE_ENTRIES.
  */
 function claveCache(url: string, idioma: Idioma): string {
   return `${idioma}|${url}`;
@@ -426,7 +420,7 @@ async function handleGetCacheState(url: string): Promise<CacheState> {
  * Facebook, Instagram o X eso trae el muro de login, no la nota — y una
  * historia de Instagram no la lee ningún scraper, porque el texto está en
  * píxeles. Así que acá va el otro camino: la evidencia que el usuario YA tiene
- * delante, armada en su propio navegador. Ver DOCS/BRIEF-captura-contenido-privado.md.
+ * delante, armada en su propio navegador. Ver DOCS/ARQUITECTURA.md ("Análisis de contenido del cliente").
  *
  * Son dos pasos de backend, y el de en medio es del usuario:
  *   1. POST /analyze/read     — el modelo transcribe la imagen. Sin veredicto.
@@ -848,13 +842,13 @@ export default defineBackground(() => {
   // cierra nada. A diferencia de open(), close() no necesita un gesto del
   // usuario, y es un no-op si el panel ya estaba cerrado.
   //
-  // Esto puede cerrar el panel a mitad de un análisis, pero ya no lo pierde:
+  // Esto puede cerrar el panel a mitad de un análisis sin perderlo:
   // el fetch corre acá en background (ver "Análisis en background" arriba)
   // y sigue hasta terminar aunque el panel se destruya. Al reabrirlo sobre
   // la misma pestaña, GET_CACHE_STATE le devuelve el resultado (o el estado
   // "loading" si todavía sigue en curso).
   browser.tabs.onActivated.addListener(({ windowId }) => {
-    // Ojo: esto NO cancela un job de contenido en curso. El fetch vive acá y
+    // Esto no cancela un job de contenido en curso. El fetch vive acá y
     // sigue; al reabrir el panel, GET_CONTENT_JOB lo retoma donde quedó. Lo
     // único que se pierde si el usuario se va es la pantalla, no el trabajo.
     browser.sidePanel
@@ -862,13 +856,13 @@ export default defineBackground(() => {
       .catch((err: unknown) => console.error('No se pudo cerrar el side panel:', err));
   });
 
-  // Al clickear el ícono de la extensión, abrir el side panel (queda anclado
-  // a la derecha mientras navegás, como la extensión de Claude) en vez de un
-  // popup que se cierra apenas perdés el foco. Es una API solo de Chrome —
+  // Al clickear el ícono de la extensión se abre el side panel, que queda
+  // anclado mientras se navega, en lugar de un popup que se cierra al perder
+  // el foco. Es una API solo de Chrome —
   // en Firefox el entrypoint de sidepanel se resuelve como sidebar_action,
   // con su propio ícono en el panel de sidebars del navegador.
   //
-  // OJO con `openPanelOnActionClick`: con `true`, Chrome abre el panel por su
+  // Importante, `openPanelOnActionClick`: con `true`, Chrome abre el panel por su
   // cuenta y la extensión NUNCA se entera del clic, asi que no recibe
   // activeTab sobre esa pestana. Sin activeTab y sin host permission declarado
   // (o sea, todo lo que no sea un dominio social de wxt.config.ts),

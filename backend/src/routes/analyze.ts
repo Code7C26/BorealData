@@ -57,11 +57,10 @@ const router = Router();
  * en Postgres -> responde con el resultado combinado. Solo se guardan los análisis
  * exitosos (200); si el guardado falla no se rompe la respuesta (ver saveAnalysis).
  *
- * Caché por URL (10-sep-2026): analizar con Gemini tiene costo real (tokens + tiempo), y
- * antes /analyze repetía todo el flujo aunque la URL ya estuviera analizada — se veían
- * noticias duplicadas en el propio historial. Ahora, antes de scrapear:
+ * Caché por URL e idioma: analizar con Gemini tiene costo real (tokens + tiempo), así
+ * que antes de scrapear:
  *   1. Si ESTE usuario ya tiene un análisis para esta URL exacta, se devuelve tal cual
- *      (ni insert nuevo: evita el duplicado que se veía en /history).
+ *      (sin insert nuevo, para no duplicar la entrada en /history).
  *   2. Si no, pero CUALQUIER otro usuario ya la analizó, se reusan esos campos (sin
  *      scrapear ni llamar a Gemini de nuevo) y se inserta una fila liviana para este
  *      usuario, para que le aparezca en su propio historial.
@@ -70,15 +69,9 @@ const router = Router();
  * portal, parámetros de tracking, etc.) — el contenido puede haber cambiado o venir de
  * una fuente sin respaldo, así que una URL distinta siempre se analiza de nuevo.
  *
- * Cambio de diseño (31-ago-2026): antes la auth era opcional acá (attachUserIfPresent),
- * pensado para que la extensión pudiera analizar sin login. Se decidió requerir login
- * para las dos superficies (web y extensión) — entre otras cosas, cada análisis gasta
- * una llamada real a Gemini con grounding (costo real), y exigir cuenta ayuda a
- * controlar el abuso. La extensión ahora tiene que resolver su propio flujo de login
- * (ver "Ruta /analyze — Detalle Técnico" en el contexto del proyecto) antes de poder
- * llamar a este endpoint. Este chequeo del lado del servidor es el que realmente
- * importa: cualquier gate solo del lado del cliente (frontend/extensión) es únicamente
- * UX, no seguridad — se puede saltear pegándole directo al backend.
+ * Requiere sesión en todas las superficies: cada análisis gasta una llamada a Gemini
+ * con grounding, y exigir cuenta permite controlar el abuso. Este chequeo del lado del
+ * servidor es el que protege el endpoint; cualquier control en el cliente es solo UX.
  */
 router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
   const reloj = cronometro();

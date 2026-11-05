@@ -131,8 +131,7 @@ function ContenidoSidebar({
                 const { verdict } = normalize(item.verdict, item.confidence)
                 return (
                   // Un enlace de verdad a la URL del análisis: se puede abrir en otra
-                  // pestaña y el navegador lo marca como visitado. Antes era un botón
-                  // que guardaba el item en sessionStorage y navegaba por JS.
+                  // pestaña y el navegador lo marca como visitado.
                   <Link
                     key={item.id}
                     href={`/resultado/${item.id}`}

@@ -1,60 +1,59 @@
-# Publicar en la Chrome Web Store
+# Publicación en la Chrome Web Store
 
-Checklist para subir la extensión. El paquete se arma solo; lo que lleva
-trabajo es la ficha de la tienda y la pestaña de privacidad, que Google
-revisa a mano (suele tardar de 1 a 3 días hábiles, más si pide `*://*/*`).
+Procedimiento para publicar la extensión. La revisión de Google es manual y suele
+demorar de 1 a 3 días hábiles; puede extenderse cuando el manifest declara permisos
+amplios como `*://*/*`.
 
-## 1. Armar el .zip
+## 1. Paquete
 
 En `apps/extension/`:
 
-1. Tener `.env.production` (no se commitea; ver `.env.example`):
+1. Crear `.env.production` (no se versiona; ver `.env.example`):
 
    ```
    WXT_API_URL=https://aletheiainc.online/api
    WXT_WEB_ORIGIN=https://aletheiainc.online
-   WXT_FIREBASE_API_KEY=<la misma de .env>
+   WXT_FIREBASE_API_KEY=<misma clave que en .env>
    ```
 
-2. Subir `version` en `package.json` (la tienda rechaza un zip con la misma
-   versión que el anterior).
-3. `npm run zip` → `.output/aletheia-extension-<version>-chrome.zip`.
-4. Antes de subirlo, probarlo: `chrome://extensions` → "Cargar descomprimida"
-   → `.output/chrome-mv3`. Loguearse en https://aletheiainc.online y analizar
-   un link desde el panel.
+2. Incrementar `version` en `package.json`: la tienda rechaza un paquete con la misma
+   versión que el anterior.
+3. `npm run zip` genera `.output/aletheia-extension-<version>-chrome.zip`.
+4. Probar el build: `chrome://extensions` → "Cargar descomprimida" →
+   `.output/chrome-mv3`, iniciar sesión en https://aletheiainc.online y analizar un
+   enlace desde el panel.
 
 ## 2. Cuenta de desarrollador
 
-- https://chrome.google.com/webstore/devconsole — pago único de USD 5.
-- Conviene una cuenta de Google de la empresa (no personal): el dueño de la
-  cuenta es el dueño de la extensión. Se pueden sumar miembros con un
-  *grupo de editores*.
-- Completar el email de contacto (hay que verificarlo) y, si se publica como
-  empresa, la verificación de "trader" con los datos de Boreal Data.
+- https://chrome.google.com/webstore/devconsole (pago único de USD 5).
+- La cuenta titular es la propietaria de la extensión; otros miembros pueden sumarse
+  mediante un *grupo de editores*.
+- El email de contacto debe verificarse. Si se publica como empresa, se requiere además
+  la verificación de "trader".
 
-## 3. Firebase: autorizar la extensión (importante)
+## 3. Firebase: autorizar la extensión
 
-La API key de Firebase está restringida por *HTTP referrer*. La extensión
-refresca el token desde `chrome-extension://<ID>`, así que sin esto la sesión
-se cae al vencer el primer token (~1 h).
+La API key de Firebase está restringida por HTTP referrer. La extensión renueva el token
+desde `chrome-extension://<ID>`; sin este paso, la sesión expira con el primer token
+(aproximadamente una hora).
 
-1. Después de la primera subida (aunque sea borrador) la consola muestra el
-   **ID** de la extensión (32 letras).
-2. Google Cloud Console → APIs y servicios → Credenciales → la API key web →
-   Restricciones de sitios web → agregar `chrome-extension://<ID>/*`.
+1. Tras la primera subida (incluso como borrador), la consola muestra el **ID** de la
+   extensión (32 caracteres).
+2. Google Cloud Console → APIs y servicios → Credenciales → API key web → Restricciones
+   de sitios web → agregar `chrome-extension://<ID>/*`.
 
-## 4. Ficha de la tienda (Store listing)
+## 4. Ficha de la tienda
 
 | Campo | Valor |
 | --- | --- |
-| Nombre | AletheIA (sale de `_locales`) |
-| Resumen | sale de `_locales` (máx. 132 caracteres) |
+| Nombre | AletheIA (definido en `_locales`) |
+| Resumen | Definido en `_locales` (máximo 132 caracteres) |
 | Categoría | Herramientas (o "Noticias y tiempo") |
-| Idioma | Español; agregar Inglés con la descripción traducida |
+| Idioma | Español, con descripción traducida al inglés |
 | Sitio web | https://aletheiainc.online |
 | Soporte | https://aletheiainc.online/contacto |
 
-**Descripción (borrador):**
+**Descripción:**
 
 > AletheIA te dice si lo que estás leyendo es confiable. Abrí el panel lateral
 > en cualquier nota, posteo o imagen y en segundos tenés un veredicto
@@ -72,12 +71,13 @@ se cae al vencer el primer token (~1 h).
 
 **Imágenes** (PNG o JPG):
 
-- Ícono 128×128: ya está (`public/icon/128.png`).
-- Capturas: al menos 1, hasta 5, de **1280×800** (o 640×400). Sugeridas:
-  panel con un veredicto, menú del clic derecho, recorte de captura en una red.
-- Mosaico promocional chico 440×280 (obligatorio). El de 1400×560 es opcional.
+- Ícono 128×128: `public/icon/128.png`.
+- Capturas: de 1 a 5, de 1280×800 (o 640×400): panel con un veredicto, menú contextual
+  y recorte de una captura en una red social. Las piezas listas para subir están en
+  `store/`.
+- Mosaico promocional de 440×280 (obligatorio); el de 1400×560 es opcional.
 
-## 5. Prácticas de privacidad (Privacy practices)
+## 5. Prácticas de privacidad
 
 **Propósito único:**
 
@@ -98,28 +98,28 @@ se cae al vencer el primer token (~1 h).
 | Opcional `*://*/*` | Se pide en el momento y por sitio, solo si el usuario quiere capturar una página fuera de las redes listadas. |
 | Content script en aletheiainc.online | Recibir la sesión del usuario cuando inicia sesión en la web, para no pedir un login aparte en la extensión. |
 
-**¿Usa código remoto?** No.
+**Código remoto:** no se usa.
 
-**Datos que se recopilan** (tildar):
+**Datos que se recopilan:**
 
-- Información de identificación personal → el email de la cuenta.
-- Información de autenticación → token de sesión de Firebase.
-- Contenido del sitio web → texto, imágenes y URL que el usuario manda a analizar.
+- Información de identificación personal: el email de la cuenta.
+- Información de autenticación: token de sesión de Firebase.
+- Contenido del sitio web: texto, imágenes y URL que el usuario envía a analizar.
 
-Y las tres certificaciones (no se venden datos a terceros, no se usan para
-otra cosa que el propósito único, no se usan para crédito/préstamos).
+Se marcan además las tres certificaciones: los datos no se venden a terceros, no se usan
+para fines ajenos al propósito único y no se usan para evaluar crédito.
 
-**URL de la política de privacidad:** https://aletheiainc.online/privacidad
+**Política de privacidad:** https://aletheiainc.online/privacidad
 
-## 6. Distribución y envío
+## 6. Distribución
 
-- Visibilidad: **Pública**, o **No listada** para una primera tanda de
-  pruebas (solo se instala con el link).
+- Visibilidad: **Pública**, o **No listada** para una primera etapa de pruebas (solo se
+  instala con el enlace).
 - Países: todos.
-- "Enviar para revisión". Se puede tildar "publicar automáticamente al
-  aprobarse".
+- "Enviar para revisión", con la opción de publicar automáticamente al aprobarse.
 
 ## Actualizaciones
 
-Subir `version`, `npm run zip` y en la consola: Paquete → Subir nuevo
-paquete → Enviar para revisión. Los usuarios la reciben solos en unas horas.
+Incrementar `version`, ejecutar `npm run zip` y, en la consola, Paquete → Subir nuevo
+paquete → Enviar para revisión. La actualización se distribuye automáticamente en unas
+horas.

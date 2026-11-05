@@ -399,7 +399,7 @@ function App() {
   };
 
   /**
-   * OJO con el orden: si falta el permiso, `permissions.request()` tiene que
+   * El orden importa: si falta el permiso, `permissions.request()` tiene que
    * ser la PRIMERA cosa que corra en el handler. Un await antes (una query de
    * pestañas, por ejemplo) consume el gesto del usuario y Chrome rechaza el
    * pedido sin mostrar el diálogo.

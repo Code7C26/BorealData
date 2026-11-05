@@ -26,7 +26,7 @@ const TEXTOS = traducciones({
 /**
  * El resultado que NO tiene id, leído de sessionStorage.
  *
- * Desde el 8-oct-2026 esta pantalla es la excepción, no el camino normal. Un análisis
+ * Esta pantalla es la excepción, no el camino normal. Un análisis
  * guardado vive en su propia URL (`/resultado/:id`), que se puede recargar, guardar en
  * favoritos y compartir; `/analizando` redirige ahí en cuanto el backend devuelve un id.
  *
@@ -37,11 +37,6 @@ const TEXTOS = traducciones({
  *  - **El guardado falló** aunque el análisis salió bien (la base no estaba disponible).
  *    El resultado existe en memoria y sería una lástima tirarlo, así que se muestra —
  *    sin link para compartir, porque no hay nada a dónde apuntar.
- *
- * Que esto sea la excepción es lo que arregla el problema de fondo: antes TODO resultado
- * vivía en sessionStorage, así que recargar la pantalla de resultado te devolvía al
- * dashboard y el link de compartir apuntaba a una página que solo funcionaba en tu
- * propio navegador.
  */
 function ResultadoSinIdContent() {
   const router = useRouter()

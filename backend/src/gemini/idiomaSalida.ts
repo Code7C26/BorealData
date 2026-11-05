@@ -5,8 +5,8 @@ import type { AnalysisResult, Language } from "./types.js";
  *
  * El prompt ya pide cada campo en el idioma de la persona (ver buildPrompt), pero el
  * modelo no siempre obedece: con una nota en castellano pedida en inglés, Gemini llegó a
- * escribir `headline` y `lead` en castellano y el resto en inglés (medido en uso real,
- * 22-oct-2026). Lo que se ve primero en la card es justo el titular, así que no alcanza
+ * escribir `headline` y `lead` en castellano y el resto en inglés (medido en uso real).
+ * Lo que se ve primero en la card es justo el titular, así que no alcanza
  * con "casi siempre".
  *
  * Por eso, después de parsear: si se pidió inglés y algún campo de texto sigue en

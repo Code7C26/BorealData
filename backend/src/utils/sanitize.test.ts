@@ -9,7 +9,7 @@ describe("stripControlChars", () => {
   });
 
   it("saca caracteres de control y hace trim", () => {
-    expect(stripControlChars("  Renzo\u0007 Lanata\u001F  ")).toBe("Renzo Lanata");
+    expect(stripControlChars("  Ana\u0007 Pérez\u001F  ")).toBe("Ana Pérez");
   });
 
   it("por default saca los saltos de línea (campos de una sola línea)", () => {

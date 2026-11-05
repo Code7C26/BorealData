@@ -10,13 +10,11 @@ let pool: pg.Pool | null = null;
  *
  * Dos modos, elegidos automáticamente según lo que haya en el .env:
  *
- * MODO LOCAL (desarrollo, 26-ago-2026): si existe `DATABASE_URL`, se conecta directo
- * a un Postgres local (`pg.Pool({ connectionString })`) — sin Cloud SQL Connector, sin
- * ADC, sin ningún costo de GCP. Se adoptó este modo para cortar el gasto de tener la
- * instancia de Cloud SQL prendida durante el desarrollo día a día; la instancia real se
- * borró (ver "Módulo DB" en el contexto del proyecto).
+ * CONEXIÓN DIRECTA: si existe `DATABASE_URL`, se conecta con `pg.Pool({ connectionString })`,
+ * sin Cloud SQL Connector ni ADC. Es el modo de desarrollo y el del despliegue con
+ * Docker Compose.
  *
- * MODO NUBE (deploy / demo real): si NO hay `DATABASE_URL`, usa el camino original con
+ * CLOUD SQL: si NO hay `DATABASE_URL`, usa
  * `@google-cloud/cloud-sql-connector` + ADC (`INSTANCE_CONNECTION_NAME`, `DB_USER`,
  * `DB_PASSWORD`, `DB_NAME`). IpAddressTypes.PUBLIC porque el Connector abre un túnel
  * seguro autenticado por IAM sin exponer la IP directamente; si la instancia es solo IP

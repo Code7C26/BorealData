@@ -2,10 +2,9 @@
  * Contrato del módulo Gemini. Igual que en scraper/types.ts,
  * este archivo define la forma que usan geminiClient.ts y analyzeContent.ts.
  *
- * Rediseño V1 (sep-2026): se eliminó el `score` 0-100. Un porcentaje finge una
- * precisión decimal que el análisis no tiene ("72 % de veracidad" no significa
- * nada verificable), así que el veredicto pasó a ser una de CUATRO etiquetas
- * cerradas y la certeza a un nivel de CINCO escalones. Ver
+ * No hay score porcentual: un porcentaje finge una precisión decimal que el análisis
+ * no tiene ("72 % de veracidad" no significa nada verificable). El veredicto es una de
+ * CUATRO etiquetas cerradas y la certeza, un nivel de CINCO escalones. Ver
  * "AletheIA Sistema · Design System V1.0", secciones 02 y 03.
  */
 
@@ -124,7 +123,7 @@ export interface GeminiOptions {
   language?: Language;
 }
 
-// ── Idioma del análisis (oct-2026) ──────────────────────────────────────────
+// ── Idioma del análisis ─────────────────────────────────────────────────────
 // La web es bilingüe (cookie `aletheia-idioma` en el front) y manda el idioma activo en
 // el body de /analyze, /analyze/content y /analyze/read. La extensión todavía no lo
 // manda: sin el campo, todo sigue en castellano, como siempre.
@@ -148,10 +147,10 @@ export function parseLanguage(raw: unknown): Language | null {
 /** Texto del 400 cuando `language` vino con un valor inválido (igual en las tres rutas). */
 export const INVALID_LANGUAGE_ERROR = `El campo 'language' es inválido (opciones: ${LANGUAGES.join(", ")}).`;
 
-// ── Contenido que el scraper no puede ver (sep-2026) ────────────────────────
+// ── Contenido que el scraper no puede ver ───────────────────────────────────
 // La extensión manda evidencia armada dentro de la pestaña del usuario (captura,
 // selección, texto pegado) en vez de una URL que el servidor tendría que ir a buscar.
-// Ver DOCS/BRIEF-captura-contenido-privado.md.
+// Ver DOCS/ARQUITECTURA.md ("Análisis de contenido del cliente").
 
 /**
  * De dónde salió el contenido. "url" es el camino clásico (scraper); el resto es evidencia

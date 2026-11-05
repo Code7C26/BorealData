@@ -1,19 +1,16 @@
 # AletheIA — Sistema de Diseño (V1)
 
-> Vigente desde el 11 de septiembre de 2026 (rediseño de cero contra los PDFs
-> *"AletheIA Identidad"* y *"AletheIA Sistema"*). Reemplaza por completo la
-> versión anterior de este documento (paleta navy/blue, fondo oscuro
-> obligatorio).
+Basado en los documentos de marca *"AletheIA Identidad"* y *"AletheIA Sistema"*
+(V1.0). Aplica a la web, la extensión y la app móvil.
 
 ## 1. Identidad visual
 
 AletheIA usa una identidad visual con **impacto**, no minimalista: glows
-marcados, gradientes y movimiento constante en el fondo. Lo "prolijo pero
-sutil" no transmite que el producto cambió — la marca busca llamar la
-atención sin dejar de comunicar precisión y transparencia.
+marcados, gradientes y movimiento constante en el fondo. La marca busca
+llamar la atención sin dejar de comunicar precisión y transparencia.
 
-**Modo claro obligatorio.** El tema se controla con el atributo `data-theme`
-en `<html>` (`apps/lib/theme.ts`).
+Todas las pantallas deben funcionar en modo claro y oscuro. El tema se
+controla con el atributo `data-theme` en `<html>` (`apps/lib/theme.ts`).
 
 ---
 
@@ -31,15 +28,11 @@ valores de arriba) y roles semánticos (lo que efectivamente usa cada
 componente). **Ningún componente debe usar un hex hardcodeado** — todo pasa
 por los roles semánticos.
 
-Esta paleta **reemplaza** a la navy/blue (`#0B1B2B` / `#1A6DB5`) que se usó
-hasta el 10-sep-2026.
-
 ### Fondo animado
 
 El fondo se anima **siempre**, incluso con "reducir movimiento" activado en
-el sistema operativo. Es una decisión de producto, no un descuido de
-accesibilidad — está documentada en un comentario en `global.css`. El
-movimiento es lento y difuminado, no desplaza contenido.
+el sistema operativo. Es una decisión de producto, documentada en
+`global.css`. El movimiento es lento y difuminado y no desplaza contenido.
 
 ---
 
@@ -71,8 +64,7 @@ La jerarquía tipográfica debe mantenerse consistente en todas las pantallas.
 
 ### Cards de resultado
 
-Viven en `apps/components/result/` (o equivalente en `resultado/page.tsx`) y
-tienen **5 estados visuales**, uno por combinación de veredicto:
+Viven en `apps/components/result/` y tienen **5 estados visuales**, uno por combinación de veredicto:
 `verificado`, `dudoso`, `falso`, `sin-datos`, y el estado de error. Cada
 veredicto tiene su propia clase de acento — las clases van escritas
 completas en `apps/lib/verdict.ts` (Tailwind v4 no arma clases en runtime
@@ -93,8 +85,7 @@ con el acento Violeta Aurora.
 
 ## 5. Veredictos y confianza (contrato de datos, no solo visual)
 
-Desde el rediseño V1 no existe más un score 0-100. El análisis devuelve dos
-cosas separadas:
+El análisis devuelve dos valores independientes:
 
 - **Veredicto** (la conclusión): `verificado` / `dudoso` / `falso` /
   `sin-datos`.
@@ -123,8 +114,7 @@ Bordes redondeados en los componentes principales. Evitar saturación visual
 pese a la intensidad de color — el impacto viene de los acentos (glows,
 gradientes, movimiento), no de amontonar elementos.
 
-**Gotcha de Tailwind v4** (el sistema se escribió pensando en v3 con
-`tailwind.config.ts`, y esto rompió builds más de una vez):
+**Particularidades de Tailwind v4** (el sistema original se escribió para v3):
 - `--spacing-*` y `--container-*` comparten namespace: definir
   `--spacing-card: 32px` hace que `max-w-card` resuelva a **32px** en vez de
   720px.
@@ -142,8 +132,8 @@ gradientes, movimiento), no de amontonar elementos.
 
 ## 8. Iconografía
 
-Los íconos de la app se regeneraron desde la geometría del isotipo
-"Umbral" (Pillow, supersampling x8). A tamaños chicos (≤32px) llevan un
+Los íconos de la app se generan desde la geometría del isotipo "Umbral"
+(supersampling x8). A tamaños chicos (≤32px) llevan un
 ajuste óptico: el velo que en el isotipo grande mide 8 unidades queda casi
 invisible a esa escala, así que se agranda a 10 unidades y el conjunto
 completo se escala a 0.94.
@@ -152,7 +142,7 @@ completo se escala a 0.94.
 
 ## 9. Principios de diseño
 
-- Impacto sobre sutileza — "que llame, que atraiga".
+- Impacto sobre sutileza.
 - Transparencia: mostrar el razonamiento detrás de un veredicto, no solo el
   resultado.
 - Consistencia de tokens: todo pasa por roles semánticos, cero hex sueltos.

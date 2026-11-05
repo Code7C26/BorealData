@@ -11,7 +11,7 @@ import type { Platform } from '@/lib/analysis';
 
 /**
  * Dominios con sesión donde el scraper del backend solo ve el muro de login
- * — el caso que justifica todo este camino (ver DOCS/BRIEF-captura-contenido-privado.md).
+ * — el caso que justifica todo este camino (ver "Análisis de contenido del cliente" en DOCS/ARQUITECTURA.md).
  * Tienen que coincidir con `host_permissions` de wxt.config.ts: son los únicos
  * sitios donde la captura no necesita pedir permiso.
  */

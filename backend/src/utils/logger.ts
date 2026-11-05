@@ -68,9 +68,8 @@ export function cronometro(): () => number {
  * Resumen de las fuentes de un análisis, para poder seguir en los logs la métrica que
  * importa: qué proporción de las fuentes que el motor nombra termina con un link real.
  *
- * Es la métrica que habría hecho visible el bug del cruce de grounding (8-oct-2026), que
- * estuvo roto sin que nadie lo notara porque la app seguía funcionando: el 90% de las
- * fuentes salía sin link y la única forma de enterarse era mirar la base a mano.
+ * Una caída de esta proporción indica un fallo en el cruce con los groundingChunks, que
+ * no produce errores visibles: las fuentes simplemente se muestran sin link.
  */
 export function resumenDeFuentes(sources: Array<{ url: string | null }>): Campos {
   const conUrl = sources.filter((s) => s.url !== null).length;

@@ -17,7 +17,7 @@ import { cortinas } from '@/theme/tokens';
  * El fondo de aurora — la firma visual de la V1.
  *
  * Tres cortinas que se desplazan y respiran a distinta velocidad sobre Noche.
- * No es un gradiente quieto: la decisión de diseño de Renzo es que el fondo se
+ * No es un gradiente quieto: por decisión de diseño, el fondo se
  * mueva SIEMPRE, incluso con "reducir movimiento" activado en el sistema (está
  * documentada igual en `apps/app/global.css`, no es un descuido de
  * accesibilidad). De ahí el `ReduceMotion.Never` de abajo: sin eso, Reanimated
