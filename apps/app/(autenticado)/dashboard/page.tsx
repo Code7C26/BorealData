@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ArrowUpRight, Flag } from 'lucide-react'
 import { AnalisisInput } from '@/components/analisis-input'
 import { AuroraBoreal } from '@/components/aurora-boreal'
 import { ExtensionBanner } from '@/components/extension-banner'
 import { apiFetch, type GlobalStats } from '@/lib/api'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
+import { REPORTES_EMAIL, urlReporteGmail } from '@/lib/reportes'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { useVocabulario } from '@/lib/use-vocabulario'
 import type { Verdict } from '@/lib/verdict'
@@ -22,6 +24,14 @@ const TEXTOS = traducciones({
     hastaHoy: 'En AletheIA hasta hoy',
     resumen: (notas: string, fuentes: string, confianza: string) =>
       `${notas} notas · ${fuentes} fuentes · confianza media ${confianza} de 5`,
+    repEyebrow: 'Reportes',
+    repTitulo: '¿Algo no cerró?',
+    repBajada:
+      'Si un análisis te pareció incorrecto, algo no funciona o tenés una sugerencia, escribinos y lo revisamos.',
+    repBoton: 'Enviar un reporte',
+    repAsunto: 'Reporte AletheIA',
+    repCuerpo:
+      'Hola, equipo de AletheIA.\n\nQuiero reportar lo siguiente:\n\n- Enlace de la nota analizada (si corresponde):\n- Qué pasó:\n- Qué esperaba que pasara:\n',
   },
   en: {
     eyebrow: 'Check an article',
@@ -31,6 +41,14 @@ const TEXTOS = traducciones({
     hastaHoy: 'On AletheIA so far',
     resumen: (notas: string, fuentes: string, confianza: string) =>
       `${notas} articles · ${fuentes} sources · average confidence ${confianza} out of 5`,
+    repEyebrow: 'Reports',
+    repTitulo: 'Something off?',
+    repBajada:
+      'If an analysis looked wrong, something is not working, or you have a suggestion, write to us and we will look into it.',
+    repBoton: 'Send a report',
+    repAsunto: 'AletheIA report',
+    repCuerpo:
+      'Hi AletheIA team,\n\nI would like to report the following:\n\n- Link of the analyzed article (if applicable):\n- What happened:\n- What I expected to happen:\n',
   },
 })
 
@@ -63,8 +81,53 @@ export default function DashboardPage() {
         <ExtensionBanner />
 
         <RepartoDeVeredictos stats={stats} />
+
+        <ReportesCard />
       </div>
     </div>
+  )
+}
+
+/**
+ * Acceso a reportes: abre el redactor de Gmail con el destinatario, el asunto y una
+ * plantilla ya cargados (ver lib/reportes.ts). Se abre en otra pestaña para que el
+ * usuario no pierda lo que tenga en pantalla. La dirección se muestra en texto por si
+ * prefiere escribir desde otro cliente de correo.
+ */
+function ReportesCard() {
+  const t = useTextos(TEXTOS)
+
+  return (
+    <section
+      id="reportes"
+      aria-labelledby="reportes-title"
+      className="flex scroll-mt-24 flex-col gap-5 rounded-2xl border border-border bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-8"
+    >
+      <div className="flex items-start gap-4">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-sunk text-accent-text">
+          <Flag aria-hidden="true" size={18} />
+        </span>
+        <div className="flex flex-col gap-1.5">
+          <p className="eyebrow">{t.repEyebrow}</p>
+          <h2 id="reportes-title" className="font-display text-h3 font-semibold text-display">
+            {t.repTitulo}
+          </h2>
+          <p className="max-w-texto text-body-sm text-muted">{t.repBajada}</p>
+          <p className="font-mono text-caption normal-case tracking-normal text-subtle">
+            {REPORTES_EMAIL}
+          </p>
+        </div>
+      </div>
+      <a
+        href={urlReporteGmail(t.repAsunto, t.repCuerpo)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-primary shrink-0 self-start md:self-center"
+      >
+        {t.repBoton}
+        <ArrowUpRight aria-hidden="true" size={16} />
+      </a>
+    </section>
   )
 }
 

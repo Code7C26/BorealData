@@ -90,9 +90,9 @@ export default async function ContactoPage() {
         </span>
         <h2 className="font-display text-h3 font-semibold text-display">{t.porEmail}</h2>
         <p className="text-body-sm text-muted">{t.porEmailBajada}</p>
-        <a href="mailto:contacto@borealdata.com" className="btn-primary self-start">
+        <a href="mailto:soporte@aletheiainc.online" className="btn-primary self-start">
           <Mail aria-hidden="true" size={16} />
-          contacto@borealdata.com
+          soporte@aletheiainc.online
         </a>
       </section>
 

@@ -151,7 +151,9 @@ export default function RegistroPage() {
         </>
       }
     >
-      <AuthRedirect to="/dashboard" />
+      {/* Apagado mientras se crea la cuenta: si no, apenas Firebase loguea al usuario
+          redirige al dashboard antes de guardar el nombre. */}
+      {!enviando && <AuthRedirect to="/dashboard" />}
 
       {error && (
         <p role="alert" className="alert-form">

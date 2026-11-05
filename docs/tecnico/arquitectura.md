@@ -2,7 +2,7 @@
 
 Documento de referencia técnica: componentes, contrato del análisis, decisiones de
 diseño y particularidades conocidas de cada plataforma. La puesta en marcha está en el
-[README](../README.md).
+[README](../../README.md).
 
 ## Componentes
 
@@ -54,10 +54,14 @@ postura respecto de la afirmación) y `toneFlags`.
 ### Pipeline de URL
 
 1. `validateUrl.ts` descarta protocolos no HTTP, IPs privadas o internas y DNS rebinding (SSRF).
-2. `scrapeUrl.ts` intenta Cheerio; si el texto tiene menos de 500 caracteres o es un
-   shell de SPA vacío, recurre a Puppeteer y extrae el texto del HTML renderizado.
+2. `scrapeUrl.ts` intenta Cheerio; `extractArticle.ts` aísla el cuerpo de la nota
+   (el contenedor que concentra el texto en párrafos). Si el texto tiene menos de 500
+   caracteres, es un shell de SPA vacío o no se corresponde con el título, recurre a
+   Puppeteer y aplica la misma extracción al HTML renderizado.
 3. `analyzeContent.ts` corta en `sin-datos` si no hay contenido suficiente, sin llamar a Gemini.
-4. `geminiClient.ts` llama a Gemini con `tools: [{ googleSearch: {} }]` y parsea la respuesta.
+4. `geminiClient.ts` llama a Gemini con `tools: [{ googleSearch: {} }]`, incluye la fecha
+   actual en el prompt (sin ella, el modelo razona desde su fecha de corte) y parsea la
+   respuesta.
 
 **Restricción de Gemini:** `responseMimeType: "application/json"` no puede combinarse con
 `tools` (error 400 `INVALID_ARGUMENT`). El JSON se solicita en el prompt y se extrae de
@@ -185,23 +189,27 @@ también desde la sección correspondiente de `schema.sql`.
   emulador de Android, el host se alcanza en `10.0.2.2`.
 - La preferencia de idioma se guarda en AsyncStorage.
 
-Particularidades en [mobile/README.md](../mobile/README.md).
+Particularidades en [mobile/README.md](../../mobile/README.md).
 
 ## Despliegue
 
-`docker-compose.yml` define tres servicios para un stack de Docker Swarm:
+`docker-compose.yml` define tres servicios para un stack de Docker Swarm. Ninguno
+publica puertos: Traefik (red externa `Kobacnet`) termina HTTPS con Let's Encrypt y
+enruta por dominio.
 
-| Servicio | Imagen | Puerto publicado |
+| Servicio | Imagen | Acceso |
 |---|---|---|
-| `postgres` | `postgres:15-alpine` | ninguno (red interna) |
-| `web` | `Dockerfile` (Next.js `standalone`) | 4000 |
-| `backend` | `backend/Dockerfile` (Node 24 + Chromium) | 5000 → 8080 |
+| `postgres` | `postgres:15-alpine` | Solo red interna. |
+| `web` | `Dockerfile` (Next.js `standalone`, puerto 4000) | `aletheiainc.online` y `www`. |
+| `backend` | `backend/Dockerfile` (Node 24 + Chromium, puerto 8080) | `aletheiainc.online/api`; Traefik quita el prefijo `/api`. |
 
+- Swarm ignora la clave `build:` del compose: las imágenes se construyen con
+  `docker build` antes de cada despliegue.
 - Las variables `NEXT_PUBLIC_*` se pasan como build args porque Next.js las incorpora al
   bundle durante el build.
-- La imagen del backend instala Chromium de Debian y define `PUPPETEER_EXECUTABLE_PATH`,
-  ya que los scripts de instalación de npm están deshabilitados y Puppeteer no descarga
-  su propio navegador.
+- `CORS_ORIGIN` lista los orígenes de la web separados por coma, sin ruta.
+- La imagen del backend instala Chromium de Debian y define `PUPPETEER_EXECUTABLE_PATH`
+  y `PUPPETEER_SKIP_DOWNLOAD`, de modo que Puppeteer no descarga su propio navegador.
 - La API key de Firebase está restringida por HTTP referrer; cada origen nuevo (dominio
   de la web, `chrome-extension://<ID>`) debe agregarse en Google Cloud Console.
 

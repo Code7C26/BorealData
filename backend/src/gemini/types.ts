@@ -150,7 +150,7 @@ export const INVALID_LANGUAGE_ERROR = `El campo 'language' es inválido (opcione
 // ── Contenido que el scraper no puede ver ───────────────────────────────────
 // La extensión manda evidencia armada dentro de la pestaña del usuario (captura,
 // selección, texto pegado) en vez de una URL que el servidor tendría que ir a buscar.
-// Ver DOCS/ARQUITECTURA.md ("Análisis de contenido del cliente").
+// Ver docs/tecnico/arquitectura.md ("Análisis de contenido del cliente").
 
 /**
  * De dónde salió el contenido. "url" es el camino clásico (scraper); el resto es evidencia

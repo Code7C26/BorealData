@@ -129,7 +129,7 @@ export function mapBackendResult(data: BackendAnalyzeResponse): AnalysisResult {
 // manda la evidencia que el usuario ya tiene delante (una captura de su propia
 // pantalla) en vez de una URL que el servidor tendría que ir a buscar y que,
 // si es privada, solo le devolvería el muro de login.
-// Ver DOCS/ARQUITECTURA.md ("Análisis de contenido del cliente").
+// Ver docs/tecnico/arquitectura.md ("Análisis de contenido del cliente").
 
 /** Plataformas que el backend reconoce (KNOWN_PLATFORMS). */
 export type Platform = 'facebook' | 'instagram' | 'x' | 'whatsapp' | 'tiktok' | 'otro';

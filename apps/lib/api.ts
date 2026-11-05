@@ -2,7 +2,7 @@ import { auth } from '@/lib/firebase'
 import type { Confidence, SourceStance, Verdict } from '@/lib/verdict'
 import type { Idioma } from '@/lib/idioma'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://31.220.86.94:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://aletheiainc.online/api';
 
 export type { Confidence, SourceStance, Verdict }
 
@@ -148,7 +148,7 @@ export async function apiFetch<T>(
 // Espejo de la sección homónima de backend/src/gemini/types.ts. Una captura de
 // un posteo privado no tiene URL que el servidor pueda ir a buscar: lo que se
 // manda es la evidencia que la persona ya tiene. Ver
-// DOCS/ARQUITECTURA.md ("Análisis de contenido del cliente").
+// docs/tecnico/arquitectura.md ("Análisis de contenido del cliente").
 
 /** Plataformas que el backend reconoce (KNOWN_PLATFORMS). */
 export type Platform = 'facebook' | 'instagram' | 'x' | 'whatsapp' | 'tiktok' | 'otro'

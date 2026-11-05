@@ -92,11 +92,11 @@ const RAYOS = (() => {
   return rayos
 })()
 
-function CapaCortina({ capa, i }: { capa: Capa; i: number }) {
+function CapaCortina({ capa, i, apoyo }: { capa: Capa; i: number; apoyo: boolean }) {
   const t = capa.tono
   return (
     <div
-      className={`ab-capa ${capa.anim}${t === 'verde' ? ' ab-capa-verde' : ''}`}
+      className={`ab-capa ${capa.anim}${t === 'verde' ? ' ab-capa-verde' : ''}${apoyo ? ' ab-capa-apoyo' : ''}`}
       style={{ animationDuration: `${capa.dur}s`, animationDelay: `${capa.delay}s` }}
     >
       <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} preserveAspectRatio="none" className="size-full">
@@ -158,7 +158,9 @@ export function AuroraBoreal({ discreta = false }: { discreta?: boolean } = {}) 
       <div className="ab-cielo" />
 
       {capas.map((capa, i) => (
-        <CapaCortina key={i} capa={capa} i={i} />
+        /* Todas menos la principal (CAPAS[1]) son de apoyo: en celular se apagan
+           (ver .ab-capa-apoyo en global.css). */
+        <CapaCortina key={i} capa={capa} i={i} apoyo={!discreta && i !== 1} />
       ))}
     </div>
   )

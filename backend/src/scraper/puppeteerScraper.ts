@@ -1,7 +1,10 @@
 import puppeteer from "puppeteer";
 import * as cheerio from "cheerio";
 import { ScrapedContent, ScraperOptions } from "./types";
-import { stripControlChars } from "../utils/sanitize";
+import { bodyMatchesTitle, extractArticle } from "./extractArticle";
+
+/** Menos que esto no alcanza para verificar una nota (analyzeContent corta en 200 igual). */
+const MIN_TEXT_CHARS = 200;
 
 export async function scrapeWithPuppeteer(
   url: string,
@@ -41,36 +44,25 @@ export async function scrapeWithPuppeteer(
     const html = await page.content();
     const $ = cheerio.load(html);
 
-    // limpia el HTML
-    $("script, style, noscript, iframe, svg, nav, footer, header, form, aside").remove();
+    const { title, text } = extractArticle($);
 
-    const title = stripControlChars(
-      $("title").first().text().trim() || $("h1").first().text().trim()
-    );
-
-    const container = $("article").length
-      ? $("article")
-      : $("main").length
-      ? $("main")
-      : $("body");
-
-    const text = stripControlChars(
-      container
-        .find("p, h1, h2, h3, li")
-        .map((_, el) => $(el).text().trim())
-        .get()
-        .filter(Boolean)
-        .join("\n"),
-      true
-    );
+    // Último recurso, pero no a cualquier precio: un cuerpo mínimo o que no habla de lo
+    // mismo que el título (tarjetas de "notas relacionadas", un muro de cookies) no es la
+    // nota, y mandárselo a Gemini produce un veredicto sobre otra cosa.
+    const error =
+      text.length < MIN_TEXT_CHARS
+        ? "no_content_found"
+        : !bodyMatchesTitle(title, text)
+        ? "body_unrelated_to_title"
+        : undefined;
 
     return {
       url,
       title,
       text,
       method: "puppeteer",
-      success: text.length > 0,
-      error: text.length === 0 ? "no_content_found" : undefined,
+      success: error === undefined,
+      error,
     };
   } catch (err) {
     return {

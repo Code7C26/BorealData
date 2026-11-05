@@ -420,7 +420,7 @@ async function handleGetCacheState(url: string): Promise<CacheState> {
  * Facebook, Instagram o X eso trae el muro de login, no la nota — y una
  * historia de Instagram no la lee ningún scraper, porque el texto está en
  * píxeles. Así que acá va el otro camino: la evidencia que el usuario YA tiene
- * delante, armada en su propio navegador. Ver DOCS/ARQUITECTURA.md ("Análisis de contenido del cliente").
+ * delante, armada en su propio navegador. Ver docs/tecnico/arquitectura.md ("Análisis de contenido del cliente").
  *
  * Son dos pasos de backend, y el de en medio es del usuario:
  *   1. POST /analyze/read     — el modelo transcribe la imagen. Sin veredicto.

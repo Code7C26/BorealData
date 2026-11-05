@@ -45,7 +45,7 @@ El build lee `.env` y `.env.production`. Los permisos de host del manifest se de
 - El panel precarga la URL de la pestaña activa y muestra el resultado con el mismo
   vocabulario de veredictos que la web.
 - En sitios con login, el contenido se envía como captura o selección mediante
-  `POST /analyze/read` y `POST /analyze/content` (ver `DOCS/ARQUITECTURA.md`).
+  `POST /analyze/read` y `POST /analyze/content` (ver `docs/tecnico/arquitectura.md`).
 - "Ver análisis completo" abre `${WEB_ORIGIN}/resultado/{id}`; si el análisis no se
   guardó, abre `${WEB_ORIGIN}/historial`.
 

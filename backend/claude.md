@@ -13,7 +13,7 @@ API REST de AletheIA (Node.js + Express 5 + TypeScript). Recibe una URL o conten
 aportado por el cliente, extrae el texto y lo analiza con Gemini para devolver un
 veredicto (`verificado`, `dudoso`, `falso`, `sin-datos`) con un nivel de confianza de 1 a
 5. Persiste los análisis en PostgreSQL con Row Level Security. La documentación de
-arquitectura está en `../DOCS/ARQUITECTURA.md`.
+arquitectura está en `../docs/tecnico/arquitectura.md`.
 
 ## Comandos
 

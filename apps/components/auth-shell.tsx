@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { Aurora } from '@/components/aurora'
 import { Logo } from '@/components/logo'
 import { SelectorIdioma } from '@/components/selector-idioma'
@@ -9,8 +10,8 @@ import { traducciones } from '@/lib/idioma'
 import { useTextos } from '@/lib/use-idioma'
 
 const TEXTOS = traducciones({
-  es: { inicio: 'AletheIA — inicio' },
-  en: { inicio: 'AletheIA — home' },
+  es: { inicio: 'AletheIA — inicio', volver: 'Volver al inicio' },
+  en: { inicio: 'AletheIA — home', volver: 'Back to home' },
 })
 
 /**
@@ -41,6 +42,16 @@ export function AuthShell({
     <main className="relative isolate flex min-h-screen flex-col items-center justify-center overflow-hidden px-gutter pb-12 pt-24 md:px-6 md:py-12">
       <Aurora intensity="loud" />
       <div aria-hidden="true" className="noise-field" />
+
+      {/* Salida explícita a la landing: el logo también lleva ahí, pero no se lee
+          como un botón. Arriba a la izquierda, en espejo con idioma y modo. */}
+      <Link
+        href="/"
+        className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-pill px-3 py-2 text-body-sm text-muted transition-colors hover:bg-surface hover:text-display md:left-6 md:top-6"
+      >
+        <ArrowLeft aria-hidden="true" size={16} />
+        {t.volver}
+      </Link>
 
       {/* El idioma también acá: hay quien llega directo a /login o /registro desde
           un link, sin pasar por la landing. */}

@@ -192,18 +192,37 @@ const LANGUAGE_CLOSING_REMINDER: Record<Language, string> = {
 Recordatorio final: every text field of your JSON goes in English, "headline" and "lead" included, even if the content above is in Spanish. "verdict" and "stance" keep the Spanish tokens.`,
 };
 
+/**
+ * "5 de noviembre de 2026", en hora de Argentina. Sin la fecha, el modelo asume que está
+ * en su fecha de corte: medido en uso real, un análisis en inglés afirmó que
+ * "no existe un papa León XIV" y descartó a Clarín y Zenit como "noticias especulativas
+ * de 2025 y 2026". La regla anti-corte de abajo sola no alcanzaba.
+ */
+export function formatToday(today: Date): string {
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(today);
+}
+
 export function buildPrompt(
   title: string,
   text: string,
   kind: ContentKind = "url",
-  language: Language = "es"
+  language: Language = "es",
+  today: Date = new Date()
 ): string {
   const tag = LANGUAGE_FIELD_TAG[language];
   return `Sos el motor de análisis de AletheIA, una herramienta de verificación de noticias. Tu trabajo NO es puntuar: es mostrar el camino completo hasta el veredicto, de forma que cualquiera pueda auditarlo.
 
 ${buildIntro(kind)}
 
+FECHA DE HOY: ${formatToday(today)}. Tomala como cierta: lo que pasó entre tu fecha de corte y hoy existe aunque no lo conozcas.
+
 REGLA CRÍTICA SOBRE FECHAS Y HECHOS RECIENTES:
+Si lo que encontrás en la búsqueda (medios reconocidos, fuentes oficiales, con fechas recientes) contradice tu conocimiento previo, gana la búsqueda: nunca descartes esos resultados como "especulativos" o "ficticios" porque no coinciden con lo que sabías.
 Tu conocimiento de entrenamiento tiene una fecha de corte, y esta noticia puede ser posterior a esa fecha. NUNCA califiques algo como falso solo porque contradice lo último que sabías sobre una persona o situación (por ejemplo: alguien que figuraba con vida en tu conocimiento previo puede haber fallecido después de tu corte; un cargo, un resultado o un estado pueden haber cambiado). Antes de asumir que un hecho es falso por esa razón, USÁ LA BÚSQUEDA WEB para verificar el estado actual de la información. Un artículo que reporta un evento reciente real (una muerte, una elección, un resultado deportivo, etc.) NO es falso simplemente por ser posterior a tu conocimiento interno. Verificá con la búsqueda antes de penalizar.
 
 Usá la búsqueda web para:
