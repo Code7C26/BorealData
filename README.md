@@ -277,6 +277,7 @@ curl https://aletheiainc.online/api/
 
 ## Documentación
 
+- [CONTEXTO.md](CONTEXTO.md): contexto del proyecto, estado actual, decisiones de producto y pendientes.
 - [docs/README.md](docs/README.md): índice de la documentación.
 - [docs/tecnico/arquitectura.md](docs/tecnico/arquitectura.md): arquitectura, contrato del análisis y decisiones técnicas.
 - [design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md): sistema de diseño V1.
