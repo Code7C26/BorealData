@@ -29,11 +29,16 @@
   --gris-300: #a8b3b1;
   --bruma-100: #e8ecea;
 
-  /* Neutros Papel */
-  --papel-50: #f7f8f6;
-  --papel-100: #eff1ee;
-  --papel-200: #e3e6e1;
-  --tinta: #171c1b;
+  /* Neutros Papel — tono hueso (nov-2026).
+     Antes eran grises fríos casi blancos (#f7f8f6): el modo claro encandilaba y
+     las cards blancas no se despegaban del fondo. Ahora salen del Luz Boreal
+     (#f2e8d5) de la marca, que además hace resaltar más el violeta. */
+  --papel-0: #fbf8f3; /* superficie de cards */
+  --papel-50: #f3eee5; /* fondo */
+  --papel-100: #eae3d7; /* superficie hundida */
+  --papel-200: #ddd3c2; /* bordes */
+  --papel-300: #c9bda8; /* bordes fuertes */
+  --tinta: #1d1a16;
 
   /* Marca — el violeta viene del fenómeno físico (aurora), no del sector tecnológico */
   --aurora-300: #b9a4ff;
@@ -86,6 +91,7 @@
   --accent-solid: var(--aurora-300); /* fondo de botón primario */
   --accent-ink: var(--noche-900); /* texto sobre accent-solid */
   --accent-hover: var(--luz);
+  --aurora-brillo: var(--luz); /* brillo del degradé de titulares (ver .text-aurora) */
   --ring: var(--aurora-300);
 
   --verificado: var(--verificado-d);
@@ -135,21 +141,27 @@
   color-scheme: light;
 
   --bg: var(--papel-50);
-  --surface: #ffffff;
+  --surface: var(--papel-0);
   --surface-sunk: var(--papel-100);
   --border-c: var(--papel-200);
-  --border-strong: #cdd3cd;
+  --border-strong: var(--papel-300);
 
+  /* Contrastes medidos sobre el fondo hueso: texto 15:1, muted 7,9:1,
+     subtle 6,2:1, disabled 4,6:1. Todos pasan AA (4,5:1). El disabled
+     anterior (#8a9391) daba 2,96:1 y las etiquetas chicas no se leían. */
   --text: var(--tinta);
-  --text-muted: #4a5654;
-  --text-subtle: #5c6664;
-  --text-disabled: #8a9391;
+  --text-muted: #4d473e;
+  --text-subtle: #5e574c;
+  --text-disabled: #70685c;
   --display: var(--tinta);
 
-  --accent: var(--aurora-700); /* 8.2:1 sobre Papel 50 */
+  --accent: var(--aurora-700); /* 7,5:1 sobre el fondo hueso */
   --accent-text: var(--aurora-700);
   --accent-solid: var(--aurora-700);
-  --accent-ink: var(--papel-50);
+  --accent-ink: var(--papel-0);
+  /* El brillo del degradé de los titulares. En oscuro es el crema Luz; en claro
+     el crema contra el hueso daba 1,14:1 y el titular se borraba a la mitad. */
+  --aurora-brillo: var(--aurora-500);
   --accent-hover: #3b2496;
   --ring: var(--aurora-700);
 
@@ -158,9 +170,10 @@
   --falso: var(--falso-l);
   --sindatos: var(--sindatos-l);
 
-  --sombra-sm: 0 1px 2px rgb(23 28 27 / 0.06);
-  --sombra-md: 0 4px 16px -4px rgb(23 28 27 / 0.1);
-  --sombra-lg: 0 16px 40px -12px rgb(23 28 27 / 0.14);
+  /* Sombras con un dejo cálido: una sombra gris fría sobre hueso se ve sucia. */
+  --sombra-sm: 0 1px 2px rgb(60 45 20 / 0.06);
+  --sombra-md: 0 4px 16px -4px rgb(60 45 20 / 0.12);
+  --sombra-lg: 0 16px 40px -12px rgb(60 45 20 / 0.16);
   --sombra-focus: 0 0 0 4px rgb(76 47 184 / 0.16);
 
   --aurora-a: rgb(122 90 248 / 0.18);
@@ -231,10 +244,12 @@
   --color-gris-300: #a8b3b1;
   --color-bruma: #e8ecea;
   --color-luz: #f2e8d5;
-  --color-papel-50: #f7f8f6;
-  --color-papel-100: #eff1ee;
-  --color-papel-200: #e3e6e1;
-  --color-tinta: #171c1b;
+  --color-papel-0: #fbf8f3;
+  --color-papel-50: #f3eee5;
+  --color-papel-100: #eae3d7;
+  --color-papel-200: #ddd3c2;
+  --color-papel-300: #c9bda8;
+  --color-tinta: #1d1a16;
   --color-aurora-300: #b9a4ff;
   --color-aurora-500: #7a5af8;
   --color-aurora-700: #4c2fb8;
@@ -512,7 +527,7 @@
       100deg,
       var(--display) 0%,
       var(--accent-text) 25%,
-      var(--luz) 50%,
+      var(--aurora-brillo) 50%,
       var(--accent-text) 75%,
       var(--display) 100%
     );
