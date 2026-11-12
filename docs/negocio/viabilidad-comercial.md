@@ -73,18 +73,20 @@ Son los costos que crecen con cada usuario o cada análisis.
 | **Comisión de Mercado Pago (suscripciones)** | 3,56% + IVA con acreditación a 18 días (Buenos Aires, vigente desde marzo 2026) | **4,31% de cada cobro** |
 | **Comisión de Google Play / App Store** (solo si se cobra dentro de la app) | 15% en suscripciones | Se evita cobrando por la web con Mercado Pago |
 
-**Conclusión sobre los variables:** el costo real por análisis (**≈ $11**) es muy bajo. El riesgo está en superar el cupo gratuito del grounding, porque el costo por análisis se multiplica por ~8. Por eso el plan gratuito tiene un límite diario.
+**Conclusión sobre los variables:** el costo real por análisis (**≈ $11**) es muy bajo. El riesgo está en superar el cupo gratuito del grounding, porque el costo por análisis se multiplica por ~8. Por eso el plan gratuito tiene un límite mensual de análisis.
 
 ### 1.4 Modelo de monetización elegido: **Freemium + SaaS (suscripción)**
 
 | Plan | Precio | Incluye | Público |
 |---|---|---|---|
-| **Gratuito** | $0 | 5 análisis por día, extensión de Chrome y app, veredicto + nivel de confianza | Público general, estudiantes |
-| **Premium** | **$6.999/mes** (≈ USD 4,50) | Análisis ilimitados (uso razonable), historial, fuentes detalladas, análisis de imágenes y links | Usuarios frecuentes: periodistas freelance, docentes, community managers |
-| **Institucional** | **$180.000/mes** | 3.000 análisis por mes, cuentas para todo el equipo, panel de control, soporte | Escuelas, medios locales, ONGs, áreas de comunicación |
+| **Gratuito** | $0 | 150 análisis por mes; enlaces, textos **e imágenes**; veredicto, nivel de confianza y fuentes con su postura; extensión de Chrome y app móvil | Público general, estudiantes |
+| **Premium** | **$6.999/mes** (≈ USD 4,50) | Todo lo del Gratuito, y además: análisis ilimitados (uso razonable), procesamiento prioritario, informes en PDF y CSV, historial completo con búsqueda y filtros, carpetas compartidas para trabajar en equipo | Usuarios frecuentes: periodistas freelance, docentes, community managers |
+| **Institucional** (plan grupal) | **$180.000/mes** | Todo lo de Premium para toda la organización, y además: 3.000 análisis por mes compartidos, cuentas para todo el equipo, panel de control y soporte | Escuelas, medios locales, ONGs, áreas de comunicación |
+
+**Criterio de los planes (actualizado 12/11/2026):** el Gratuito es una herramienta completa por sí sola —analiza enlaces e imágenes y muestra las fuentes—, con un tope mensual que controla el costo. Premium **no le saca funciones al Gratuito**: agrega volumen, velocidad y herramientas de trabajo. Institucional suma lo que necesita una organización (varias cuentas, administración y soporte) y se vende conversando, no con un botón de compra.
 
 **Por qué elegimos este modelo:**
-- **Freemium:** combatir la desinformación necesita **muchos usuarios**. Cobrar desde el primer día frenaría la adopción, y un usuario gratuito cuesta como máximo ~$1.600/mes (150 análisis × $10,85).
+- **Freemium:** combatir la desinformación necesita **muchos usuarios**. Cobrar desde el primer día frenaría la adopción, y un usuario gratuito cuesta como máximo ~$1.600/mes (tope de 150 análisis × $10,85).
 - **SaaS:** AletheIA corre en la nube (Cloud Run + Vertex AI) y tiene costos que se repiten todos los meses. Una **licencia de pago único** no cubriría el consumo de IA que sigue ocurriendo después de la venta.
 - **Descartamos Hardware + Mantenimiento:** el proyecto no incluye dispositivos físicos.
 - **Plan institucional:** son las escuelas y los medios los que tienen presupuesto y la necesidad de verificar información de forma constante.
@@ -171,7 +173,7 @@ Estos trámites **solo corresponden si se inventa un dispositivo físico nuevo**
 - **Tiempo de desarrollo:** unas 24 h (activar la herramienta en el backend, adaptar el contrato JSON `CONTRATO_ANALISIS.md` y mostrar las fuentes en la pantalla de resultado).
 - **Recursos extra:** ninguno al inicio (1.500 consultas gratis por día); a partir de ~45.000 análisis por mes, USD 35 cada 1.000.
 - **Impacto en la propuesta de valor:** **[X] Elevado.** Sin fuentes actualizadas, un detector de noticias falsas no puede verificar hechos recientes, que es justamente el problema principal. Además, es lo que justifica cobrar el plan Premium.
-- **Decisión:** **se aprueba para el MVP.** Cuesta 24 h (≈ $230.775 en horas de trabajo), el costo es $0 mientras se esté dentro del cupo gratuito, y el límite de 5 análisis por día del plan gratuito protege ese cupo.
+- **Decisión:** **se aprueba para el MVP.** Cuesta 24 h (≈ $230.775 en horas de trabajo), el costo es $0 mientras se esté dentro del cupo gratuito, y el tope de 150 análisis por mes del plan gratuito protege ese cupo.
 
 ---
 

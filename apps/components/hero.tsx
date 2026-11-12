@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { AnalisisInput } from '@/components/analisis-input'
 import { AuroraBoreal } from '@/components/aurora-boreal'
 import { PalabraRotativa } from '@/components/palabra-rotativa'
@@ -15,16 +17,22 @@ const TEXTOS = traducciones({
     titulo: '¿Es verdad?',
     subtitulo: 'Te mostramos cómo lo supimos.',
     bajada:
-      'Pegá el enlace de una nota. Te devolvemos el veredicto, qué tan sólida es la evidencia, las fuentes que consultamos —con su postura, incluso las que lo contradicen— y los pasos del razonamiento.',
+      'Pegá el enlace de una nota. En segundos tenés el veredicto, qué tan sólida es la evidencia y todas las fuentes, también las que lo contradicen.',
     escala: 'Cuatro veredictos · cinco niveles de confianza · ningún porcentaje',
+    verEjemplo: 'Ver un análisis de ejemplo',
+    verPlanes: 'Ver planes',
+    gratis: 'Gratis · sin tarjeta',
   },
   en: {
     eyebrow: 'Fact-checking you can audit',
     titulo: 'Is it true?',
     subtitulo: "We'll show you how we know.",
     bajada:
-      'Paste a link to an article. We give you back the verdict, how solid the evidence is, the sources we checked —with where each one stands, even the ones that contradict it— and the steps of the reasoning.',
+      'Paste a link to an article. In seconds you get the verdict, how solid the evidence is and every source, including the ones that contradict it.',
     escala: 'Four verdicts · five confidence levels · no percentages',
+    verEjemplo: 'See a sample analysis',
+    verPlanes: 'See pricing',
+    gratis: 'Free · no card needed',
   },
 })
 
@@ -180,6 +188,31 @@ export function Hero() {
           }}
         />
         <AnalisisInput />
+      </div>
+
+      {/* El CTA principal es el campo de arriba: pegar un enlace. Acá van los
+          secundarios, para quien todavía no tiene una nota a mano. */}
+      <div className="relative z-[3] mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+        <Link
+          href="/ejemplo"
+          className="group inline-flex items-center gap-2 font-display text-body-sm font-medium text-accent-text transition-colors duration-150 ease-boreal hover:text-accent-hover"
+        >
+          {t.verEjemplo}
+          <ArrowRight
+            aria-hidden="true"
+            size={16}
+            className="transition-transform duration-150 ease-boreal group-hover:translate-x-0.5"
+          />
+        </Link>
+        <span aria-hidden="true" className="hidden h-4 w-px bg-border sm:block" />
+        <a
+          href="#planes"
+          className="font-display text-body-sm font-medium text-muted transition-colors duration-150 ease-boreal hover:text-ink"
+        >
+          {t.verPlanes}
+        </a>
+        <span aria-hidden="true" className="hidden h-4 w-px bg-border sm:block" />
+        <span className="font-mono text-micro uppercase text-disabled">{t.gratis}</span>
       </div>
 
       {/* La leyenda de los cuatro estados, con su color y qué significa cada

@@ -13,9 +13,10 @@ import { cn } from '@/lib/utils'
 const TEXTOS = traducciones({
   es: {
     links: [
+      { href: '#por-que', label: 'Por qué' },
       { href: '#como-funciona', label: 'Cómo funciona' },
       { href: '#extension', label: 'Extensión' },
-      { href: '#boreal-data', label: 'Boreal Data' },
+      { href: '#planes', label: 'Planes' },
       { href: '#faq', label: 'Preguntas' },
     ],
     inicio: 'AletheIA — inicio',
@@ -27,9 +28,10 @@ const TEXTOS = traducciones({
   },
   en: {
     links: [
+      { href: '#por-que', label: 'Why' },
       { href: '#como-funciona', label: 'How it works' },
       { href: '#extension', label: 'Extension' },
-      { href: '#boreal-data', label: 'Boreal Data' },
+      { href: '#planes', label: 'Pricing' },
       { href: '#faq', label: 'FAQ' },
     ],
     inicio: 'AletheIA — home',

@@ -8,7 +8,7 @@ const router = Router();
  * Sin auth: son los totales públicos de la plataforma (no hay nada por usuario acá),
  * así que también los puede consumir la landing sin sesión.
  *
- * Devuelve { totalAnalyses, totalSources, averageConfidence, verdicts } acumulados desde
+ * Devuelve { totalAnalyses, totalSources, averageConfidence, verdicts, topDomains } acumulados desde
  * siempre: ni "de hoy" ni "de este usuario". Son los números que muestran los bloques del
  * dashboard y la landing, y suben con cada análisis nuevo que se guarda en /analyze.
  *

@@ -558,7 +558,16 @@ export interface GlobalStats {
   averageConfidence: number;
   /** Cuántos análisis cayeron en cada veredicto. */
   verdicts: Record<Verdict, number>;
+  /**
+   * Los dominios más citados como fuente, de mayor a menor (máx. TOP_DOMAINS_LIMIT).
+   * Es la prueba social de la landing: qué medios cruza AletheIA de verdad, no una
+   * lista armada a mano.
+   */
+  topDomains: { domain: string; count: number }[];
 }
+
+/** Cuántos dominios devuelve /stats en `topDomains`. */
+const TOP_DOMAINS_LIMIT = 16;
 
 /**
  * Totales globales: no filtra por usuario ni por fecha, son los números de la
@@ -644,9 +653,27 @@ export async function getGlobalStats(): Promise<GlobalStats> {
       }
     }
 
+    // Los dominios más citados. Se descartan los vacíos y el redirect de grounding de
+    // Google (queda como dominio cuando no se pudo leer el medio real, ver toGroundingLink).
+    const domains = await client.query<{ domain: string; total: string }>(
+      `SELECT lower(s->>'domain') AS domain, COUNT(*) AS total
+       FROM analyses
+       CROSS JOIN LATERAL jsonb_array_elements(
+         CASE WHEN jsonb_typeof(sources) = 'array' THEN sources ELSE '[]'::jsonb END
+       ) AS s
+       WHERE source_type = 'url'
+         AND coalesce(s->>'domain', '') <> ''
+         AND s->>'domain' NOT LIKE '%vertexaisearch%'
+       GROUP BY 1
+       ORDER BY 2 DESC, 1
+       LIMIT $1`,
+      [TOP_DOMAINS_LIMIT]
+    );
+
     return {
       totalAnalyses,
       totalSources,
+      topDomains: domains.rows.map((row) => ({ domain: row.domain, count: Number(row.total) })),
       averageConfidence:
         confidenceCount > 0 ? Math.round((confidenceSum / confidenceCount) * 10) / 10 : 0,
       verdicts,
