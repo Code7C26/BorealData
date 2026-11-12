@@ -86,6 +86,11 @@ export interface GlobalStats {
   /** Promedio del nivel de confianza, 1 a 5 con un decimal. */
   averageConfidence: number
   verdicts: Record<Verdict, number>
+  /**
+   * Dominios más citados como fuente, de mayor a menor. Opcional: un backend sin
+   * desplegar todavía no lo manda, y la landing tiene que seguir andando.
+   */
+  topDomains?: { domain: string; count: number }[]
 }
 
 /** Respuesta de GET /me (backend/src/db/usersRepository.ts::UserProfile). */

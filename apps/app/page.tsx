@@ -7,8 +7,9 @@ import { Faq } from '@/components/faq'
 import { Footer } from '@/components/footer'
 import { Hero } from '@/components/hero'
 import { Navbar } from '@/components/navbar'
+import { Pilares } from '@/components/pilares'
+import { Planes } from '@/components/planes'
 import { QuienesSomos } from '@/components/quienes-somos'
-import { QuizDeteccion } from '@/components/quiz-deteccion'
 import { StatsBar } from '@/components/stats-bar'
 
 export default function Page() {
@@ -21,17 +22,21 @@ export default function Page() {
       <div className="relative z-[1]">
         <AuthRedirect to="/dashboard" />
         <Navbar />
+        {/* El recorrido de la landing:
+            1. Hero — qué es y el CTA real (pegar un enlace).
+            2. Prueba social — cifras y medios reales de /stats, nada inventado.
+            3. Tres pilares — por qué AletheIA, escaneable en tres líneas.
+            4. El resultado de verdad — la pieza, no una ilustración de ella.
+            5. Extensión — lo que lo diferencia de un chat (capturas, sin cambiar de pestaña).
+            6. Planes — comparar y elegir.
+            7. Confianza y dudas — quiénes somos y preguntas.
+            8. CTA final. */}
         <Hero />
-        {/* El resultado real antes que cualquier argumento: la landing muestra la
-            pieza, no la promete. */}
-        <AnalisisDemo />
         <StatsBar />
-        {/* La extensión va antes del quiz: analizar lo que no tiene enlace (una
-            captura, una cadena de WhatsApp) es lo que diferencia a AletheIA de un
-            chat al que le pegás un texto. El quiz entretiene, pero no explica el
-            producto, así que no puede estar delante de lo que sí. */}
+        <Pilares />
+        <AnalisisDemo />
         <ExtensionSection />
-        <QuizDeteccion />
+        <Planes />
         <QuienesSomos />
         <Faq />
         <CtaFinal />

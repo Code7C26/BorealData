@@ -15,6 +15,8 @@ const TEXTOS = traducciones({
     fuentesConsultadas: 'Fuentes consultadas',
     confianzaMedia: (nivel: string) => `Confianza media — ${nivel}`,
     notas: (n: string) => `${n} notas`,
+    medios: 'Los medios que más cruzamos',
+    mediosAclaracion: 'Fuentes citadas en los análisis. No son clientes ni avalan a AletheIA.',
   },
   en: {
     titulo: "What we've checked so far",
@@ -22,6 +24,8 @@ const TEXTOS = traducciones({
     fuentesConsultadas: 'Sources checked',
     confianzaMedia: (nivel: string) => `Average confidence — ${nivel}`,
     notas: (n: string) => `${n} articles`,
+    medios: 'The outlets we cross-check most',
+    mediosAclaracion: 'Sources cited in our analyses. They are not clients and do not endorse AletheIA.',
   },
 })
 
@@ -111,6 +115,33 @@ export function StatsBar() {
             )
           })}
         </dl>
+
+        {/* Prueba social con datos reales: los dominios más citados como fuente
+            (GET /stats → topDomains). Con pocos dominios la cinta se ve vacía y
+            repetida, así que por debajo de seis no se muestra. */}
+        {(stats.topDomains?.length ?? 0) >= 6 && (
+          <div className="flex flex-col gap-5 border-t border-border pt-10">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+              <h3 className="font-display text-body-sm font-semibold text-display">{t.medios}</h3>
+              <p className="text-caption tracking-normal text-subtle">{t.mediosAclaracion}</p>
+            </div>
+            <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+              {/* Dos juegos iguales: el keyframe corre -50% y la vuelta cierra sin salto. */}
+              <ul className="flex w-max animate-marquee hover:[animation-play-state:paused]">
+                {[...stats.topDomains!, ...stats.topDomains!].map((d, i) => (
+                  <li
+                    key={`${d.domain}-${i}`}
+                    aria-hidden={i >= stats.topDomains!.length}
+                    className="mr-3 flex items-center gap-2.5 whitespace-nowrap rounded-pill border border-border bg-surface px-4 py-2"
+                  >
+                    <span className="font-display text-body-sm font-medium text-ink">{d.domain}</span>
+                    <span className="font-mono text-micro text-subtle">×{d.count.toLocaleString(tag)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )
