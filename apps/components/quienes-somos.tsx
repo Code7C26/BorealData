@@ -8,6 +8,8 @@ const TEXTOS = traducciones({
   es: {
     eyebrow: 'Quiénes somos',
     titulo: 'Boreal Data hace herramientas para que la información se pueda chequear.',
+    tituloCorto: 'Herramientas para chequear la información.',
+    parrafoCorto: 'AletheIA no te pide que confíes en un algoritmo: te muestra el trabajo.',
     parrafo1:
       'AletheIA es nuestro primer producto y nació de una idea simple: a la desinformación no se le gana pidiéndole a la gente que confíe en un algoritmo, sino mostrando el trabajo. Qué fuente se revisó, con qué se cruzó y por qué se llegó a ese veredicto.',
     parrafo2:
@@ -22,6 +24,8 @@ const TEXTOS = traducciones({
   en: {
     eyebrow: 'About us',
     titulo: 'Boreal Data builds tools that make information checkable.',
+    tituloCorto: 'Tools to check information.',
+    parrafoCorto: "AletheIA doesn't ask you to trust an algorithm: it shows you the work.",
     parrafo1:
       "AletheIA is our first product, and it grew out of a simple idea: you don't beat misinformation by asking people to trust an algorithm, but by showing the work. Which source was reviewed, what it was cross-checked against and why it led to that verdict.",
     parrafo2:
@@ -41,27 +45,33 @@ export function QuienesSomos() {
   return (
     <section
       id="boreal-data"
-      className="border-t border-border px-gutter py-32 md:px-6 md:py-40"
+      className="border-t border-border px-gutter py-20 md:px-6 md:py-40"
       aria-labelledby="boreal-title"
     >
-      <div className="mx-auto grid max-w-shell grid-cols-1 gap-16 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="mx-auto grid max-w-shell grid-cols-1 gap-8 md:gap-16 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <p className="eyebrow">{t.eyebrow}</p>
           {/* La firma de la casa: acá es donde habla Boreal Data, no AletheIA.
               Va en su propia línea — el lockup es inline-flex. */}
-          <div className="mt-8">
-            <LogoBorealData className="text-[2.5rem]" />
+          <div className="mt-6 md:mt-8">
+            <LogoBorealData className="text-[1.75rem] md:text-[2.5rem]" />
           </div>
-          <h2 id="boreal-title" className="mt-6 text-balance font-display text-h2-fluid text-display">
-            {t.titulo}
+          {/* En celular: titular y párrafo en versión corta y un punto más chicos. */}
+          <h2
+            id="boreal-title"
+            className="mt-4 text-balance font-display text-[1.375rem] leading-[1.15] font-semibold tracking-[-0.02em] text-display md:mt-6 md:text-h2-fluid"
+          >
+            <span className="md:hidden">{t.tituloCorto}</span>
+            <span className="hidden md:inline">{t.titulo}</span>
           </h2>
         </div>
 
         <div>
-          <p className="max-w-texto text-pretty text-muted">{t.parrafo1}</p>
-          <p className="mt-5 max-w-texto text-pretty text-muted">{t.parrafo2}</p>
+          <p className="max-w-texto text-pretty text-body-sm text-muted md:hidden">{t.parrafoCorto}</p>
+          <p className="hidden max-w-texto text-pretty text-muted md:block">{t.parrafo1}</p>
+          <p className="mt-5 hidden max-w-texto text-pretty text-muted md:block">{t.parrafo2}</p>
 
-          <dl className="mt-12 border-t border-border">
+          <dl className="mt-12 hidden border-t border-border md:block">
             {t.datos.map((dato) => (
               <div
                 key={dato.etiqueta}

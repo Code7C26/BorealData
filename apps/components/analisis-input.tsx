@@ -70,6 +70,7 @@ const TEXTOS = traducciones({
     analizarImagen: 'Analizar una imagen',
     analizarImagenBajada:
       'Subí una captura, arrastrala acá o pegala con Ctrl+V. Para posteos y cadenas que no se pueden leer por su enlace.',
+    analizarImagenCorta: 'Una captura de un posteo o una cadena.',
     privacidad: 'Las imágenes no se guardan',
     queHacemos: 'Qué hacemos con tus datos',
     modos: { enlace: 'Enlace', pregunta: 'Pregunta' },
@@ -102,6 +103,7 @@ const TEXTOS = traducciones({
     analizarImagen: 'Analyze an image',
     analizarImagenBajada:
       "Upload a screenshot, drag it here or paste it with Ctrl+V. For posts and chain messages that can't be read from a link.",
+    analizarImagenCorta: 'A screenshot of a post or a chain message.',
     privacidad: 'Images are not stored',
     queHacemos: 'What we do with your data',
     modos: { enlace: 'Link', pregunta: 'Question' },
@@ -526,7 +528,10 @@ export function AnalisisInput({ className }: { className?: string }) {
           <ImagePlus aria-hidden="true" size={16} />
           {t.analizarImagen}
         </span>
-        <span className="text-caption tracking-normal text-subtle">{t.analizarImagenBajada}</span>
+        <span className="text-caption tracking-normal text-subtle">
+          <span className="md:hidden">{t.analizarImagenCorta}</span>
+          <span className="hidden md:inline">{t.analizarImagenBajada}</span>
+        </span>
       </button>
 
       <input
@@ -548,7 +553,7 @@ export function AnalisisInput({ className }: { className?: string }) {
           un producto cuyo argumento es la honestidad, la línea de privacidad es
           el último lugar donde se puede prometer de más — ahora dice lo que el
           backend hace de verdad y linkea al detalle completo. */}
-      <p className="font-mono text-micro uppercase text-disabled">
+      <p className="hidden font-mono text-micro uppercase text-disabled md:block">
         {t.privacidad} ·{' '}
         <Link href="/privacidad" className="underline hover:text-accent-text">
           {t.queHacemos}
