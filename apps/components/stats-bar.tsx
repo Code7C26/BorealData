@@ -70,8 +70,8 @@ export function StatsBar() {
   const nivelMedio = Math.round(stats.averageConfidence) as 1 | 2 | 3 | 4 | 5
 
   return (
-    <section className="px-gutter pb-32 md:px-6" aria-labelledby="stats-title">
-      <div className="mx-auto flex max-w-shell flex-col gap-10 border-y border-border py-16">
+    <section className="px-gutter pb-20 md:px-6 md:pb-32" aria-labelledby="stats-title">
+      <div className="mx-auto flex max-w-shell flex-col gap-10 border-y border-border py-12 md:py-16">
         <h2 id="stats-title" className="eyebrow">
           {t.titulo}
         </h2>
@@ -94,7 +94,7 @@ export function StatsBar() {
 
         {/* El reparto por veredicto: los cuatro estados con su color y su cifra.
             Es la prueba de que no hay un sesgo hacia "falso". */}
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+        <dl className="hidden grid-cols-2 gap-x-6 gap-y-6 md:grid lg:grid-cols-4">
           {ORDEN.map((v) => {
             const meta = VERDICT[v]
             const n = stats.verdicts[v] ?? 0
@@ -123,19 +123,19 @@ export function StatsBar() {
           <div className="flex flex-col gap-5 border-t border-border pt-10">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
               <h3 className="font-display text-body-sm font-semibold text-display">{t.medios}</h3>
-              <p className="text-caption tracking-normal text-subtle">{t.mediosAclaracion}</p>
+              <p className="hidden text-caption tracking-normal text-subtle sm:block">{t.mediosAclaracion}</p>
             </div>
-            <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+            <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_5%,black_95%,transparent)] md:[mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
               {/* Dos juegos iguales: el keyframe corre -50% y la vuelta cierra sin salto. */}
               <ul className="flex w-max animate-marquee hover:[animation-play-state:paused]">
                 {[...stats.topDomains!, ...stats.topDomains!].map((d, i) => (
                   <li
                     key={`${d.domain}-${i}`}
                     aria-hidden={i >= stats.topDomains!.length}
-                    className="mr-3 flex items-center gap-2.5 whitespace-nowrap rounded-pill border border-border bg-surface px-4 py-2"
+                    className="mr-1.5 flex items-center gap-1 whitespace-nowrap rounded-pill border border-border bg-surface px-2 py-0.5 md:mr-3 md:gap-2.5 md:px-4 md:py-2"
                   >
-                    <span className="font-display text-body-sm font-medium text-ink">{d.domain}</span>
-                    <span className="font-mono text-micro text-subtle">×{d.count.toLocaleString(tag)}</span>
+                    <span className="font-display text-[0.6875rem] font-medium text-ink md:text-body-sm">{d.domain}</span>
+                    <span className="hidden font-mono text-micro text-subtle md:inline">×{d.count.toLocaleString(tag)}</span>
                   </li>
                 ))}
               </ul>

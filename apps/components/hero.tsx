@@ -18,6 +18,7 @@ const TEXTOS = traducciones({
     subtitulo: 'Te mostramos cómo lo supimos.',
     bajada:
       'Pegá el enlace de una nota. En segundos tenés el veredicto, qué tan sólida es la evidencia y todas las fuentes, también las que lo contradicen.',
+    bajadaCorta: 'Pegá el enlace de una nota y te mostramos el veredicto con sus fuentes.',
     escala: 'Cuatro veredictos · cinco niveles de confianza · ningún porcentaje',
     verEjemplo: 'Ver un análisis de ejemplo',
     verPlanes: 'Ver planes',
@@ -29,6 +30,7 @@ const TEXTOS = traducciones({
     subtitulo: "We'll show you how we know.",
     bajada:
       'Paste a link to an article. In seconds you get the verdict, how solid the evidence is and every source, including the ones that contradict it.',
+    bajadaCorta: 'Paste a link to an article and we show you the verdict with its sources.',
     escala: 'Four verdicts · five confidence levels · no percentages',
     verEjemplo: 'See a sample analysis',
     verPlanes: 'See pricing',
@@ -147,7 +149,7 @@ export function Hero() {
   const { VERDICT } = useVocabulario()
 
   return (
-    <section className="relative isolate flex min-h-[900px] flex-col items-center justify-center overflow-hidden px-gutter pb-28 pt-24 md:px-6">
+    <section className="relative isolate flex flex-col items-center justify-center overflow-hidden px-gutter pb-16 pt-16 md:min-h-[900px] md:px-6 md:pb-28 md:pt-24">
       <AuroraBoreal />
       <MuroDeNotas />
       <div aria-hidden="true" className="noise-field fundido-abajo z-[2]" />
@@ -170,11 +172,14 @@ export function Hero() {
           <span className="mt-2 block text-aurora">{t.subtitulo}</span>
         </h1>
 
-        <p className="mx-auto mt-7 max-w-texto text-pretty text-muted">{t.bajada}</p>
+        <p className="mx-auto mt-7 max-w-texto text-pretty text-muted">
+          <span className="md:hidden">{t.bajadaCorta}</span>
+          <span className="hidden md:inline">{t.bajada}</span>
+        </p>
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <PalabraRotativa />
-          <p className="font-mono text-micro uppercase text-disabled">{t.escala}</p>
+          <p className="hidden font-mono text-micro uppercase text-disabled md:block">{t.escala}</p>
         </div>
       </div>
 
@@ -211,14 +216,14 @@ export function Hero() {
         >
           {t.verPlanes}
         </a>
-        <span aria-hidden="true" className="hidden h-4 w-px bg-border sm:block" />
-        <span className="font-mono text-micro uppercase text-disabled">{t.gratis}</span>
+        <span aria-hidden="true" className="hidden h-4 w-px bg-border md:block" />
+        <span className="hidden font-mono text-micro uppercase text-disabled md:inline">{t.gratis}</span>
       </div>
 
       {/* La leyenda de los cuatro estados, con su color y qué significa cada
           uno. Vive acá y no en una sección aparte porque es el vocabulario que
           hay que tener antes de leer el primer resultado. */}
-      <ul className="relative z-[3] mt-16 grid w-full max-w-shell grid-cols-2 gap-x-6 gap-y-8 lg:grid-cols-4">
+      <ul className="relative z-[3] mt-16 hidden w-full max-w-shell grid-cols-2 md:grid gap-x-6 gap-y-8 lg:grid-cols-4">
         {ORDEN.map((v) => {
           const meta = VERDICT[v]
           const Icon = meta.icon

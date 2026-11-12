@@ -80,7 +80,7 @@ export function AnalisisDemo() {
   return (
     <section
       id="como-funciona"
-      className="border-t border-border px-gutter py-32 md:px-6 md:py-40"
+      className="border-t border-border px-gutter py-20 md:px-6 md:py-40"
       aria-labelledby="demo-title"
     >
       <div className="mx-auto max-w-shell">
@@ -92,13 +92,19 @@ export function AnalisisDemo() {
           >
             {t.titulo}
           </h2>
-          <p className="mt-4 text-pretty text-muted">{t.bajada}</p>
+          <p className="mt-4 hidden text-pretty text-muted md:block">{t.bajada}</p>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 items-start gap-12 xl:grid-cols-[minmax(0,720px)_1fr]">
-          <ResultCard analysis={analisis} fecha={FECHA_EJEMPLO} showActions={false} />
+        <div className="mt-8 grid md:mt-14 grid-cols-1 items-start gap-12 xl:grid-cols-[minmax(0,720px)_1fr]">
+          {/* En celular la card va en miniatura: se lee como vista previa del
+              resultado, no como un documento entero. `zoom` (y no `transform:
+              scale`) para que el alto que ocupa también se achique y no quede
+              un hueco abajo. Mismo contenido, sin sacar nada. */}
+          <div className="max-md:mx-auto max-md:w-full max-md:[zoom:0.7]">
+            <ResultCard analysis={analisis} fecha={FECHA_EJEMPLO} showActions={false} />
+          </div>
 
-          <ol className="flex flex-col gap-10 xl:pt-6">
+          <ol className="hidden flex-col gap-10 md:flex xl:pt-6">
             {t.decisiones.map((d) => (
               <li key={d.n} className="flex flex-col gap-2 border-t border-border pt-5">
                 <span className="font-mono text-micro uppercase text-accent-text">

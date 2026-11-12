@@ -70,7 +70,7 @@ export function Pilares() {
   const t = useTextos(TEXTOS)
 
   return (
-    <section id="por-que" className="px-gutter py-32 md:px-6 md:py-40" aria-labelledby="pilares-title">
+    <section id="por-que" className="px-gutter py-20 md:px-6 md:py-40" aria-labelledby="pilares-title">
       <div className="mx-auto max-w-shell">
         <div className="max-w-2xl">
           <p className="eyebrow">{t.eyebrow}</p>
@@ -79,7 +79,7 @@ export function Pilares() {
           </h2>
         </div>
 
-        <ul className="mt-16 grid grid-cols-1 gap-5 md:grid-cols-3">
+        <ul className="mt-10 grid md:mt-16 grid-cols-1 gap-5 md:grid-cols-3">
           {t.pilares.map((p, i) => {
             const Icono = ICONOS[i]
             return (
@@ -105,9 +105,9 @@ export function Pilares() {
                   <span className="font-mono text-caption text-disabled">0{i + 1}</span>
                 </div>
 
-                <h3 className="relative mt-8 text-balance font-display text-h3 text-display">{p.titulo}</h3>
-                <p className="relative mt-3 flex-1 text-pretty text-body-sm text-muted">{p.texto}</p>
-                <p className="relative mt-8 border-t border-border pt-4 font-mono text-micro uppercase text-accent-text">
+                <h3 className="relative mt-6 text-balance md:mt-8 font-display text-h3 text-display">{p.titulo}</h3>
+                <p className="relative mt-3 hidden flex-1 text-pretty text-body-sm text-muted md:block">{p.texto}</p>
+                <p className="relative mt-5 border-t md:mt-8 border-border pt-4 font-mono text-micro uppercase text-accent-text">
                   {p.prueba}
                 </p>
               </li>
