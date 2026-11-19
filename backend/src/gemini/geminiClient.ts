@@ -13,7 +13,7 @@ import {
 import { asegurarIdioma, buildTranslationPrompt, type Traductor } from "./idiomaSalida.js";
 import { log } from "../utils/logger.js";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.5-flash";
 const DEFAULT_MAX_INPUT_CHARS = 12000;
 const DEFAULT_TIMEOUT_MS = 180_000;
 

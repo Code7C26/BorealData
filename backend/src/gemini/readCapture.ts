@@ -1,4 +1,4 @@
-import { Type } from "@google/genai";
+import { ThinkingLevel, Type } from "@google/genai";
 import { getClient } from "./geminiClient.js";
 import {
   KNOWN_PLATFORMS,
@@ -21,8 +21,8 @@ import {
  * revise/corrija y recién después se verifique (POST /analyze/content).
  */
 
-/** Modelo del paso 1. Es OCR + extracción: con `gemini-2.5-flash-lite` sale más barato si la calidad alcanza. */
-const DEFAULT_READ_MODEL = "gemini-2.5-flash";
+/** Modelo del paso 1. Es OCR + extracción: con `gemini-3.5-flash-lite` sale más barato si la calidad alcanza. */
+const DEFAULT_READ_MODEL = "gemini-3.5-flash";
 const DEFAULT_READ_TIMEOUT_MS = 45_000;
 /** Mismo tope que `maxInputChars` de callGemini: más largo que eso se recortaría igual en el paso 2. */
 const MAX_TRANSCRIPT_CHARS = 12_000;
@@ -175,8 +175,14 @@ export async function readCapture(
         responseMimeType: "application/json",
         responseSchema: READ_SCHEMA,
         // Transcribir no requiere razonar: sin "thinking" es más rápido y más barato.
-        ...(/flash/i.test(model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-        temperature: 0,
+        // Gemini 2.x apaga el thinking con thinkingBudget: 0; desde Gemini 3 el control es
+        // thinkingLevel y lo mínimo es "minimal". En 3.x Google recomienda dejar la
+        // temperatura en su default (1.0): bajarla puede provocar respuestas en loop.
+        ...(/^gemini-2/i.test(model)
+          ? { thinkingConfig: { thinkingBudget: 0 }, temperature: 0 }
+          : /flash/i.test(model)
+            ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } }
+            : {}),
         httpOptions: { timeout: timeoutMs },
       },
     });

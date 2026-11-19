@@ -71,7 +71,7 @@ fuentes consultadas (con su postura) y el tono del contenido.
 |---|---|---|
 | API | Node.js 24 + Express 5 + TypeScript 7 | `tsx` en desarrollo, `tsc` para el build, Vitest para tests |
 | Scraping | Cheerio + Puppeteer | Cheerio primero; Puppeteer (Chromium headless) si la página necesita JavaScript |
-| IA | Gemini (`@google/genai`) | `gemini-2.5-flash` con grounding vía Google Search; el mismo modelo lee las capturas (configurable con `GEMINI_READ_MODEL`) |
+| IA | Gemini (`@google/genai`) | `gemini-3.5-flash` con grounding vía Google Search; el mismo modelo lee las capturas (configurable con `GEMINI_READ_MODEL`) |
 | Base de datos | PostgreSQL (`pg`) | Postgres 15 en Docker en producción y Postgres local en desarrollo, con Row Level Security. Cloud SQL soportado vía connector |
 | Autenticación | Firebase Authentication | Google y email/contraseña; el backend verifica el ID token con `firebase-admin` |
 
@@ -246,7 +246,7 @@ automáticamente. Referencia completa en [`.env.example`](.env.example).
 | `CORS_ORIGIN` | Orígenes de la web, separados por coma y sin ruta |
 | `FIREBASE_PROJECT_ID` | Verificación de tokens. Sin este valor, las rutas autenticadas responden 401 |
 | `GEMINI_API_KEY` | API de Gemini |
-| `GEMINI_READ_MODEL` | Opcional. Vacía usa `gemini-2.5-flash` |
+| `GEMINI_READ_MODEL` | Opcional. Vacía usa `gemini-3.5-flash` |
 | `NEXT_PUBLIC_*` | Los mismos valores que los build args de la web |
 
 ### 3. Base de datos
