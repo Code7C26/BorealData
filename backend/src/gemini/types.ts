@@ -96,7 +96,7 @@ export function normalizeVerdict(
 }
 
 export interface GeminiOptions {
-  /** Modelo de Gemini a usar. Default: "gemini-2.5-flash". */
+  /** Modelo de Gemini a usar. Default: "gemini-3.5-flash". */
   model?: string;
   /** Máximo de caracteres del texto que se manda en el prompt (recorta artículos muy largos). */
   maxInputChars?: number;
