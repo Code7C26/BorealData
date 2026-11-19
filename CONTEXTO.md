@@ -16,11 +16,11 @@ producto y pendientes. El detalle técnico está en
 | Empresa | Boreal Data |
 | Producto | AletheIA |
 | Concepto | Detector de noticias falsas con IA: veredicto, nivel de confianza, fuentes y razonamiento |
-| Superficies | Web, extensión de Chrome y app móvil (iOS y Android) |
+| Superficies | Web (instalable como PWA en iOS y Android) y extensión de Chrome |
 | Marco | Proyecto final de secundaria — FAT 7C 2026 |
 | Docente | Tamara Piccinni |
 | Entregas | MVP: mediados de noviembre de 2026. Presentación final: diciembre de 2026 |
-| Equipo | Ciro Di Marsico (backend, IA, infraestructura) y Renzo Lanata (frontend, extensión, app móvil, diseño) |
+| Equipo | Ciro Di Marsico (backend, IA, infraestructura) y Renzo Lanata (frontend, extensión, diseño) |
 | Repositorio | [github.com/Code7C26/BorealData](https://github.com/Code7C26/BorealData) |
 | Producción | [aletheiainc.online](https://aletheiainc.online) |
 | Extensión | [Chrome Web Store](https://chromewebstore.google.com/detail/djnafnjbmkdkmigadknjhbckdhklhoeh) |
@@ -34,7 +34,7 @@ producto y pendientes. El detalle técnico está en
 | Web | En producción en `aletheiainc.online`. Verificación por enlace, texto, pregunta o captura; historial, perfil, configuración, páginas legales; castellano e inglés; modo claro y oscuro. |
 | Extensión de Chrome | Publicada en la Chrome Web Store. Side panel, menú contextual y captura de redes sociales. Usa la sesión de la web. |
 | Backend | En producción detrás de Traefik (`aletheiainc.online/api`). Gemini con grounding, scraping con extracción del cuerpo de la nota, caché por URL e idioma, rate limit y Row Level Security. |
-| App móvil | Funcional con Expo Go (enlace, texto, pregunta, captura, historial, perfil). Sin publicar en las tiendas. |
+| App en el celular | PWA: la misma web se instala desde `/instalar`. La app nativa con Expo se descartó. |
 | Base de datos | Postgres 15 en el stack de Docker Swarm. |
 | Tests | Vitest: 84 en el backend y 13 en la web. |
 
@@ -48,7 +48,6 @@ Resumen; la versión detallada está en el [README](README.md#stack-tecnológico
 |---|---|
 | Web | Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 |
 | Extensión | WXT + Manifest V3 + React (side panel) |
-| App móvil | Expo SDK 58 + React Native 0.88 + Expo Router |
 | Backend | Node.js 24 + Express 5 + TypeScript 7 |
 | IA | Gemini 2.5 Flash con grounding vía Google Search |
 | Datos | PostgreSQL con Row Level Security |
@@ -148,11 +147,11 @@ El índice completo está en [docs/README.md](docs/README.md).
 
 ## 8. Pendientes
 
-- **Migraciones en producción:** confirmar que `migrate-question.ts` está aplicada en la
-  base del servidor. Sin ella, los análisis de tipo pregunta se muestran pero no se
+- **Migraciones en producción:** correr `migrate-share.ts` (habilita compartir capturas,
+  textos y preguntas; sin ella el botón responde "No pudimos compartirlo") y confirmar que
+  `migrate-question.ts` está aplicada en la base del servidor. Sin ella, los análisis de tipo pregunta se muestran pero no se
   guardan en el historial.
-- **App móvil:** compilarla con EAS, publicarla y recibir contenido compartido desde
-  otras apps (intent `ACTION_SEND`).
+- **PWA:** recibir contenido compartido desde otras apps del teléfono (Web Share Target).
 - **Rate limit:** el contador vive en memoria; si el backend pasa a varias instancias,
   debe trasladarse a Postgres.
 - **Dependencias:** hay actualizaciones menores y de parche disponibles en los cuatro

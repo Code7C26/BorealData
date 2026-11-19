@@ -46,12 +46,17 @@ export interface AnalyzeResponse {
   sources: AnalysisSource[]
   toneFlags: string[]
   /**
-   * false cuando el análisis NO tiene página pública en /resultado/:id, aunque
-   * tenga `id`. Lo manda POST /analyze/content: el análisis de una imagen que
-   * subió una persona no se le sirve a otra (ver getAnalysisById en el
-   * backend), así que ofrecer "Compartir verificación" ahí daría un link roto.
+   * false para contenido del cliente (lo manda POST /analyze/content): nace privado
+   * y su dueño lo publica al tocar "Compartir verificación". Ver `isPublic`.
    */
   shareable?: boolean
+  /**
+   * Si el link /resultado/:id lo abre cualquiera sin cuenta. Solo lo manda GET
+   * /analyses/:id: los de enlace siempre lo son; capturas, textos y preguntas, recién
+   * después de que su dueño tocó "Compartir verificación" (POST /analyses/:id/share).
+   * Sin el campo, se deduce de `shareable` (ver estaPublicado en result-card.tsx).
+   */
+  isPublic?: boolean
   /**
    * Idioma en que escribió Gemini. Falta en el análisis de ejemplo y en resultados
    * antiguos guardados en sessionStorage; el backend lo envía siempre ('es' para las

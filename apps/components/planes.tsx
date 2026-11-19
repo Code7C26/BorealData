@@ -41,7 +41,7 @@ const TEXTOS = traducciones({
           '150 análisis por mes',
           'Enlaces, textos e imágenes',
           'Veredicto, confianza y fuentes con su postura',
-          'Extensión de Chrome y app móvil',
+          'Extensión de Chrome y app para el celular',
         ],
       },
       premium: {
@@ -83,7 +83,7 @@ const TEXTOS = traducciones({
           '150 analyses per month',
           'Links, text and images',
           'Verdict, confidence and sources with their stance',
-          'Chrome extension and mobile app',
+          'Chrome extension and phone app',
         ],
       },
       premium: {

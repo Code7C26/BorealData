@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Check, ExternalLink, Share2 } from 'lucide-react'
-import type { AnalysisSource, AnalyzeResponse } from '@/lib/api'
+import { apiFetch, type AnalysisSource, type AnalyzeResponse } from '@/lib/api'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { useVocabulario } from '@/lib/use-vocabulario'
@@ -19,6 +19,9 @@ const TEXTOS = traducciones({
     compartir: 'Compartir verificación',
     copiaManual: 'No se pudo copiar solo. Copiá el enlace de acá:',
     enlace: 'Enlace de la verificación',
+    compartiendo: 'Compartiendo…',
+    ahoraPublico: 'Cualquiera con el enlace va a poder ver este análisis.',
+    noSePudoCompartir: 'No pudimos compartirlo. Probá de nuevo en unos segundos.',
   },
   en: {
     fuentes: 'Sources checked',
@@ -28,6 +31,9 @@ const TEXTOS = traducciones({
     compartir: 'Share this check',
     copiaManual: "Couldn't copy it automatically. Copy the link from here:",
     enlace: 'Link to this check',
+    compartiendo: 'Sharing…',
+    ahoraPublico: 'Anyone with the link will be able to see this analysis.',
+    noSePudoCompartir: "We couldn't share it. Try again in a few seconds.",
   },
 })
 
@@ -218,11 +224,15 @@ export function ResultCard({
           {/* En la web el razonamiento no se pide: está ahí. El botón de "ver
               razonamiento completo" quedó solo en la extensión, donde sí lleva
               a otro lado (abre la pestaña de AletheIA). */}
-          {/* `shareable: false` lo manda /analyze/content: el análisis existe y
-              tiene id, pero /resultado/:id no lo sirve (salió de algo privado).
-              Ofrecer el botón ahí sería copiar un link roto. */}
-          {analysis.shareable !== false && (
-            <BotonCompartir id={analysis.id} className="md:w-auto" />
+          {/* Con id se puede compartir cualquier análisis: si es privado (captura,
+              texto, pregunta), el botón lo publica antes de copiar el link. Sin id
+              solo se ofrece si no es contenido privado: copia la URL actual. */}
+          {(analysis.id || analysis.shareable !== false) && (
+            <BotonCompartir
+              id={analysis.id}
+              publicado={estaPublicado(analysis)}
+              className="md:w-auto"
+            />
           )}
         </footer>
       )}
@@ -301,20 +311,65 @@ function SourceRow({ source }: { source: AnalysisSource }) {
 }
 
 /**
+ * Si /resultado/:id ya lo abre cualquiera. `isPublic` solo viene de GET /analyses/:id;
+ * sin él, `shareable: false` (lo manda /analyze/content) es contenido privado, y todo lo
+ * demás es un análisis de enlace, que siempre es público.
+ */
+function estaPublicado(analysis: AnalyzeResponse): boolean {
+  return analysis.isPublic ?? analysis.shareable !== false
+}
+
+/**
  * Copia el link público de la verificación (/resultado/:id), que se abre sin
  * cuenta — es la forma en que un análisis sale de la app. Sin id (el ejemplo
  * precargado, o un análisis que no se llegó a guardar) cae a la URL actual en
  * vez de armar un link roto.
+ *
+ * Si el análisis todavía es privado (captura, texto, pregunta), primero lo publica
+ * (POST /analyses/:id/share): sin eso el link le da "No encontrado" a cualquier otra
+ * persona. Un privado solo lo ve su dueño, así que siempre hay sesión para hacerlo.
  */
-function BotonCompartir({ id, className }: { id?: string | null; className?: string }) {
+function BotonCompartir({
+  id,
+  publicado: publicadoInicial,
+  className,
+}: {
+  id?: string | null
+  publicado: boolean
+  className?: string
+}) {
   const [copiado, setCopiado] = useState(false)
   /** El link que no se pudo copiar solo: se muestra para copiarlo a mano. */
   const [sinCopiar, setSinCopiar] = useState<string | null>(null)
+  const [publicado, setPublicado] = useState(publicadoInicial)
+  /** Se publicó en este click: se avisa que ahora lo ve cualquiera con el link. */
+  const [recienPublicado, setRecienPublicado] = useState(false)
+  const [publicando, setPublicando] = useState(false)
+  const [error, setError] = useState(false)
   const t = useTextos(TEXTOS)
 
   const compartir = async () => {
     if (typeof window === 'undefined') return
     const link = id ? `${window.location.origin}/resultado/${id}` : window.location.href
+    setError(false)
+
+    if (id && !publicado) {
+      setPublicando(true)
+      try {
+        await apiFetch(`/analyses/${id}/share`, { method: 'POST' })
+        setPublicado(true)
+        setRecienPublicado(true)
+      } catch {
+        // Nunca copiar un link que no se va a poder abrir.
+        setError(true)
+        return
+      } finally {
+        setPublicando(false)
+      }
+    }
+
+    // Después de esperar al servidor, Safari puede negar el portapapeles (ya no cuenta
+    // como gesto del usuario): en ese caso cae al campo para copiar a mano.
     if (await copiarAlPortapapeles(link)) {
       setSinCopiar(null)
       setCopiado(true)
@@ -329,8 +384,18 @@ function BotonCompartir({ id, className }: { id?: string | null; className?: str
   return (
     // Con el link a la vista ocupa todo el ancho: un enlace cortado no se copia bien.
     <div className={cn('flex w-full flex-col gap-2', !sinCopiar && className)}>
-      <button type="button" onClick={compartir} className="btn-secondary w-full md:w-auto">
-        {copiado ? (
+      <button
+        type="button"
+        onClick={compartir}
+        disabled={publicando}
+        className="btn-secondary w-full md:w-auto"
+      >
+        {publicando ? (
+          <>
+            <Share2 aria-hidden="true" size={16} />
+            {t.compartiendo}
+          </>
+        ) : copiado ? (
           <>
             <Check aria-hidden="true" size={16} className="text-verdict-verificado" />
             {t.copiado}
@@ -355,6 +420,14 @@ function BotonCompartir({ id, className }: { id?: string | null; className?: str
             className="field-input font-mono text-caption tracking-normal"
           />
         </label>
+      )}
+      {recienPublicado && (
+        <p className="text-caption tracking-normal text-muted">{t.ahoraPublico}</p>
+      )}
+      {error && (
+        <p role="alert" className="text-caption tracking-normal text-verdict-falso">
+          {t.noSePudoCompartir}
+        </p>
       )}
     </div>
   )
