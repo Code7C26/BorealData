@@ -24,7 +24,7 @@ const TEXTOS = traducciones({
       {
         pregunta: '¿Qué puedo analizar hoy?',
         respuesta:
-          'Enlaces de notas periodísticas: pegás la dirección y AletheIA se encarga del resto. El análisis de texto pegado a mano está en camino.',
+          'Enlaces de notas, capturas e imágenes (un posteo, una cadena de WhatsApp) y preguntas o rumores escritos con tus palabras, como "¿es verdad que…?". Desde la extensión de Chrome también podés verificar un texto que selecciones en cualquier página.',
       },
       {
         pregunta: '¿Cómo llega AletheIA a un veredicto?',
@@ -34,7 +34,7 @@ const TEXTOS = traducciones({
       {
         pregunta: '¿El veredicto es definitivo?',
         respuesta:
-          'No, y es a propósito. AletheIA muestra en qué se basó para que puedas revisarlo vos: las fuentes están enlazadas, los pasos están a la vista y la decisión sigue siendo tuya.',
+          'No, y es a propósito. AletheIA muestra en qué se basó para que puedas revisarlo vos: las fuentes que encontramos están enlazadas, los pasos están a la vista y la decisión sigue siendo tuya.',
       },
       {
         pregunta: '¿Hay algo para el navegador?',
@@ -60,7 +60,7 @@ const TEXTOS = traducciones({
       {
         pregunta: 'What can I analyze today?',
         respuesta:
-          'Links to news articles: paste the address and AletheIA takes care of the rest. Analysis of manually pasted text is on its way.',
+          'Links to articles, screenshots and images (a post, a WhatsApp chain) and questions or rumors in your own words, like "is it true that…?". With the Chrome extension you can also check any text you select on a page.',
       },
       {
         pregunta: 'How does AletheIA reach a verdict?',
@@ -70,7 +70,7 @@ const TEXTOS = traducciones({
       {
         pregunta: 'Is the verdict final?',
         respuesta:
-          'No, and that is on purpose. AletheIA shows what it based its verdict on so you can review it yourself: the sources are linked, the steps are in plain sight and the decision is still yours.',
+          'No, and that is on purpose. AletheIA shows what it based its verdict on so you can review it yourself: the sources we found are linked, the steps are in plain sight and the decision is still yours.',
       },
       {
         pregunta: 'Is there something for the browser?',
@@ -88,7 +88,7 @@ export function Faq() {
   return (
     <section
       id="faq"
-      className="hidden border-t border-border px-gutter py-20 md:block md:px-6 md:py-40"
+      className="border-t border-border px-gutter py-20 md:px-6 md:py-40"
       aria-labelledby="faq-title"
     >
       <div className="mx-auto grid max-w-shell grid-cols-1 gap-8 md:gap-16 lg:grid-cols-[0.75fr_1.25fr]">

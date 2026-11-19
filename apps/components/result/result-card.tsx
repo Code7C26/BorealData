@@ -6,6 +6,7 @@ import type { AnalysisSource, AnalyzeResponse } from '@/lib/api'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { useVocabulario } from '@/lib/use-vocabulario'
+import { separarFuentes } from '@/lib/fuentes'
 import { normalize } from '@/lib/verdict'
 import { cn } from '@/lib/utils'
 import { ConfidenceMeter } from './confidence-meter'
@@ -13,6 +14,9 @@ import { ConfidenceMeter } from './confidence-meter'
 const TEXTOS = traducciones({
   es: {
     fuentes: 'Fuentes consultadas',
+    sinEnlace: (n: number) => `Mencionadas sin enlace (${n})`,
+    sinEnlaceAclaracion:
+      'El análisis las cita, pero la búsqueda no devolvió un enlace que las respalde. Tomalas como una pista para buscar, no como prueba.',
     razonamiento: 'Razonamiento resumido',
     verPasos: (n: number) => `Ver los ${n} pasos`,
     copiado: 'Enlace copiado',
@@ -22,6 +26,9 @@ const TEXTOS = traducciones({
   },
   en: {
     fuentes: 'Sources checked',
+    sinEnlace: (n: number) => `Mentioned without a link (${n})`,
+    sinEnlaceAclaracion:
+      'The analysis cites them, but the search returned no link backing them. Treat them as a lead to look into, not as proof.',
     razonamiento: 'Reasoning summary',
     verPasos: (n: number) => `See all ${n} steps`,
     copiado: 'Link copied',
@@ -100,6 +107,7 @@ export function ResultCard({
   const pasos = analysis.reasoning
   const hayPasosOcultos = pasos.length > PASOS_VISIBLES_MOBILE
   const enlace = enlaceDeLaNota(analysis.url)
+  const { conEnlace, sinEnlace } = separarFuentes(analysis.sources, enlace)
 
   return (
     <article
@@ -163,18 +171,40 @@ export function ResultCard({
       {/* 3 · confianza */}
       <ConfidenceMeter verdict={verdict} confidence={confidence} />
 
-      {/* 4 · fuentes */}
+      {/* 4 · fuentes. Arriba, las que tienen un enlace real de la búsqueda (y el
+          origen de la afirmación). Las que el modelo nombró sin respaldo van aparte,
+          plegadas y apagadas: no pueden verse igual que las comprobables. */}
       {analysis.sources.length > 0 && (
         <section className="card-block gap-3.5">
-          <div className="flex items-baseline justify-between gap-4">
-            <h3 className="font-mono text-caption uppercase text-subtle">{t.fuentes}</h3>
-            <span className="font-mono text-caption text-subtle">{analysis.sources.length}</span>
-          </div>
-          <ul className="flex flex-col gap-2.5">
-            {analysis.sources.map((fuente, i) => (
-              <SourceRow key={`${fuente.domain}-${i}`} source={fuente} />
-            ))}
-          </ul>
+          {conEnlace.length > 0 && (
+            <>
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="font-mono text-caption uppercase text-subtle">{t.fuentes}</h3>
+                <span className="font-mono text-caption text-subtle">{conEnlace.length}</span>
+              </div>
+              <ul className="flex flex-col gap-2.5">
+                {conEnlace.map((fuente, i) => (
+                  <SourceRow key={`${fuente.domain}-${i}`} source={fuente} />
+                ))}
+              </ul>
+            </>
+          )}
+          {sinEnlace.length > 0 && (
+            <details className="group flex flex-col gap-2.5" open={conEnlace.length === 0}>
+              <summary className="cursor-pointer list-none font-mono text-caption uppercase text-subtle transition-colors duration-150 ease-boreal hover:text-ink [&::-webkit-details-marker]:hidden">
+                <span aria-hidden="true" className="mr-1.5 inline-block transition-transform duration-150 group-open:rotate-90">
+                  ›
+                </span>
+                {t.sinEnlace(sinEnlace.length)}
+              </summary>
+              <p className="mt-2.5 text-caption tracking-normal text-muted">{t.sinEnlaceAclaracion}</p>
+              <ul className="mt-2.5 flex flex-col gap-2.5 opacity-75">
+                {sinEnlace.map((fuente, i) => (
+                  <SourceRow key={`${fuente.domain}-sin-${i}`} source={fuente} />
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
       )}
 
