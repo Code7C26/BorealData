@@ -14,12 +14,14 @@ import { assertSafeAnalyzeUrl } from "../utils/validateUrl.js";
 import { stripControlChars } from "../utils/sanitize.js";
 import { INVALID_LANGUAGE_ERROR, parseLanguage } from "../gemini/types.js";
 import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
+import { consumirCupo, respuestaCupoAgotado } from "../plan/controlDeCupo.js";
 import { cronometro, log, mensajeDeError, resumenDeFuentes } from "../utils/logger.js";
 
 const MAX_URL_LENGTH = 2048;
 
 // El rate limiter (20 análisis nuevos/hora por usuario) vive en utils/analyzeLimiter.ts y se
 // comparte con /analyze/content: las dos gastan el mismo recurso caro (Gemini con grounding).
+// Lo mismo el cupo del plan (plan/controlDeCupo.ts: por día o por mes), que vive en Postgres.
 
 /** Forma de la respuesta 200 de /analyze, a partir de una fila ya guardada (cache hit). */
 function responseFromCached(cached: AnalysisHistoryItem, id: string | null = cached.id) {
@@ -53,7 +55,9 @@ const router = Router();
  * inválido/expiró) -> upsertUser() para resolver el id interno del usuario -> caché por
  * URL exacta (ver getAnalysisForUserByUrl/getLatestAnalysisByUrl más abajo) -> si no hubo
  * cache hit, rate limit por uid (ver analyzeRateLimiter, corta con 429 si ya gastó su
- * cupo de análisis nuevos en la última hora) -> scrapeUrl() -> analyzeContent() -> guarda
+ * cupo de análisis nuevos en la última hora) -> cupo del plan, por día o por mes
+ * (consumirCupo: 429 con `code: "cupo_agotado"`, y se devuelve si el análisis falla) -> scrapeUrl() ->
+ * analyzeContent() -> guarda
  * en Postgres -> responde con el resultado combinado. Solo se guardan los análisis
  * exitosos (200); si el guardado falla no se rompe la respuesta (ver saveAnalysis).
  *
@@ -102,6 +106,9 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     return res.status(400).json({ error: urlSafety.reason });
   }
 
+  // Se reemplaza al consumir el cupo; si algo falla después, el catch lo devuelve.
+  let devolverCupo: () => Promise<void> = async () => {};
+
   try {
     // req.user siempre existe acá: requireAuth ya cortó la request con 401 si no.
     const userId = await upsertUser(req.user!.uid, req.user!.email);
@@ -132,9 +139,18 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
+    // Recién acá, sin acierto de caché: lo que se sirve de la caché no gasta Gemini.
+    const cupo = await consumirCupo(uid, userId);
+    if (!cupo.permitido) {
+      log.warn("analyze.cupoAgotado", { uid, url, plan: cupo.plan, limite: cupo.limite });
+      return res.status(429).json(respuestaCupoAgotado(cupo));
+    }
+    devolverCupo = cupo.devolver;
+
     const scraped = await scrapeUrl(url);
 
     if (!scraped.success) {
+      await devolverCupo();
       log.warn("analyze.scrapeFallido", { uid, url, latencyMs: reloj() });
       return res.status(422).json({
         error: "No se pudo extraer contenido de la URL.",
@@ -145,6 +161,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
     const analysis = await analyzeContent(scraped, { language });
 
     if (!analysis.success) {
+      await devolverCupo();
       log.error("analyze.geminiFallido", {
         uid,
         url,
@@ -198,6 +215,7 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       language,
     });
   } catch (err) {
+    await devolverCupo();
     log.error("analyze.error", { uid, url, detail: mensajeDeError(err), latencyMs: reloj() });
     return res.status(500).json({
       error: "Error inesperado en /analyze.",

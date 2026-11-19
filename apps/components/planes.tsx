@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Check, Clock } from 'lucide-react'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
+import { CUPOS, PRECIO_PREMIUM_ARS, type IdPlan } from '@/lib/plan'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { cn } from '@/lib/utils'
 
@@ -11,15 +12,21 @@ import { cn } from '@/lib/utils'
    Fuente: docs/negocio/viabilidad-comercial.md, §1.4 (Freemium + SaaS).
 
    Criterio (12-nov-2026): el Gratuito es una herramienta completa —enlaces E
-   imágenes, veredicto, confianza y fuentes— con un tope mensual. Premium no le
+   imágenes, veredicto, confianza y fuentes— con un tope diario. Premium no le
    saca nada al Gratuito: suma volumen, velocidad y herramientas de trabajo.
    Institucional no va como tercera columna: es una venta conversada, así que
-   vive en una franja corta debajo de las dos tarjetas.
+   vive en una franja corta debajo de las dos tarjetas, sin precio (a medida).
+
+   Cupos y precio de Premium salen de lib/plan.ts, espejo del backend
+   (backend/src/plan/config.ts): son los que el backend aplica de verdad.
+   Lo que todavía no existe va en `proximamente`, marcado como tal: la landing no
+   promete nada que el producto no haga (auditoría del 19-nov-2026).
    ───────────────────────────────────────────────────────────────────────────── */
 const MONEDA = 'ARS'
-const PRECIOS = { gratuito: 0, premium: 6999, institucional: 180000 } as const
+// Institucional no tiene precio: se negocia con cada institución (cuentas,
+// volumen de análisis y soporte) y es un sistema dedicado a ella.
+const PRECIOS: Record<IdPlan, number> = { gratuito: 0, premium: PRECIO_PREMIUM_ARS }
 
-type IdPlan = 'gratuito' | 'premium'
 const ORDEN: IdPlan[] = ['gratuito', 'premium']
 const RECOMENDADO: IdPlan = 'premium'
 
@@ -31,6 +38,7 @@ const TEXTOS = traducciones({
     porMes: '/ mes',
     masPopular: 'Más popular',
     enPesos: 'Precios finales en pesos argentinos.',
+    proximamente: 'Próximamente',
     planes: {
       gratuito: {
         nombre: 'Gratuito',
@@ -38,11 +46,13 @@ const TEXTOS = traducciones({
         cta: 'Crear cuenta gratis',
         encabezado: null,
         items: [
-          '150 análisis por mes',
+          `${CUPOS.gratuito.limite} análisis por día`,
           'Enlaces, textos e imágenes',
           'Veredicto, confianza y fuentes con su postura',
+          'Historial con búsqueda y filtros',
           'Extensión de Chrome y app móvil',
         ],
+        proximamente: [],
       },
       premium: {
         nombre: 'Premium',
@@ -50,10 +60,13 @@ const TEXTOS = traducciones({
         cta: 'Empezar con Premium',
         encabezado: 'Todo lo del Gratuito, y además:',
         items: [
-          'Análisis ilimitados',
+          `Hasta ${CUPOS.premium.limite} análisis por mes (uso justo)`,
+          'Sin anuncios',
+          'Baja en un paso, cuando quieras',
+        ],
+        proximamente: [
           'Procesamiento prioritario',
           'Informes en PDF y CSV',
-          'Historial completo con búsqueda y filtros',
           'Carpetas compartidas para trabajar en equipo',
         ],
       },
@@ -61,8 +74,8 @@ const TEXTOS = traducciones({
     institucional: {
       titulo: 'Institucional',
       texto:
-        'Todo lo de Premium para escuelas, medios y ONG: 3.000 análisis por mes, cuentas para todo el equipo, panel de control y soporte.',
-      desde: (precio: string) => `${precio} / mes`,
+        'Un sistema dedicado a cada escuela, medio u ONG: cuentas, volumen de análisis y soporte se definen con ustedes.',
+      precio: 'A medida',
       cta: 'Hablar con nosotros',
     },
   },
@@ -73,6 +86,7 @@ const TEXTOS = traducciones({
     porMes: '/ month',
     masPopular: 'Most popular',
     enPesos: 'Final prices in Argentine pesos.',
+    proximamente: 'Coming soon',
     planes: {
       gratuito: {
         nombre: 'Free',
@@ -80,11 +94,13 @@ const TEXTOS = traducciones({
         cta: 'Create a free account',
         encabezado: null,
         items: [
-          '150 analyses per month',
+          `${CUPOS.gratuito.limite} analyses per day`,
           'Links, text and images',
           'Verdict, confidence and sources with their stance',
+          'History with search and filters',
           'Chrome extension and mobile app',
         ],
+        proximamente: [],
       },
       premium: {
         nombre: 'Premium',
@@ -92,24 +108,25 @@ const TEXTOS = traducciones({
         cta: 'Start with Premium',
         encabezado: 'Everything in Free, plus:',
         items: [
-          'Unlimited analyses',
-          'Priority processing',
-          'PDF and CSV reports',
-          'Full history with search and filters',
-          'Shared folders for teamwork',
+          `Up to ${CUPOS.premium.limite} analyses per month (fair use)`,
+          'No ads',
+          'Cancel in one step, whenever you want',
         ],
+        proximamente: ['Priority processing', 'PDF and CSV reports', 'Shared folders for teamwork'],
       },
     },
     institucional: {
       titulo: 'Institutional',
       texto:
-        'Everything in Premium for schools, newsrooms and NGOs: 3,000 analyses per month, accounts for the whole team, a control panel and support.',
-      desde: (precio: string) => `${precio} / month`,
+        'A dedicated system for each school, newsroom or NGO: accounts, analysis volume and support are agreed with you.',
+      precio: 'Custom',
       cta: 'Talk to us',
     },
   },
 })
 
+// Premium: registro (o login, el link conserva el plan) y de ahí directo al checkout
+// de Mercado Pago (destinoTrasEntrar en lib/plan.ts).
 const HREF: Record<IdPlan, string> = {
   gratuito: '/registro',
   premium: '/registro?plan=premium',
@@ -199,6 +216,17 @@ export function Planes() {
                         {item}
                       </li>
                     ))}
+                    {plan.proximamente.map((item) => (
+                      <li key={item} className="flex items-start gap-3 text-body-sm text-subtle">
+                        <Clock aria-hidden="true" size={16} className="mt-[3px] shrink-0 text-disabled" />
+                        <span>
+                          {item}{' '}
+                          <span className="ml-1 whitespace-nowrap rounded-pill border border-border px-2 py-0.5 font-mono text-[0.625rem] uppercase text-subtle">
+                            {t.proximamente}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </li>
@@ -212,7 +240,7 @@ export function Planes() {
             <p className="flex flex-wrap items-baseline gap-x-3 font-display text-body-sm font-semibold text-display">
               {t.institucional.titulo}
               <span className="font-mono text-caption font-normal tracking-normal text-subtle">
-                {t.institucional.desde(formato(PRECIOS.institucional))}
+                {t.institucional.precio}
               </span>
             </p>
             <p className="text-body-sm text-muted">{t.institucional.texto}</p>

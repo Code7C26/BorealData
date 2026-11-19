@@ -18,6 +18,7 @@ const TEXTOS = traducciones({
     privacidad: 'Privacidad',
     terminos: 'Términos',
     contacto: 'Contacto',
+    baja: 'Botón de baja',
   },
   en: {
     inicioLogo: 'AletheIA — home',
@@ -26,6 +27,7 @@ const TEXTOS = traducciones({
     privacidad: 'Privacy',
     terminos: 'Terms',
     contacto: 'Contact',
+    baja: 'Cancellation button',
   },
 })
 
@@ -99,6 +101,9 @@ export default function LayoutInfo({ children }: { children: React.ReactNode }) 
             </Link>
             <Link href="/contacto" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
               {t.contacto}
+            </Link>
+            <Link href="/baja" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
+              {t.baja}
             </Link>
           </nav>
           <p className="font-mono text-micro uppercase text-disabled">© 2026 Boreal Data</p>

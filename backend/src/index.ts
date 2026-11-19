@@ -8,6 +8,8 @@ import analysesRouter from "./routes/analyses.js";
 import historyRouter from "./routes/history.js";
 import meRouter from "./routes/me.js";
 import statsRouter from "./routes/stats.js";
+import planRouter from "./routes/plan.js";
+import mercadoPagoRouter from "./routes/mercadoPago.js";
 
 const app = express();
 
@@ -33,6 +35,9 @@ app.use(analysesRouter);
 app.use(historyRouter);
 app.use(meRouter);
 app.use(statsRouter);
+app.use(planRouter);
+// El webhook llega servidor a servidor (sin Origin), así que CORS no lo afecta.
+app.use(mercadoPagoRouter);
 
 const PORT = Number(process.env.PORT) || 3000;
 

@@ -3,8 +3,46 @@ import { requireAuth } from "../auth/verifyAuth.js";
 import { deleteUserAccount, getUserProfile, upsertUser } from "../db/usersRepository.js";
 import { esFaltaDePermiso } from "../db/analysesRepository.js";
 import { stripControlChars } from "../utils/sanitize.js";
+import { getPlanDelUsuario } from "../db/planRepository.js";
+import { cancelarSuscripcion, mercadoPagoConfigurado } from "../mercadopago/cliente.js";
+import { planVigente } from "../plan/cupo.js";
+import type { Plan } from "../plan/config.js";
+import { log, mensajeDeError } from "../utils/logger.js";
 
 const router = Router();
+
+/**
+ * Plan vigente para GET /me. Si la base todavía no tiene las columnas del plan (falta
+ * migrate-plan.ts) responde 'gratuito' en vez de romper el perfil entero.
+ */
+async function planDeLaCuenta(firebaseUid: string): Promise<Plan> {
+  try {
+    const estado = await getPlanDelUsuario(firebaseUid);
+    return estado ? planVigente(estado) : "gratuito";
+  } catch (err) {
+    log.warn("me.sinPlan", { uid: firebaseUid, detail: mensajeDeError(err) });
+    return "gratuito";
+  }
+}
+
+/**
+ * Cancela en Mercado Pago la suscripción vigente, si la hay. Best-effort a medias: si falta
+ * la migración del plan no hay nada que cancelar y sigue; si Mercado Pago falla, tira el
+ * error y la cuenta NO se borra (mejor que la persona reintente a que le sigan cobrando).
+ */
+async function cancelarSuscripcionSiHay(firebaseUid: string): Promise<void> {
+  let estado;
+  try {
+    estado = await getPlanDelUsuario(firebaseUid);
+  } catch (err) {
+    log.warn("me.delete.sinPlan", { uid: firebaseUid, detail: mensajeDeError(err) });
+    return;
+  }
+  if (!estado?.mpPreapprovalId || planVigente(estado) !== "premium") return;
+  if (!mercadoPagoConfigurado()) return;
+  await cancelarSuscripcion(estado.mpPreapprovalId);
+  log.info("me.delete.suscripcionCancelada", { uid: firebaseUid, preapprovalId: estado.mpPreapprovalId });
+}
 
 const MAX_FULL_NAME_LENGTH = 200;
 
@@ -26,7 +64,9 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
     }
 
     const profile = await getUserProfile(req.user!.uid);
-    return res.status(200).json(profile);
+    // `plan` (el vigente, ya resuelto el vencimiento) es lo que usa el front para decidir,
+    // por ejemplo, si mostrar anuncios: Premium va sin anuncios.
+    return res.status(200).json(profile ? { ...profile, plan: await planDeLaCuenta(req.user!.uid) } : profile);
   } catch (err) {
     return res.status(500).json({
       error: "No se pudo obtener el perfil.",
@@ -103,6 +143,10 @@ router.delete("/me", requireAuth, async (req: Request, res: Response) => {
       // Para el cliente es un éxito, que es lo único que le importa saber.
       return res.status(200).json({ deleted: true, analyses: 0 });
     }
+
+    // Si paga Premium, primero se cancela el cobro: borrar la cuenta sin cancelarlo
+    // dejaría a Mercado Pago cobrando una suscripción que ya no tiene dueño.
+    await cancelarSuscripcionSiHay(req.user!.uid);
 
     const { analyses } = await deleteUserAccount(req.user!.uid, userId);
     return res.status(200).json({ deleted: true, analyses });

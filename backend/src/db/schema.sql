@@ -254,3 +254,100 @@ CREATE INDEX IF NOT EXISTS analyses_url_language_idx ON analyses (url, language)
 --
 -- La CHECK de source_type de más arriba ya incluye 'question'. Para una base que ya existe,
 -- correr `backend/migrate-question.ts`, que la reemplaza sin tocar ninguna fila.
+
+-- ── Plan pago (Premium) y cupo de análisis ────────────────────
+-- El plan Gratuito tiene un tope de análisis por DÍA y Premium un "uso justo" por MES
+-- (los números viven en backend/src/plan/config.ts, no acá). Premium se cobra con una
+-- suscripción de Mercado Pago (preapproval); el webhook la sincroniza (ver
+-- routes/mercadoPago.ts).
+--   `plan`               'gratuito' | 'premium'. Default 'gratuito': nadie paga sin pasar
+--                        por Mercado Pago.
+--   `plan_desde`         cuándo empezó el Premium vigente: abre los 10 días del botón de
+--                        arrepentimiento.
+--   `plan_hasta`         hasta cuándo está pago. Premium vale mientras plan_hasta > now():
+--                        si un cobro falla y el webhook nunca llega, la cuenta se baja sola.
+--   `mp_preapproval_id`  la suscripción de Mercado Pago de este usuario (la última que
+--                        inició). El webhook solo aplica cambios si coincide: el aviso tardío
+--                        de una suscripción vieja nunca pisa la nueva.
+-- Se aplica con el dueño de la tabla (ver migrate-plan.ts). Re-corrible.
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS plan              text NOT NULL DEFAULT 'gratuito',
+  ADD COLUMN IF NOT EXISTS plan_desde        timestamptz,
+  ADD COLUMN IF NOT EXISTS plan_hasta        timestamptz,
+  ADD COLUMN IF NOT EXISTS mp_preapproval_id text;
+
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_plan_chk;
+ALTER TABLE users ADD CONSTRAINT users_plan_chk CHECK (plan IN ('gratuito', 'premium'));
+
+-- Un contador por usuario y período, en hora de Buenos Aires. `ventana` dice qué período
+-- es: 'dia' (Gratuito; `periodo` = ese día) o 'mes' (Premium; `periodo` = el día 1). Va
+-- en la clave porque el día 1 de un mes es a la vez un día y un mes.
+-- Solo cuentan los análisis que gastan Gemini: /analyze sin acierto de caché y
+-- /analyze/content. El backend suma con un único INSERT ... ON CONFLICT DO UPDATE ...
+-- WHERE analisis < tope, así dos pedidos simultáneos no pueden pasarse del tope.
+-- ON DELETE CASCADE: al borrar la cuenta (DELETE /me) se va con ella.
+CREATE TABLE IF NOT EXISTS uso_analisis (
+  user_id  uuid    NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  ventana  text    NOT NULL CHECK (ventana IN ('dia', 'mes')),
+  periodo  date    NOT NULL,
+  analisis integer NOT NULL DEFAULT 0 CHECK (analisis >= 0),
+  PRIMARY KEY (user_id, ventana, periodo)
+);
+
+-- Constancia de cada baja y de cada arrepentimiento (Disposición 954/2025): el `id` es
+-- el código que se le muestra a la persona. Sin FK a users a propósito: la constancia
+-- tiene que sobrevivir al borrado de la cuenta. `user_id` NULL = pedido hecho sin sesión
+-- (formulario público de /baja), que queda 'pendiente' para resolverlo a mano.
+CREATE TABLE IF NOT EXISTS solicitudes_plan (
+  id                uuid PRIMARY KEY,
+  user_id           uuid,
+  email             text,
+  tipo              text NOT NULL CHECK (tipo IN ('baja', 'arrepentimiento')),
+  estado            text NOT NULL CHECK (estado IN ('resuelta', 'pendiente')),
+  mp_preapproval_id text,
+  detalle           text,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.uso_analisis TO aletheia_app;
+GRANT SELECT, INSERT ON public.solicitudes_plan TO aletheia_app;
+
+ALTER TABLE uso_analisis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE solicitudes_plan ENABLE ROW LEVEL SECURITY;
+
+-- Mismo criterio que `analyses`: cada quien solo toca su propio contador.
+DROP POLICY IF EXISTS uso_analisis_select_own ON uso_analisis;
+CREATE POLICY uso_analisis_select_own ON uso_analisis
+  FOR SELECT
+  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+DROP POLICY IF EXISTS uso_analisis_insert_own ON uso_analisis;
+CREATE POLICY uso_analisis_insert_own ON uso_analisis
+  FOR INSERT
+  WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+DROP POLICY IF EXISTS uso_analisis_update_own ON uso_analisis;
+CREATE POLICY uso_analisis_update_own ON uso_analisis
+  FOR UPDATE
+  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
+  WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+DROP POLICY IF EXISTS uso_analisis_delete_own ON uso_analisis;
+CREATE POLICY uso_analisis_delete_own ON uso_analisis
+  FOR DELETE
+  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+-- Las constancias se leen solo las propias; se pueden crear propias o anónimas (user_id
+-- NULL, formulario sin sesión). Sin UPDATE ni DELETE: una constancia no se edita.
+DROP POLICY IF EXISTS solicitudes_plan_select_own ON solicitudes_plan;
+CREATE POLICY solicitudes_plan_select_own ON solicitudes_plan
+  FOR SELECT
+  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+DROP POLICY IF EXISTS solicitudes_plan_insert ON solicitudes_plan;
+CREATE POLICY solicitudes_plan_insert ON solicitudes_plan
+  FOR INSERT
+  WITH CHECK (
+    user_id IS NULL
+    OR user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+  );
