@@ -88,10 +88,10 @@ export function Faq() {
   return (
     <section
       id="faq"
-      className="border-t border-border px-gutter py-32 md:px-6 md:py-40"
+      className="hidden border-t border-border px-gutter py-20 md:block md:px-6 md:py-40"
       aria-labelledby="faq-title"
     >
-      <div className="mx-auto grid max-w-shell grid-cols-1 gap-16 lg:grid-cols-[0.75fr_1.25fr]">
+      <div className="mx-auto grid max-w-shell grid-cols-1 gap-8 md:gap-16 lg:grid-cols-[0.75fr_1.25fr]">
         <div>
           <p className="eyebrow">{t.eyebrow}</p>
           <h2 id="faq-title" className="mt-4 text-balance font-display text-h2-fluid text-display">
@@ -107,7 +107,7 @@ export function Faq() {
                 <button
                   onClick={() => setAbierta(abierto ? null : i)}
                   aria-expanded={abierto}
-                  className="flex w-full items-center justify-between gap-5 py-6 text-left font-display text-body font-semibold text-display"
+                  className="flex w-full items-center justify-between gap-5 py-5 text-left md:py-6 font-display text-body font-semibold text-display"
                 >
                   {item.pregunta}
                   <ChevronDown

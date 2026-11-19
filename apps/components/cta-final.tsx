@@ -27,7 +27,7 @@ export function CtaFinal() {
   const t = useTextos(TEXTOS)
 
   return (
-    <section className="relative isolate overflow-hidden px-gutter py-40 md:px-6">
+    <section className="relative isolate overflow-hidden px-gutter py-24 md:px-6 md:py-40">
       {/* Fundido arriba y abajo: sin esto la sección arranca con un corte duro
           contra la anterior. */}
       <div aria-hidden="true" className="fundido-vertical pointer-events-none absolute inset-0 -z-10 isolate">

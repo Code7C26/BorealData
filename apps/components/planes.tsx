@@ -130,7 +130,7 @@ export function Planes() {
   return (
     <section
       id="planes"
-      className="border-t border-border px-gutter py-24 md:px-6 md:py-32"
+      className="border-t border-border px-gutter py-20 md:px-6 md:py-32"
       aria-labelledby="planes-title"
     >
       <div className="mx-auto max-w-4xl">
@@ -141,7 +141,7 @@ export function Planes() {
           </h2>
         </div>
 
-        <ul className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <ul className="mt-10 grid md:mt-14 grid-cols-1 gap-6 md:grid-cols-2">
           {ORDEN.map((id) => {
             const plan = t.planes[id]
             const precio = PRECIOS[id]

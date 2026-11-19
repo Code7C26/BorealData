@@ -28,6 +28,7 @@ const TEXTOS = traducciones({
     agregar: 'Agregar a Chrome',
     crearCuenta: 'Crear cuenta',
     letraChica: 'Gratis · Chrome, Edge, Brave y otros Chromium en computadora',
+    bajadaCorta: 'Un panel al costado de la nota: veredicto y fuentes sin cambiar de pestaña.',
     insignia: 'Disponible en',
     insigniaTienda: 'Chrome Web Store',
   },
@@ -47,6 +48,7 @@ const TEXTOS = traducciones({
     agregar: 'Add to Chrome',
     crearCuenta: 'Create an account',
     letraChica: 'Free · Chrome, Edge, Brave and other Chromium browsers on desktop',
+    bajadaCorta: 'A panel next to the article: verdict and sources without switching tabs.',
     insignia: 'Available on the',
     insigniaTienda: 'Chrome Web Store',
   },
@@ -162,7 +164,7 @@ export function ExtensionSection() {
   return (
     <section
       id="extension"
-      className="relative isolate overflow-hidden border-t border-border px-gutter py-32 md:px-6 md:py-40"
+      className="relative isolate overflow-hidden border-t border-border px-gutter py-20 md:px-6 md:py-40"
       aria-labelledby="extension-title"
     >
       <div className="relative mx-auto grid max-w-shell grid-cols-1 items-center gap-14 lg:grid-cols-[0.95fr_1.05fr]">
@@ -180,12 +182,15 @@ export function ExtensionSection() {
             </span>
             {t.disponible}
           </a>
-          <h2 id="extension-title" className="mt-5 text-balance font-display text-h2-fluid text-display">
+          <h2 id="extension-title" className="mt-5 text-balance font-display text-[1.5rem] leading-[1.1] font-semibold tracking-[-0.02em] text-display md:text-h2-fluid">
             {t.titulo} <span className="text-aurora">{t.tituloDestacado}</span>
           </h2>
-          <p className="mt-4 max-w-texto text-pretty text-muted">{t.bajada}</p>
+          <p className="mt-3 max-w-texto text-pretty text-body-sm text-muted md:mt-4 md:text-body">
+            <span className="md:hidden">{t.bajadaCorta}</span>
+            <span className="hidden md:inline">{t.bajada}</span>
+          </p>
 
-          <ul className="mt-8 flex flex-col gap-4">
+          <ul className="mt-8 hidden flex-col gap-4 md:flex">
             {t.beneficios.map((b, i) => {
               const Icono = ICONOS_BENEFICIOS[i]
               return (
@@ -202,7 +207,7 @@ export function ExtensionSection() {
             })}
           </ul>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4">
+          <div className="mt-8 flex flex-wrap items-center gap-4 md:mt-10">
             <a href={URL_CHROME_WEB_STORE} target="_blank" rel="noopener noreferrer" className="btn-primary">
               <LogoChrome />
               {t.agregar}
@@ -212,10 +217,10 @@ export function ExtensionSection() {
               {t.crearCuenta}
             </Link>
           </div>
-          <p className="mt-4 font-mono text-micro uppercase text-disabled">{t.letraChica}</p>
+          <p className="mt-4 hidden font-mono text-micro uppercase text-disabled md:block">{t.letraChica}</p>
         </div>
 
-        <div className="relative">
+        <div className="relative hidden md:block">
           <MaquetaPanel />
           {/* La insignia de la tienda flotando sobre la maqueta: el mismo pedido que
               el botón, dicho como lo dice el resto de la web (sello, no banner). */}

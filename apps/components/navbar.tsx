@@ -104,7 +104,10 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuAbierto(false)}
-                className="rounded-lg px-3 py-3 text-body-sm font-medium text-muted transition-colors duration-150 ease-boreal hover:bg-surface hover:text-ink"
+                className={cn(
+                  link.href === '#faq' && 'max-md:hidden',
+                  'rounded-lg px-3 py-3 text-body-sm font-medium text-muted transition-colors duration-150 ease-boreal hover:bg-surface hover:text-ink',
+                )}
               >
                 {link.label}
               </a>
