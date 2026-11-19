@@ -16,7 +16,6 @@
 
 # Lo que la imagen del front no necesita
 backend/
-mobile/
 docs/
 design/
 assets/
