@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ArrowUpRight, Flag } from 'lucide-react'
 import { AnalisisInput } from '@/components/analisis-input'
 import { AuroraBoreal } from '@/components/aurora-boreal'
+import { AppBanner } from '@/components/app-banner'
 import { ExtensionBanner } from '@/components/extension-banner'
 import { apiFetch, type GlobalStats } from '@/lib/api'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
@@ -79,6 +80,7 @@ export default function DashboardPage() {
         <AnalisisInput />
 
         <ExtensionBanner />
+        <AppBanner />
 
         <RepartoDeVeredictos stats={stats} />
 

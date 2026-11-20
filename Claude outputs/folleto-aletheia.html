@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es-AR" data-theme="dark" data-size="a4">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aletheia — Folleto informativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+
+<!-- Tamaño de hoja: lo reescribe el botón A4/A5 -->
+<style id="page-size">@page { size: A4 portrait; margin: 0; }</style>
+
+<style>
+/* =========================================================
+   1. PALETA (Sistema de diseño AletheIA V1) + ROLES
+   ========================================================= */
+:root {
+  --noche: #0B100F;
+  --violeta: #7A5AF8;
+  --violeta-claro: #B9A4FF;
+  --luz-boreal: #F2E8D5;
+  --menta: #7FE0B8;      /* postura "respalda"  */
+  --coral: #FF9A86;      /* postura "contradice" */
+}
+
+/* Tema oscuro (identidad principal) */
+[data-theme="dark"] {
+  --bg: var(--noche);
+  --surface: rgba(242, 232, 213, 0.045);
+  --surface-strong: rgba(242, 232, 213, 0.075);
+  --border: rgba(185, 164, 255, 0.22);
+  --text: var(--luz-boreal);
+  --text-muted: #A9B3B0;
+  --accent: var(--violeta);
+  --accent-soft: var(--violeta-claro);
+  --icon-bg: rgba(122, 90, 248, 0.18);
+  --glow-1: rgba(122, 90, 248, 0.55);
+  --glow-2: rgba(185, 164, 255, 0.22);
+  --glow-3: rgba(242, 232, 213, 0.10);
+  --qr-card: #FFFFFF;
+  --qr-ink: var(--noche);
+  --respalda: var(--menta);
+  --contradice: var(--coral);
+}
+
+/* Tema claro (ahorro de tinta en impresoras hogareñas) */
+[data-theme="light"] {
+  --bg: #FBF8F2;
+  --surface: #FFFFFF;
+  --surface-strong: #F4EFFF;
+  --border: rgba(122, 90, 248, 0.25);
+  --text: var(--noche);
+  --text-muted: #4F5957;
+  --accent: var(--violeta);
+  --accent-soft: #5B3FD6;
+  --icon-bg: rgba(122, 90, 248, 0.12);
+  --glow-1: rgba(122, 90, 248, 0.20);
+  --glow-2: rgba(185, 164, 255, 0.25);
+  --glow-3: rgba(242, 232, 213, 0.9);
+  --qr-card: #FFFFFF;
+  --qr-ink: var(--noche);
+  --respalda: #138A5E;
+  --contradice: #C2412D;
+}
+
+/* =========================================================
+   2. BASE
+   ========================================================= */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+body {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background: #2a2f2e;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 12px 48px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================================================
+   3. HOJA (diseñada en A4: 210 × 297 mm)
+   ========================================================= */
+.sheet {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  isolation: isolate;
+}
+/* A5 = A4 × 0,7071: misma composición, escalada */
+[data-size="a5"] .sheet { zoom: 0.7071; }
+
+/* Fondo "aurora" (solo gradientes: imprime nítido, sin filtros) */
+.aurora {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(95mm 70mm at 92% 4%,  var(--glow-1), transparent 70%),
+    radial-gradient(120mm 60mm at 10% 38%, var(--glow-2), transparent 72%),
+    radial-gradient(90mm 70mm at 100% 78%, var(--glow-2), transparent 70%),
+    radial-gradient(110mm 55mm at 0% 104%, var(--glow-3), transparent 70%);
+}
+.aurora::after { /* franja boreal diagonal */
+  content: ""; position: absolute;
+  width: 260mm; height: 26mm; left: -30mm; top: 92mm;
+  transform: rotate(-9deg);
+  background: linear-gradient(90deg, transparent, var(--glow-2) 30%, var(--glow-1) 55%, transparent);
+  opacity: .55; border-radius: 50%;
+}
+
+/* Margen seguro de impresión: 14 mm */
+.content {
+  position: absolute; inset: 14mm;
+  display: flex; flex-direction: column;
+  gap: 5.2mm;
+}
+.content > * { flex-shrink: 0; }
+
+/* =========================================================
+   4. ENCABEZADO
+   ========================================================= */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brand { display: flex; align-items: center; gap: 3mm; }
+.brand svg { width: 11mm; height: 11mm; }
+.brand .veil { fill: var(--luz-boreal); }
+[data-theme="light"] .brand .veil { fill: var(--noche); }
+.brand-name {
+  font-family: "Archivo", sans-serif; font-weight: 800;
+  font-size: 19pt; letter-spacing: -0.02em; line-height: 1;
+}
+.brand-sub {
+  font-family: "IBM Plex Mono", monospace; font-size: 6.5pt; font-weight: 500;
+  letter-spacing: .22em; color: var(--text-muted); margin-top: 1.2mm;
+}
+.tag {
+  font-family: "IBM Plex Mono", monospace; font-size: 7pt; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase;
+  padding: 1.6mm 3.2mm; border-radius: 99px;
+  border: 1px solid var(--border); color: var(--accent-soft);
+  background: var(--surface);
+}
+
+.hero {
+  display: grid; grid-template-columns: 1fr 66mm; gap: 8mm; align-items: center;
+}
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace; font-size: 7.5pt; font-weight: 600;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--accent-soft);
+  margin-bottom: 3.5mm;
+}
+h1 {
+  font-family: "Archivo", sans-serif; font-weight: 900;
+  font-size: 34pt; line-height: .98; letter-spacing: -0.035em;
+}
+h1 em {
+  font-style: normal;
+  background: linear-gradient(95deg, var(--violeta-claro), var(--violeta) 70%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+[data-theme="light"] h1 em {
+  background: linear-gradient(95deg, var(--violeta), #4B2FC4);
+  -webkit-background-clip: text; background-clip: text;
+}
+.lead {
+  margin-top: 4mm; font-size: 10.8pt; line-height: 1.45;
+  color: var(--text-muted); max-width: 112mm;
+}
+.lead strong { color: var(--text); font-weight: 600; }
+
+/* Tarjeta de resultado (ilustrativa) */
+.result {
+  border-radius: 5mm; padding: 4.5mm;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px rgba(122,90,248,.08), 0 8mm 16mm -6mm var(--glow-1);
+}
+.result-label {
+  font-family: "IBM Plex Mono", monospace; font-size: 6pt; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.score { display: flex; align-items: center; gap: 3.5mm; margin: 3mm 0 3.5mm; }
+.score svg { width: 19mm; height: 19mm; flex: none; }
+.score-num {
+  font-family: "Archivo", sans-serif; font-weight: 800; font-size: 13pt; fill: var(--text);
+}
+.score-den { font-family: "IBM Plex Mono", monospace; font-size: 5.5pt; fill: var(--text-muted); }
+.verdict {
+  display: inline-block; font-family: "Archivo", sans-serif; font-weight: 700;
+  font-size: 9.5pt; line-height: 1.15;
+}
+.verdict small {
+  display: block; margin-top: 1mm;
+  font-family: "IBM Plex Sans", sans-serif; font-weight: 400; font-size: 7pt; color: var(--text-muted);
+}
+.sources { list-style: none; border-top: 1px solid var(--border); padding-top: 2.6mm; display: grid; gap: 1.8mm; }
+.sources li { display: flex; align-items: center; justify-content: space-between; font-size: 7.3pt; }
+.stance {
+  font-family: "IBM Plex Mono", monospace; font-size: 6pt; letter-spacing: .06em;
+  padding: .5mm 1.8mm; border-radius: 99px; border: 1px solid currentColor;
+}
+.stance.ok  { color: var(--respalda); }
+.stance.bad { color: var(--contradice); }
+.flag {
+  margin-top: 2.8mm; font-size: 6.8pt; color: var(--text-muted);
+  display: flex; gap: 1.5mm; align-items: center;
+}
+.flag b { color: var(--accent-soft); font-weight: 600; }
+
+/* =========================================================
+   5. CÓMO FUNCIONA (3 pasos)
+   ========================================================= */
+.steps {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--border); border-radius: 4mm;
+  background: var(--surface); overflow: hidden;
+}
+.step { padding: 3.6mm 4.2mm; display: flex; gap: 3mm; align-items: flex-start; }
+.step + .step { border-left: 1px dashed var(--border); }
+.step-n {
+  flex: none; width: 7mm; height: 7mm; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: "Archivo", sans-serif; font-weight: 800; font-size: 9pt;
+  color: #fff; background: linear-gradient(140deg, var(--violeta-claro), var(--violeta));
+}
+.step h3 { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 9.5pt; line-height: 1.15; }
+.step p { font-size: 7.6pt; line-height: 1.35; color: var(--text-muted); margin-top: .8mm; }
+
+/* =========================================================
+   6. BLOQUES INFORMATIVOS (2 × 2)
+   ========================================================= */
+.section-title {
+  font-family: "IBM Plex Mono", monospace; font-size: 7pt; font-weight: 600;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--accent-soft);
+  display: flex; align-items: center; gap: 3mm;
+}
+.section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.blocks {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: -1.5mm;
+}
+.block {
+  padding: 4mm 4.6mm; border-radius: 4mm;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.block-head { display: flex; align-items: center; gap: 3mm; margin-bottom: 2.4mm; }
+.icon {
+  flex: none; width: 9mm; height: 9mm; border-radius: 2.6mm;
+  display: grid; place-items: center; background: var(--icon-bg); color: var(--accent-soft);
+}
+.icon svg { width: 5mm; height: 5mm; }
+.block h2 {
+  font-family: "Archivo", sans-serif; font-weight: 800; font-size: 12pt;
+  line-height: 1.1; letter-spacing: -0.01em;
+}
+.block p { font-size: 8.3pt; line-height: 1.45; color: var(--text-muted); }
+.block p strong { color: var(--text); font-weight: 600; }
+.chain {
+  margin-top: 2.4mm; display: flex; align-items: center; gap: 1.6mm;
+  font-family: "IBM Plex Mono", monospace; font-size: 7pt; color: var(--text-muted);
+}
+.chain span { padding: .5mm 1.8mm; border-radius: 99px; border: 1px solid var(--border); }
+.chain span:last-child { color: var(--contradice); border-color: currentColor; font-weight: 600; }
+
+/* =========================================================
+   7. PIE: CONTACTO + QR
+   ========================================================= */
+.footer {
+  margin-top: auto;
+  display: grid; grid-template-columns: 1fr 52mm; gap: 6mm; align-items: stretch;
+  padding: 5mm; border-radius: 5mm;
+  background:
+    linear-gradient(135deg, rgba(122,90,248,.32), rgba(122,90,248,.06) 60%),
+    var(--surface);
+  border: 1px solid var(--border);
+}
+[data-theme="light"] .footer {
+  background: linear-gradient(135deg, rgba(122,90,248,.14), rgba(122,90,248,.03) 60%), #fff;
+}
+.cta h2 {
+  font-family: "Archivo", sans-serif; font-weight: 900; font-size: 19pt;
+  line-height: 1.02; letter-spacing: -0.025em;
+}
+.cta > p { font-size: 8.8pt; color: var(--text-muted); margin-top: 2mm; line-height: 1.4; }
+.contacts { list-style: none; margin-top: 3.6mm; display: grid; gap: 2.2mm; }
+.contacts li { display: flex; align-items: center; gap: 3mm; }
+.contacts .icon { width: 8mm; height: 8mm; border-radius: 2.2mm; }
+.contacts .icon svg { width: 4.4mm; height: 4.4mm; }
+.contact-label {
+  display: block; font-family: "IBM Plex Mono", monospace; font-size: 6pt;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted);
+}
+.contact-value {
+  display: block; font-family: "IBM Plex Sans", sans-serif; font-weight: 600;
+  font-size: 11pt; color: var(--text); text-decoration: none; letter-spacing: -0.005em;
+}
+
+.qr-card {
+  background: var(--qr-card); color: var(--qr-ink);
+  border-radius: 4mm; padding: 4mm 4mm 3.4mm;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  box-shadow: 0 0 0 1.2mm rgba(122,90,248,.35), 0 6mm 14mm -4mm var(--glow-1);
+}
+.qr-card svg.qr { width: 33mm; height: 33mm; display: block; }
+.qr-cta {
+  margin-top: 2.6mm; font-family: "Archivo", sans-serif; font-weight: 800;
+  font-size: 9.5pt; line-height: 1.1; color: var(--noche);
+}
+.qr-url {
+  margin-top: .8mm; font-family: "IBM Plex Mono", monospace; font-size: 6.6pt;
+  color: #5B3FD6; letter-spacing: .02em;
+}
+
+.fineprint {
+  display: flex; justify-content: space-between; gap: 6mm;
+  font-size: 6.3pt; color: var(--text-muted); margin-top: -2mm;
+}
+
+/* =========================================================
+   8. BARRA DE CONTROLES (solo pantalla)
+   ========================================================= */
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+  font-family: "IBM Plex Sans", sans-serif; color: #F2E8D5;
+}
+.toolbar .group { display: inline-flex; border: 1px solid rgba(185,164,255,.35); border-radius: 99px; padding: 3px; }
+.toolbar button {
+  font: 500 13px "IBM Plex Sans", sans-serif; color: #F2E8D5; background: transparent;
+  border: 0; border-radius: 99px; padding: 7px 14px; cursor: pointer;
+}
+.toolbar button[aria-pressed="true"] { background: rgba(122,90,248,.45); }
+.toolbar button:focus-visible { outline: 2px solid #B9A4FF; outline-offset: 2px; }
+.toolbar .print {
+  background: linear-gradient(135deg, #B9A4FF, #7A5AF8); color: #0B100F; font-weight: 700;
+  padding: 10px 20px; box-shadow: 0 0 18px rgba(122,90,248,.55);
+}
+.toolbar .hint { width: 100%; text-align: center; font-size: 12px; color: #A9B3B0; }
+
+/* =========================================================
+   9. IMPRESIÓN
+   ========================================================= */
+@media print {
+  body { background: none; padding: 0; display: block; }
+  .toolbar { display: none !important; }
+  .sheet { box-shadow: none; margin: 0; break-after: avoid; page-break-after: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- Controles de pantalla (no se imprimen) -->
+<div class="toolbar" role="toolbar" aria-label="Opciones de impresión">
+  <div class="group" aria-label="Tamaño">
+    <button type="button" data-size-btn="a4" aria-pressed="true">A4</button>
+    <button type="button" data-size-btn="a5" aria-pressed="false">A5</button>
+  </div>
+  <div class="group" aria-label="Fondo">
+    <button type="button" data-theme-btn="dark" aria-pressed="true">Fondo Noche</button>
+    <button type="button" data-theme-btn="light" aria-pressed="false">Fondo claro (ahorra tinta)</button>
+  </div>
+  <button type="button" class="print" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <p class="hint">Al imprimir: márgenes «Ninguno», escala 100 % y «Gráficos de fondo» activado.</p>
+</div>
+
+<main class="sheet" aria-label="Folleto Aletheia">
+  <div class="aurora" aria-hidden="true"></div>
+
+  <div class="content">
+
+    <!-- ENCABEZADO -->
+    <header class="topbar">
+      <div class="brand">
+        <!-- Isotipo "Umbral": disco + velo levantado -->
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M16.51 26 A24 24 0 1 0 55.49 26 Z" fill="#7A5AF8"/>
+          <rect class="veil" x="12" y="10" width="48" height="8" rx="4"/>
+        </svg>
+        <div>
+          <div class="brand-name">Aletheia</div>
+          <div class="brand-sub">BY BOREAL DATA</div>
+        </div>
+      </div>
+      <span class="tag">Verificador de noticias con IA</span>
+    </header>
+
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Antes de compartir, verificá</p>
+        <h1>¿Es verdad lo que <em>estás leyendo?</em></h1>
+        <p class="lead">
+          Aletheia analiza cualquier noticia en segundos y te dice
+          <strong>qué tan confiable es</strong>, con un puntaje de 0 a 100,
+          una explicación clara y <strong>las fuentes a la vista</strong>.
+        </p>
+      </div>
+
+      <!-- Resultado ilustrativo -->
+      <figure class="result" aria-label="Ejemplo de resultado de Aletheia">
+        <figcaption class="result-label">Ejemplo de resultado</figcaption>
+        <div class="score">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <defs>
+              <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#B9A4FF"/><stop offset="1" stop-color="#7A5AF8"/>
+              </linearGradient>
+            </defs>
+            <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(185,164,255,.22)" stroke-width="6"/>
+            <circle cx="32" cy="32" r="27" fill="none" stroke="url(#ring)" stroke-width="6"
+                    stroke-linecap="round" stroke-dasharray="139.1 169.6" transform="rotate(-90 32 32)"/>
+            <text x="32" y="34" text-anchor="middle" class="score-num">82</text>
+            <text x="32" y="43" text-anchor="middle" class="score-den">/ 100</text>
+          </svg>
+          <span class="verdict">Mayormente verdadero
+            <small>El dato central coincide con fuentes oficiales.</small>
+          </span>
+        </div>
+        <ul class="sources">
+          <li>Fuente oficial <span class="stance ok">respalda</span></li>
+          <li>Medio nacional <span class="stance ok">respalda</span></li>
+          <li>Publicación viral <span class="stance bad">contradice</span></li>
+        </ul>
+        <p class="flag">⚑ Tono detectado: <b>sensacionalista</b></p>
+      </figure>
+    </section>
+
+    <!-- CÓMO FUNCIONA -->
+    <section class="steps" aria-label="Cómo funciona">
+      <div class="step">
+        <span class="step-n">1</span>
+        <div><h3>Pegá el link</h3><p>O tocá la extensión mientras leés la nota.</p></div>
+      </div>
+      <div class="step">
+        <span class="step-n">2</span>
+        <div><h3>La IA la contrasta</h3><p>Lee el texto y lo busca en fuentes actuales.</p></div>
+      </div>
+      <div class="step">
+        <span class="step-n">3</span>
+        <div><h3>Recibís el veredicto</h3><p>Puntaje, etiqueta, explicación y fuentes.</p></div>
+      </div>
+    </section>
+
+    <!-- BLOQUES -->
+    <h2 class="section-title">Por qué Aletheia</h2>
+    <section class="blocks">
+
+      <article class="block">
+        <div class="block-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+          </span>
+          <h2>Qué es</h2>
+        </div>
+        <p>Un <strong>verificador de noticias con inteligencia artificial</strong>.
+          Lee la nota completa, la contrasta con información publicada hoy
+          y te devuelve un <strong>puntaje de veracidad del 0 al 100</strong>.</p>
+      </article>
+
+      <article class="block">
+        <div class="block-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="5.5" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.3 10.8l7.4-4M8.3 13.2l7.4 4"/></svg>
+          </span>
+          <h2>Qué problema resuelve</h2>
+        </div>
+        <p>Una noticia falsa se comparte mucho más rápido de lo que se desmiente.
+          <strong>Chequear cada nota lleva tiempo</strong> que casi nadie tiene.</p>
+        <div class="chain" aria-label="Ejemplo de propagación"><span>1</span>→<span>10</span>→<span>100</span>→<span>1.000</span></div>
+      </article>
+
+      <article class="block">
+        <div class="block-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20.5 20.5L16 16"/><path d="M8.5 11h5M11 8.5v5"/></svg>
+          </span>
+          <h2>Transparente, no mágico</h2>
+        </div>
+        <p>No te pide que le creas: te muestra <strong>qué afirma la nota y qué dice
+          la evidencia</strong>, con las fuentes que la respaldan o la contradicen
+          y aviso de tono sensacionalista.</p>
+      </article>
+
+      <article class="block">
+        <div class="block-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/><circle cx="6" cy="6.5" r=".6" fill="currentColor"/><circle cx="8.3" cy="6.5" r=".6" fill="currentColor"/><path d="M9 14.5l2 2 4-4"/></svg>
+          </span>
+          <h2>Donde ya estás leyendo</h2>
+        </div>
+        <p>Usalo desde la web o con la <strong>extensión para Chrome</strong>:
+          analiza la página abierta con un clic, sin copiar links.
+          Tu historial de análisis queda guardado en tu cuenta.</p>
+      </article>
+
+    </section>
+
+    <!-- PIE: CONTACTO + QR -->
+    <footer class="footer">
+      <div class="cta">
+        <h2>Leé con más certeza.<br>Compartí con confianza.</h2>
+        <p>Probá Aletheia y escribinos por cualquier consulta.</p>
+        <ul class="contacts">
+          <li>
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg>
+            </span>
+            <span><span class="contact-label">Sitio web</span>
+              <a class="contact-value" href="https://aletheiainc.online">aletheiainc.online</a></span>
+          </li>
+          <li>
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".8" fill="currentColor"/></svg>
+            </span>
+            <span><span class="contact-label">Instagram</span>
+              <a class="contact-value" href="https://instagram.com/aletheia.boreal">@aletheia.boreal</a></span>
+          </li>
+          <li>
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+            </span>
+            <span><span class="contact-label">Soporte</span>
+              <a class="contact-value" href="mailto:soporte@aletheiainc.online">soporte@aletheiainc.online</a></span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="qr-card">
+        <!-- QR vectorial → https://aletheiainc.online (nivel de corrección Q) -->
+        <svg class="qr" viewBox="-2 -2 33 33" role="img" aria-label="Código QR a aletheiainc.online" shape-rendering="crispEdges">
+          <path fill="none" stroke="#0B100F" d="M0 0.5h7m2 0h1m3 0h1m2 0h1m1 0h1m3 0h7m-29 1h1m5 0h1m1 0h3m1 0h2m2 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m4 0h3m2 0h2m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h4m2 0h2m4 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h4m1 0h3m1 0h2m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h2m1 0h2m1 0h5m2 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-18 1h1m-11 1h3m1 0h2m2 0h3m3 0h2m1 0h1m7 0h2m-28 1h6m1 0h2m2 0h1m4 0h1m1 0h1m2 0h6m1 0h1m-27 1h2m1 0h2m4 0h3m1 0h1m1 0h2m3 0h3m2 0h1m-27 1h1m1 0h2m6 0h2m1 0h2m3 0h2m2 0h2m3 0h1m-29 1h1m1 0h1m2 0h2m1 0h2m4 0h2m1 0h1m3 0h1m1 0h1m2 0h3m-25 1h1m2 0h1m2 0h2m1 0h5m1 0h1m2 0h2m1 0h2m1 0h1m-29 1h1m1 0h1m1 0h3m1 0h1m1 0h1m3 0h1m4 0h3m1 0h3m1 0h2m-27 1h3m3 0h2m2 0h4m5 0h1m2 0h2m-21 1h2m1 0h3m1 0h2m1 0h1m1 0h1m2 0h2m1 0h3m2 0h1m-26 1h1m1 0h1m1 0h3m1 0h1m2 0h1m2 0h2m1 0h1m2 0h1m1 0h1m-26 1h1m5 0h1m4 0h1m1 0h1m4 0h1m3 0h2m1 0h2m-25 1h1m1 0h2m1 0h2m2 0h3m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m-28 1h1m1 0h2m1 0h1m1 0h2m1 0h1m2 0h5m1 0h7m-19 1h1m3 0h1m1 0h1m1 0h3m1 0h1m3 0h2m1 0h2m-29 1h7m3 0h2m4 0h1m1 0h3m1 0h1m1 0h1m1 0h2m-28 1h1m5 0h1m1 0h1m2 0h2m3 0h2m2 0h1m3 0h1m2 0h2m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h3m1 0h1m3 0h8m-28 1h1m1 0h3m1 0h1m1 0h1m3 0h2m3 0h1m1 0h1m4 0h2m1 0h1m-28 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m4 0h1m1 0h1m2 0h1m1 0h2m1 0h1m-29 1h1m5 0h1m1 0h1m2 0h5m4 0h3m1 0h2m1 0h1m-28 1h7m4 0h2m1 0h1m3 0h4m1 0h1m3 0h1"/>
+        </svg>
+        <p class="qr-cta">Escaneá para<br>conocer más</p>
+        <p class="qr-url">aletheiainc.online</p>
+      </div>
+    </footer>
+
+    <p class="fineprint">
+      <span>Aletheia es un producto de Boreal Data.</span>
+      <span>El puntaje es una guía: siempre conviene leer las fuentes.</span>
+    </p>
+
+  </div>
+</main>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var pageStyle = document.getElementById('page-size');
+
+    function press(attr, value) {
+      document.querySelectorAll('[' + attr + ']').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.getAttribute(attr) === value));
+      });
+    }
+
+    document.querySelectorAll('[data-size-btn]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var size = btn.getAttribute('data-size-btn');
+        root.setAttribute('data-size', size);
+        pageStyle.textContent = '@page { size: ' + (size === 'a5' ? 'A5' : 'A4') + ' portrait; margin: 0; }';
+        press('data-size-btn', size);
+      });
+    });
+
+    document.querySelectorAll('[data-theme-btn]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var theme = btn.getAttribute('data-theme-btn');
+        root.setAttribute('data-theme', theme);
+        press('data-theme-btn', theme);
+      });
+    });
+  })();
+</script>
+</body>
+</html>
