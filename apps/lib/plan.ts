@@ -103,6 +103,14 @@ export function esCupoAgotado(err: unknown): err is ApiError & { body: CupoAgota
   )
 }
 
+/**
+ * Interruptor para pasar a Premium. En false, ningún botón inicia el pago (landing,
+ * "Tu plan" y la redirección al checkout después del registro): Premium se muestra como
+ * "Próximamente". Las cuentas que YA son Premium siguen igual, con su cupo y su baja.
+ * Apagado para la presentación: Mercado Pago está en modo prueba.
+ */
+export const PAGOS_PREMIUM_ABIERTOS = false
+
 /** "Tu plan", la pantalla de Configuración. */
 export const RUTA_PLAN = '/configuracion/plan'
 
@@ -115,7 +123,8 @@ export const RUTA_CHECKOUT = `${RUTA_PLAN}?suscribir=1`
  * Se lee en el cliente: login y registro son client components.
  */
 export function destinoTrasEntrar(search: string): string {
-  return new URLSearchParams(search).get('plan') === 'premium' ? RUTA_CHECKOUT : '/dashboard'
+  const quierePremium = new URLSearchParams(search).get('plan') === 'premium'
+  return quierePremium && PAGOS_PREMIUM_ABIERTOS ? RUTA_CHECKOUT : '/dashboard'
 }
 
 /** destinoTrasEntrar() con la URL actual. Referencia estable para AuthRedirect. */

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ArrowRight, Check, Clock } from 'lucide-react'
 import { TAG_IDIOMA, traducciones } from '@/lib/idioma'
-import { CUPOS, PRECIO_PREMIUM_ARS, type IdPlan } from '@/lib/plan'
+import { CUPOS, PAGOS_PREMIUM_ABIERTOS, PRECIO_PREMIUM_ARS, type IdPlan } from '@/lib/plan'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { cn } from '@/lib/utils'
 
@@ -190,12 +190,20 @@ export function Planes() {
                   {precio > 0 && <span className="text-body-sm text-subtle">{t.porMes}</span>}
                 </p>
 
-                <Link
-                  href={HREF[id]}
-                  className={cn('mt-7 w-full', recomendado ? 'btn-primary' : 'btn-secondary')}
-                >
-                  {plan.cta}
-                </Link>
+                {id === 'premium' && !PAGOS_PREMIUM_ABIERTOS ? (
+                  // Pagos cerrados (ver PAGOS_PREMIUM_ABIERTOS en lib/plan.ts).
+                  <button type="button" disabled className="btn-secondary mt-7 w-full">
+                    <Clock aria-hidden="true" size={16} />
+                    {t.proximamente}
+                  </button>
+                ) : (
+                  <Link
+                    href={HREF[id]}
+                    className={cn('mt-7 w-full', recomendado ? 'btn-primary' : 'btn-secondary')}
+                  >
+                    {plan.cta}
+                  </Link>
+                )}
 
                 <div className="mt-7 border-t border-border pt-6">
                   {plan.encabezado && (
