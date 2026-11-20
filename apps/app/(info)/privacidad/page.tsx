@@ -66,7 +66,11 @@ function ContenidoEs() {
           <li>
             <strong>Tu cuenta.</strong> Tu correo electrónico y el identificador que le asigna
             Firebase Authentication, más tu nombre y apellido si elegís completarlos en tu
-            perfil. La contraseña no pasa por nuestros servidores: la maneja Firebase.
+            perfil, y si activaste las novedades del producto por email. La contraseña la
+            guarda Firebase, no nosotros. La única vez que pasa por nuestro servidor es cuando
+            la cambiás con &ldquo;¿La olvidaste?&rdquo;: la recibimos para entregársela a
+            Firebase y no queda guardada ni en registros. El código de 6 dígitos que te
+            mandamos se descarta a los 15 minutos.
           </li>
           <li>
             <strong>Los análisis que pedís.</strong> El enlace que analizaste, el título de la
@@ -124,8 +128,9 @@ function ContenidoEs() {
           esos datos se rige por sus propios términos, no por los nuestros.
         </p>
         <p>
-          La infraestructura también es de Google: la aplicación corre en Cloud Run, la base de
-          datos es Cloud SQL y las cuentas las maneja Firebase Authentication.
+          La aplicación y la base de datos corren en un servidor virtual privado que contrata
+          Boreal Data, y las cuentas las maneja Firebase Authentication, que también es de
+          Google.
         </p>
       </Seccion>
 
@@ -243,8 +248,11 @@ function ContenidoEn() {
           <li>
             <strong>Your account.</strong> Your email address and the identifier Firebase
             Authentication assigns to it, plus your first and last name if you choose to fill
-            them in on your profile. Your password never goes through our servers: Firebase
-            handles it.
+            them in on your profile, and whether you turned on product news by email. Firebase
+            stores your password, not us. The only time it goes through our server is when you
+            reset it with &ldquo;Forgot it?&rdquo;: we receive it to hand it to Firebase and it
+            isn&apos;t stored, not even in logs. The 6-digit code we email you is discarded
+            after 15 minutes.
           </li>
           <li>
             <strong>The analyses you request.</strong> The link you analyzed, the title of the
@@ -306,8 +314,8 @@ function ContenidoEn() {
           of that data is governed by its own terms, not ours.
         </p>
         <p>
-          The infrastructure is also Google&apos;s: the application runs on Cloud Run, the
-          database is Cloud SQL and accounts are handled by Firebase Authentication.
+          The application and the database run on a virtual private server rented by Boreal
+          Data, and accounts are handled by Firebase Authentication, which is also Google&apos;s.
         </p>
       </Seccion>
 

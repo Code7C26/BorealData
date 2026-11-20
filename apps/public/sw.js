@@ -9,7 +9,7 @@
  * Si cambia este archivo, subir VERSION: el navegador lo compara byte a byte para
  * saber que hay una versión nueva.
  */
-const VERSION = 'v1'
+const VERSION = 'v2'
 const CACHE = `aletheia-offline-${VERSION}`
 const OFFLINE_URL = '/offline.html'
 
@@ -32,6 +32,26 @@ self.addEventListener('activate', (event) => {
         ),
       )
       .then(() => self.clients.claim()),
+  )
+})
+
+// Tocar la notificación de "análisis terminado" (lib/notificaciones.ts) abre el resultado:
+// si ya hay una pestaña de AletheIA, la enfoca y la lleva ahí; si no, abre una.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const destino = new URL(event.notification.data?.url || '/', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+      const abierta = ventanas.find((v) => new URL(v.url).origin === self.location.origin)
+      // navigate() solo anda en pestañas que este service worker controla: si falla, se abre una nueva.
+      if (abierta) {
+        return abierta
+          .focus()
+          .then((v) => v.navigate(destino))
+          .catch(() => self.clients.openWindow(destino))
+      }
+      return self.clients.openWindow(destino)
+    }),
   )
 })
 

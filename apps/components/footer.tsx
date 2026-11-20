@@ -16,6 +16,9 @@ const TEXTOS = traducciones({
       { href: '#boreal-data', label: 'Quiénes somos' },
       { href: '/privacidad', label: 'Privacidad' },
       { href: '/terminos', label: 'Términos' },
+      // Disposición 954/2025: a la vista desde el primer acceso y sin login extra.
+      { href: '/baja#arrepentimiento', label: 'Botón de arrepentimiento' },
+      { href: '/baja#baja', label: 'Botón de baja' },
     ],
     bajada: 'Verificación que se deja auditar. No un puntaje: el camino completo hasta el veredicto.',
     enlaces: 'Enlaces del pie',
@@ -28,6 +31,8 @@ const TEXTOS = traducciones({
       { href: '#boreal-data', label: 'About us' },
       { href: '/privacidad', label: 'Privacy' },
       { href: '/terminos', label: 'Terms' },
+      { href: '/baja#arrepentimiento', label: 'Withdrawal button' },
+      { href: '/baja#baja', label: 'Cancellation button' },
     ],
     bajada: 'Fact-checking you can audit. Not a score: the full path to the verdict.',
     enlaces: 'Footer links',

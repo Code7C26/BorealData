@@ -15,6 +15,8 @@ import { mensajeErrorFirebase } from '@/lib/firebase-errors'
 import { traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { AuthRedirect } from '@/components/auth-redirect'
+import { EnlaceConservandoPlan } from '@/components/enlace-conservando-plan'
+import { destinoTrasEntrarDesdeUrl } from '@/lib/plan'
 import { AuthShell, Campo } from '@/components/auth-shell'
 
 const TEXTOS = traducciones({
@@ -82,7 +84,7 @@ export default function LoginPage() {
     try {
       await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence)
       await signInWithEmailAndPassword(auth, email, password)
-      router.push('/dashboard')
+      router.push(destinoTrasEntrarDesdeUrl())
     } catch (err) {
       setError(mensajeErrorFirebase(err, t.noPudimos, idioma))
     } finally {
@@ -98,16 +100,16 @@ export default function LoginPage() {
       pie={
         <>
           {t.sinCuenta}{' '}
-          <Link
+          <EnlaceConservandoPlan
             href="/registro"
             className="text-accent-text underline-offset-4 transition-colors duration-150 ease-boreal hover:underline"
           >
             {t.crearUna}
-          </Link>
+          </EnlaceConservandoPlan>
         </>
       }
     >
-      <AuthRedirect to="/dashboard" />
+      <AuthRedirect to={destinoTrasEntrarDesdeUrl} />
 
       {error && (
         <p role="alert" className="alert-form">
@@ -133,11 +135,13 @@ export default function LoginPage() {
           label={t.contrasena}
           htmlFor="password"
           extra={
-            <h2
+            // Lleva el email ya escrito, así no hay que tipearlo de nuevo en /recuperar.
+            <Link
+              href={email ? `/recuperar?email=${encodeURIComponent(email)}` : '/recuperar'}
               className="font-mono text-micro uppercase text-accent-text underline-offset-4 hover:underline"
             >
               {t.olvidaste}
-            </h2>
+            </Link>
           }
         >
           <div className="relative">

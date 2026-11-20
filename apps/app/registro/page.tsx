@@ -11,6 +11,8 @@ import { mensajeErrorFirebase } from '@/lib/firebase-errors'
 import { traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { AuthRedirect } from '@/components/auth-redirect'
+import { EnlaceConservandoPlan } from '@/components/enlace-conservando-plan'
+import { destinoTrasEntrarDesdeUrl } from '@/lib/plan'
 import { AuthShell, Campo } from '@/components/auth-shell'
 
 const MIN_PASSWORD = 8
@@ -126,7 +128,8 @@ export default function RegistroPage() {
       const credential = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(credential.user, { displayName: nombre.trim() })
       await apiFetch('/me', { method: 'POST', body: { fullName: nombre.trim() } })
-      router.push('/dashboard')
+      // Con ?plan=premium (botón "Empezar con Premium") sigue directo al checkout.
+      router.push(destinoTrasEntrarDesdeUrl())
     } catch (err) {
       setError(mensajeErrorFirebase(err, t.noPudimos, idioma))
     } finally {
@@ -142,18 +145,18 @@ export default function RegistroPage() {
       pie={
         <>
           {t.yaTenes}{' '}
-          <Link
+          <EnlaceConservandoPlan
             href="/login"
             className="text-accent-text underline-offset-4 transition-colors duration-150 ease-boreal hover:underline"
           >
             {t.entra}
-          </Link>
+          </EnlaceConservandoPlan>
         </>
       }
     >
       {/* Apagado mientras se crea la cuenta: si no, apenas Firebase loguea al usuario
           redirige al dashboard antes de guardar el nombre. */}
-      {!enviando && <AuthRedirect to="/dashboard" />}
+      {!enviando && <AuthRedirect to={destinoTrasEntrarDesdeUrl} />}
 
       {error && (
         <p role="alert" className="alert-form">

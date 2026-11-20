@@ -54,7 +54,7 @@ Si se divide por 160 horas mensuales (40 h × 4 semanas), da **$9.616 por hora**
 | Diseño de interfaz e identidad de marca | Renzo | 25 | $240.391 |
 | Testing, QA y deploy en Cloud Run | Equipo | 25 | $240.391 |
 | Gestión (GitHub Projects), documentación y bitácora | Equipo | 32 | $307.700 |
-| **TOTAL DESARROLLO DEL MVP** | | **352 h** | **$3.384.700** (≈ USD 2.191) |
+| **TOTAL DESARROLLO DEL MVP** | | **352 h** | **$3.384.700** (≈ USD 2.191 al oficial BNA de $1.545, sin impuestos: la mano de obra se paga en pesos) |
 
 **Inversión total para lanzar el MVP (pago único):** $3.384.700 (mano de obra) + $157.395 (legal y cuentas) = **$3.542.095** (≈ USD 2.293)
 
@@ -79,11 +79,11 @@ Son los costos que crecen con cada usuario o cada análisis.
 
 | Plan | Precio | Incluye | Público |
 |---|---|---|---|
-| **Gratuito** | $0 | 150 análisis por mes; enlaces, textos **e imágenes**; veredicto, nivel de confianza y fuentes con su postura; extensión de Chrome y app móvil | Público general, estudiantes |
-| **Premium** | **$6.999/mes** (≈ USD 4,50) | Todo lo del Gratuito, y además: análisis ilimitados (uso razonable), procesamiento prioritario, informes en PDF y CSV, historial completo con búsqueda y filtros, carpetas compartidas para trabajar en equipo | Usuarios frecuentes: periodistas freelance, docentes, community managers |
-| **Institucional** (plan grupal) | **$180.000/mes** | Todo lo de Premium para toda la organización, y además: 3.000 análisis por mes compartidos, cuentas para todo el equipo, panel de control y soporte | Escuelas, medios locales, ONGs, áreas de comunicación |
+| **Gratuito** | $0 | 5 análisis por día (tope en `backend/src/plan/config.ts`); con anuncios; historial con búsqueda y filtros; enlaces, textos **e imágenes**; veredicto, nivel de confianza y fuentes con su postura; extensión de Chrome y app móvil | Público general, estudiantes |
+| **Premium** | **$6.999/mes** (≈ USD 4,50) | Todo lo del Gratuito, y además: hasta 300 análisis por mes (uso justo), sin anuncios y baja en un paso. **Próximamente:** procesamiento prioritario, informes en PDF y CSV, carpetas compartidas para trabajar en equipo. Se cobra con suscripción de Mercado Pago (hoy en modo prueba) | Usuarios frecuentes: periodistas freelance, docentes, community managers |
+| **Institucional** (plan grupal) | **A medida** (se negocia con cada institución) | Un sistema dedicado a la organización: todo lo de Premium, y además cuentas para todo el equipo, panel de control y soporte. La cantidad de cuentas, el volumen de análisis y el soporte se definen con cada institución | Escuelas, medios locales, ONGs, áreas de comunicación |
 
-**Criterio de los planes (actualizado 12/11/2026):** el Gratuito es una herramienta completa por sí sola —analiza enlaces e imágenes y muestra las fuentes—, con un tope mensual que controla el costo. Premium **no le saca funciones al Gratuito**: agrega volumen, velocidad y herramientas de trabajo. Institucional suma lo que necesita una organización (varias cuentas, administración y soporte) y se vende conversando, no con un botón de compra.
+**Criterio de los planes (actualizado 12/11/2026):** el Gratuito es una herramienta completa por sí sola —analiza enlaces e imágenes y muestra las fuentes—, con un tope diario (5 análisis) que controla el costo. Premium **no le saca funciones al Gratuito**: agrega volumen, velocidad y herramientas de trabajo. Institucional suma lo que necesita una organización (varias cuentas, administración y soporte) y se vende conversando, no con un botón de compra.
 
 **Por qué elegimos este modelo:**
 - **Freemium:** combatir la desinformación necesita **muchos usuarios**. Cobrar desde el primer día frenaría la adopción, y un usuario gratuito cuesta como máximo ~$1.600/mes (tope de 150 análisis × $10,85).
@@ -100,7 +100,7 @@ Son los costos que crecen con cada usuario o cada análisis.
 | − Consumo de IA (100 análisis × $10,85) | −$1.085 |
 | **Margen de contribución** | **$5.613** |
 
-**Punto de equilibrio:** $285.125 de costos fijos ÷ $5.613 de margen = **51 suscriptores Premium** (o bien 2 instituciones: cada una deja un margen de ≈ $139.700).
+**Punto de equilibrio:** $285.125 de costos fijos ÷ $5.613 de margen = **51 suscriptores Premium** Las instituciones suman por encima de ese piso: como el plan es a medida, su precio se fija caso por caso y nunca por debajo del costo de sus análisis (≈ $10,85 cada uno).
 
 ---
 
@@ -125,7 +125,7 @@ Son los costos que crecen con cada usuario o cada análisis.
 5. **Publicación en el Boletín de Marcas:** durante **30 días** cualquier persona puede oponerse.
 6. Si nadie se opone y el INPI no hace observaciones, se **otorga el título**, que dura **10 años** y se puede renovar. Entre el año 5 y el 6 hay que presentar la **declaración jurada de uso**.
 
-**Costo:** $85.006 (2 clases + búsqueda previa) · **Plazo:** desde unos meses hasta más de un año.
+**Costo:** $86.006 (2 clases × $40.569 + búsqueda previa $4.868) · **Plazo:** desde unos meses hasta más de un año.
 
 ### Paso 2 — Registrar el código/software en la DNDA (derecho de autor)
 **Qué se protege:** el código fuente de AletheIA (backend, web, extensión y app).
@@ -159,7 +159,7 @@ Estos trámites **solo corresponden si se inventa un dispositivo físico nuevo**
 | Qué se protege | Organismo | Trámite | Costo | Vigencia |
 |---|---|---|---|---|
 | Actividad comercial | ARCA | Inscripción en Monotributo | $49.527/mes | Mensual |
-| Nombre y logo "AletheIA" | INPI | Registro de marca (clases 9 y 42) | $85.006 | 10 años |
+| Nombre y logo "AletheIA" | INPI | Registro de marca (clases 9 y 42) | $86.006 | 10 años |
 | Código fuente | DNDA | Depósito de software inédito | $1.400 | 3 años |
 | Hardware | INPI | Patente / modelo de utilidad | **No aplica** | — |
 | Dominio web | NIC Argentina | Alta de `.com.ar` | $8.500 | 1 año |

@@ -113,3 +113,40 @@ export async function deleteUserAccount(
     return { analyses: analyses.rowCount ?? 0 };
   });
 }
+
+/** SQLSTATE de Postgres para "column does not exist". */
+const COLUMNA_INEXISTENTE = "42703";
+
+/** Falta migrate-news.ts: la columna `news_opt_in` todavía no existe. */
+export function esMigracionDeNovedadesFaltante(err: unknown): boolean {
+  return (err as { code?: string } | null)?.code === COLUMNA_INEXISTENTE;
+}
+
+/**
+ * Si la persona quiere recibir las novedades del producto por email (columna
+ * `news_opt_in`, ver migrate-news.ts). Arranca en false: nadie recibe mails que no pidió.
+ *
+ * Si la base todavía no tiene la columna devuelve false en vez de fallar: GET /me no
+ * puede romperse por una preferencia.
+ */
+export async function getNewsOptIn(firebaseUid: string): Promise<boolean> {
+  try {
+    return await runInUserTransaction({ firebaseUid }, async (client) => {
+      const result = await client.query<{ news_opt_in: boolean }>(
+        `SELECT news_opt_in FROM users WHERE firebase_uid = $1`,
+        [firebaseUid]
+      );
+      return result.rows[0]?.news_opt_in ?? false;
+    });
+  } catch (err) {
+    if (esMigracionDeNovedadesFaltante(err)) return false;
+    throw err;
+  }
+}
+
+/** Guarda la preferencia. El error (incluida la columna faltante) se propaga a la ruta. */
+export async function setNewsOptIn(firebaseUid: string, valor: boolean): Promise<void> {
+  await runInUserTransaction({ firebaseUid }, async (client) => {
+    await client.query(`UPDATE users SET news_opt_in = $2 WHERE firebase_uid = $1`, [firebaseUid, valor]);
+  });
+}

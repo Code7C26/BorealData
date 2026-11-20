@@ -4,8 +4,10 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AnalysisPanel, TOTAL_PASOS } from '@/components/result/analysis-panel'
 import { analizarContenido, analizarUrl, ApiError } from '@/lib/api'
+import { avisarAnalisisListo } from '@/lib/notificaciones'
 import { traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
+import { esCupoAgotado, RUTA_PLAN } from '@/lib/plan'
 import {
   guardarResultado,
   leerContenidoPendiente,
@@ -22,9 +24,22 @@ const TICK_MS = 1000
 
 type Paso = 0 | 1 | 2 | 3
 
+/** A dónde va un análisis que choca con el cupo del plan (429 `cupo_agotado`). */
+const RUTA_TOPE = `${RUTA_PLAN}?tope=1`
+
 const TEXTOS = traducciones({
-  es: { imagenAnalizada: 'imagen analizada' },
-  en: { imagenAnalizada: 'analyzed image' },
+  es: {
+    imagenAnalizada: 'imagen analizada',
+    avisoListo: 'Tu verificación está lista',
+    avisoError: 'No pudimos terminar la verificación',
+    avisoErrorBajada: 'Tocá para ver qué pasó y probar de nuevo.',
+  },
+  en: {
+    imagenAnalizada: 'analyzed image',
+    avisoListo: 'Your check is ready',
+    avisoError: "We couldn't finish the check",
+    avisoErrorBajada: 'Tap to see what happened and try again.',
+  },
 })
 
 /**
@@ -89,6 +104,12 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
           router.replace('/login')
           return
         }
+        // Sin cupo en el mes: no es un error del análisis, es el tope del plan. "Tu plan"
+        // explica cuándo se renueva y ofrece Premium. El borrador queda para reintentar.
+        if (esCupoAgotado(err)) {
+          router.replace(RUTA_TOPE)
+          return
+        }
         // 422 = el scraper no pudo sacar contenido de la URL. No es un error del
         // producto ni un veredicto: es "sin datos suficientes", y así se muestra.
         const status = err instanceof ApiError && err.status === 422 ? 'insuficiente' : 'error'
@@ -140,6 +161,10 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
             router.replace('/login')
             return
           }
+          if (esCupoAgotado(err)) {
+            router.replace(RUTA_TOPE)
+            return
+          }
           resultadoRef.current = {
             status: 'error',
             tipo: pendiente.kind,
@@ -184,8 +209,17 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
       resultado.status === 'ok' && resultado.data?.id
         ? `/resultado/${resultado.data.id}`
         : '/resultado'
+    // Si la persona se fue a otra pestaña o app mientras esperaba, y lo pidió en
+    // Configuración, se le avisa con una notificación (ver lib/notificaciones.ts).
+    void avisarAnalisisListo(
+      resultado.status === 'ok' && resultado.data
+        ? { titulo: t.avisoListo, cuerpo: resultado.data.headline, url: destino }
+        : { titulo: t.avisoError, cuerpo: t.avisoErrorBajada, url: destino },
+    )
     const id = setTimeout(() => router.replace(destino), 600)
     return () => clearTimeout(id)
+    // `t` queda fuera a propósito: cambiar de idioma no tiene que volver a avisar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [respuestaLista, router])
 
   return (

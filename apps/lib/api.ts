@@ -105,6 +105,14 @@ export interface UserProfile {
   email: string | null
   fullName: string | null
   createdAt: string
+  /** "Novedades del producto" por email (PUT /me/preferences). Falta en backends viejos. */
+  newsOptIn?: boolean
+  /**
+   * Plan vigente (backend/src/routes/me.ts). Sirve para decidir qué mostrar según el plan,
+   * por ejemplo los anuncios, que solo van en Gratuito. Opcional: un backend sin
+   * desplegar todavía no lo manda; en ese caso tratarlo como 'gratuito'.
+   */
+  plan?: 'gratuito' | 'premium'
 }
 
 export class ApiError extends Error {
