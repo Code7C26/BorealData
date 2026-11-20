@@ -1,6 +1,13 @@
 import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../auth/verifyAuth.js";
-import { deleteUserAccount, getUserProfile, upsertUser } from "../db/usersRepository.js";
+import {
+  deleteUserAccount,
+  esMigracionDeNovedadesFaltante,
+  getNewsOptIn,
+  getUserProfile,
+  setNewsOptIn,
+  upsertUser,
+} from "../db/usersRepository.js";
 import { esFaltaDePermiso } from "../db/analysesRepository.js";
 import { stripControlChars } from "../utils/sanitize.js";
 
@@ -13,7 +20,7 @@ const MAX_FULL_NAME_LENGTH = 200;
  * Header obligatorio: Authorization: Bearer <Firebase ID token>.
  *
  * Devuelve el perfil del usuario autenticado guardado en Postgres (id interno, email,
- * fullName). Llama a upsertUser() primero por si es la primera vez que este uid pega
+ * fullName) y sus preferencias (newsOptIn). Llama a upsertUser() primero por si es la primera vez que este uid pega
  * contra el backend (mismo patrón que /analyze y /history) — así la fila siempre existe
  * antes de leerla.
  */
@@ -26,7 +33,8 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
     }
 
     const profile = await getUserProfile(req.user!.uid);
-    return res.status(200).json(profile);
+    const newsOptIn = await getNewsOptIn(req.user!.uid);
+    return res.status(200).json(profile ? { ...profile, newsOptIn } : profile);
   } catch (err) {
     return res.status(500).json({
       error: "No se pudo obtener el perfil.",
@@ -76,6 +84,41 @@ router.post("/me", requireAuth, async (req: Request, res: Response) => {
   } catch (err) {
     return res.status(500).json({
       error: "Error inesperado al guardar el nombre.",
+      detail: err instanceof Error ? err.message : "Error desconocido.",
+    });
+  }
+});
+
+/**
+ * PUT /me/preferences
+ * Header obligatorio: Authorization: Bearer <Firebase ID token>.
+ * Body: { "newsOptIn": true | false }
+ *
+ * Las preferencias de la cuenta que viven en el servidor. Hoy es solo "Novedades del
+ * producto" (por email, ver scripts/send-news.ts). El aviso de "análisis terminado" no
+ * está acá: es una notificación del navegador y se guarda en cada dispositivo.
+ */
+router.put("/me/preferences", requireAuth, async (req: Request, res: Response) => {
+  const { newsOptIn } = req.body ?? {};
+  if (typeof newsOptIn !== "boolean") {
+    return res.status(400).json({ error: "Falta el campo 'newsOptIn' (true o false) en el body." });
+  }
+
+  try {
+    const userId = await upsertUser(req.user!.uid, req.user!.email);
+    if (!userId) {
+      return res.status(500).json({ error: "No se pudo resolver el usuario en la base de datos." });
+    }
+    await setNewsOptIn(req.user!.uid, newsOptIn);
+    return res.status(200).json({ newsOptIn });
+  } catch (err) {
+    if (esMigracionDeNovedadesFaltante(err)) {
+      return res.status(503).json({
+        error: "Las novedades por email todavía no están habilitadas. Falta correr backend/migrate-news.ts.",
+      });
+    }
+    return res.status(500).json({
+      error: "No se pudo guardar la preferencia.",
       detail: err instanceof Error ? err.message : "Error desconocido.",
     });
   }

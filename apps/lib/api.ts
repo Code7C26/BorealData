@@ -105,6 +105,8 @@ export interface UserProfile {
   email: string | null
   fullName: string | null
   createdAt: string
+  /** "Novedades del producto" por email (PUT /me/preferences). Falta en backends viejos. */
+  newsOptIn?: boolean
 }
 
 export class ApiError extends Error {

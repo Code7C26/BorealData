@@ -128,10 +128,14 @@ reenviar la request al backend.
 | `POST` | `/analyze` | Analiza un enlace (scraping + Gemini). Rate limit por usuario |
 | `POST` | `/analyze/content` | Analiza un texto, una pregunta o lo leído de una captura |
 | `POST` | `/analyze/read` | Lee hasta 3 imágenes en base64 (máximo 3 MB). No se guardan |
-| `GET` | `/analyses/:id` | Un análisis. Autenticación opcional: sin sesión, solo los de enlaces públicos |
+| `GET` | `/analyses/:id` | Un análisis. Autenticación opcional: sin sesión, solo los públicos (enlaces y los que su dueño compartió) |
+| `POST` | `/analyses/:id/share` | Hace público un análisis propio (captura, texto o pregunta) para compartir el link |
 | `DELETE` | `/analyses/:id` | Borra un análisis propio |
 | `GET` / `DELETE` | `/history` | Historial del usuario (paginado con `?limit` y `?offset`) / borrado completo |
-| `GET` / `POST` / `DELETE` | `/me` | Perfil (nombre completo) / borrado de la cuenta |
+| `GET` / `POST` / `DELETE` | `/me` | Perfil (nombre completo y preferencias) / borrado de la cuenta |
+| `PUT` | `/me/preferences` | Activa o desactiva las novedades por email (`newsOptIn`) |
+| `POST` | `/auth/password-reset/request` | Manda un código de 6 dígitos al email. Sin autenticación, con rate limit |
+| `POST` | `/auth/password-reset/confirm` | Cambia la contraseña con el código. Sin autenticación |
 | `GET` | `/stats` | Totales globales de la plataforma. Sin autenticación |
 
 ---
@@ -237,6 +241,8 @@ automáticamente. Referencia completa en [`.env.example`](.env.example).
 | `FIREBASE_PROJECT_ID` | Verificación de tokens. Sin este valor, las rutas autenticadas responden 401 |
 | `GEMINI_API_KEY` | API de Gemini |
 | `GEMINI_READ_MODEL` | Opcional. Vacía usa `gemini-3.5-flash` |
+| `FIREBASE_ADMIN_CREDENTIALS` | Credenciales de administrador de Firebase en base64 (ver `.env.example`). Sin ellas, "me olvidé la contraseña" no está disponible |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Envío de mails: código de recuperación y novedades |
 | `NEXT_PUBLIC_*` | Los mismos valores que los build args de la web |
 
 ### 3. Base de datos
@@ -245,6 +251,21 @@ El servicio `postgres` arranca vacío. La primera vez se crean las tablas:
 
 ```bash
 docker exec -i $(docker ps -qf name=aletheia_postgres) psql -U <usuario> -d <base> < backend/src/db/schema.sql
+```
+
+En una base que ya existe, los cambios posteriores se aplican con las migraciones
+`backend/migrate-*.ts`, con el usuario dueño de las tablas (`migrate-share.ts` para
+compartir capturas y textos, `migrate-news.ts` para las novedades por email).
+
+### Novedades por email
+
+`backend/send-news.ts` manda una novedad a quienes la activaron en Configuración. Sin
+`--enviar` solo muestra a cuántas personas les llegaría; con `--prueba <email>` se la
+manda a una sola casilla:
+
+```bash
+npx tsx send-news.ts --asunto "Novedad: ..." --archivo novedad.txt --prueba vos@mail.com
+npx tsx send-news.ts --asunto "Novedad: ..." --archivo novedad.txt --enviar
 ```
 
 ### 4. Despliegue

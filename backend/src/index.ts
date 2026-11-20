@@ -7,6 +7,7 @@ import analyzeContentRouter from "./routes/analyzeContent.js";
 import analysesRouter from "./routes/analyses.js";
 import historyRouter from "./routes/history.js";
 import meRouter from "./routes/me.js";
+import passwordResetRouter from "./routes/passwordReset.js";
 import statsRouter from "./routes/stats.js";
 
 const app = express();
@@ -32,6 +33,7 @@ app.use(analyzeContentRouter);
 app.use(analysesRouter);
 app.use(historyRouter);
 app.use(meRouter);
+app.use(passwordResetRouter);
 app.use(statsRouter);
 
 const PORT = Number(process.env.PORT) || 3000;

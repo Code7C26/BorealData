@@ -66,7 +66,11 @@ function ContenidoEs() {
           <li>
             <strong>Tu cuenta.</strong> Tu correo electrónico y el identificador que le asigna
             Firebase Authentication, más tu nombre y apellido si elegís completarlos en tu
-            perfil. La contraseña no pasa por nuestros servidores: la maneja Firebase.
+            perfil, y si activaste las novedades del producto por email. La contraseña la
+            guarda Firebase, no nosotros. La única vez que pasa por nuestro servidor es cuando
+            la cambiás con &ldquo;¿La olvidaste?&rdquo;: la recibimos para entregársela a
+            Firebase y no queda guardada ni en registros. El código de 6 dígitos que te
+            mandamos se descarta a los 15 minutos.
           </li>
           <li>
             <strong>Los análisis que pedís.</strong> El enlace que analizaste, el título de la
@@ -243,8 +247,11 @@ function ContenidoEn() {
           <li>
             <strong>Your account.</strong> Your email address and the identifier Firebase
             Authentication assigns to it, plus your first and last name if you choose to fill
-            them in on your profile. Your password never goes through our servers: Firebase
-            handles it.
+            them in on your profile, and whether you turned on product news by email. Firebase
+            stores your password, not us. The only time it goes through our server is when you
+            reset it with &ldquo;Forgot it?&rdquo;: we receive it to hand it to Firebase and it
+            isn&apos;t stored, not even in logs. The 6-digit code we email you is discarded
+            after 15 minutes.
           </li>
           <li>
             <strong>The analyses you request.</strong> The link you analyzed, the title of the

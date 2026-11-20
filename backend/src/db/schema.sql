@@ -282,3 +282,9 @@ CREATE POLICY analyses_update_own ON analyses
   FOR UPDATE
   USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
   WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+-- ── Novedades del producto ────────────────────────────────────
+-- Si la persona quiere recibir novedades por email (switch en Configuración, PUT
+-- /me/preferences). False por defecto: nadie recibe mails que no pidió. Las manda
+-- backend/send-news.ts. Para una base que ya existe: backend/migrate-news.ts.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS news_opt_in boolean NOT NULL DEFAULT false;

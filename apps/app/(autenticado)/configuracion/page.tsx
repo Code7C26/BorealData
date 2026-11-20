@@ -1,9 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { Bell, Globe, Moon, ShieldCheck, Sun } from 'lucide-react'
+import { useState, useSyncExternalStore } from 'react'
+import Link from 'next/link'
+import { Bell, Globe, Moon, Sun } from 'lucide-react'
 import { CerrarSesionBoton } from '@/components/cerrar-sesion-boton'
+import { apiFetch } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 import { IDIOMAS, NOMBRE_IDIOMA, traducciones } from '@/lib/idioma'
+import {
+  avisoActivado,
+  esIOS,
+  guardarAviso,
+  mostrarPrueba,
+  pedirPermiso,
+  permisoActual,
+  suscribirAviso,
+  type EstadoPermiso,
+} from '@/lib/notificaciones'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
 import { useTheme } from '@/lib/use-theme'
 import { cn } from '@/lib/utils'
@@ -18,15 +31,20 @@ const TEXTOS = traducciones({
     noche: 'Noche',
     papel: 'Papel',
     notificaciones: 'Notificaciones',
-    emailAnalisis: 'Avisarme cuando termine un análisis',
-    emailAnalisisBajada: 'Un email cuando AletheIA termina de verificar la nota.',
+    avisoAnalisis: 'Avisarme cuando termine un análisis',
+    avisoAnalisisBajada:
+      'Una notificación en este dispositivo cuando AletheIA termina de verificar, si estás en otra pestaña o app.',
+    avisoIos: 'En iPhone, las notificaciones solo funcionan con la app instalada.',
+    instalarApp: 'Instalar la app',
+    avisoNoSoportado: 'Este navegador no permite notificaciones.',
+    avisoBloqueado:
+      'Bloqueaste las notificaciones de AletheIA. Activalas desde la configuración del navegador (el candado de la barra de direcciones) y volvé a intentar.',
+    pruebaTitulo: 'Avisos activados',
+    pruebaCuerpo: 'Así te vamos a avisar cuando termine una verificación.',
     novedades: 'Novedades del producto',
-    novedadesBajada: 'Cuando sumamos algo nuevo. Poco y espaciado.',
-    privacidad: 'Privacidad',
-    historial: 'Guardar mi historial de verificaciones',
-    historialBajada: 'Si lo desactivás, los próximos análisis no quedan en tu cuenta.',
-    anonimo: 'Compartir análisis de forma anónima',
-    anonimoBajada: 'Datos sin identificarte, para mejorar el motor.',
+    novedadesBajada: (email: string | null) =>
+      `Un email${email ? ` a ${email}` : ''} cuando sumamos algo nuevo. Poco y espaciado.`,
+    novedadesError: 'No pudimos guardar el cambio. Probá de nuevo en unos segundos.',
     cerrarSesion: 'Cerrar sesión',
     cerrarSesionBajada: 'Tu historial queda guardado; vas a tener que entrar de nuevo para verlo.',
   },
@@ -39,15 +57,20 @@ const TEXTOS = traducciones({
     noche: 'Night',
     papel: 'Paper',
     notificaciones: 'Notifications',
-    emailAnalisis: 'Let me know when an analysis is done',
-    emailAnalisisBajada: 'An email when AletheIA finishes checking the article.',
+    avisoAnalisis: 'Let me know when an analysis is done',
+    avisoAnalisisBajada:
+      "A notification on this device when AletheIA finishes checking, if you're on another tab or app.",
+    avisoIos: 'On iPhone, notifications only work with the app installed.',
+    instalarApp: 'Install the app',
+    avisoNoSoportado: "This browser doesn't support notifications.",
+    avisoBloqueado:
+      'You blocked notifications for AletheIA. Allow them in your browser settings (the lock in the address bar) and try again.',
+    pruebaTitulo: 'Notifications on',
+    pruebaCuerpo: "This is how we'll let you know when a check is done.",
     novedades: 'Product news',
-    novedadesBajada: 'When we add something new. Rarely and spaced out.',
-    privacidad: 'Privacy',
-    historial: 'Save my check history',
-    historialBajada: "If you turn it off, your next analyses won't stay in your account.",
-    anonimo: 'Share analyses anonymously',
-    anonimoBajada: 'Data that does not identify you, to improve the engine.',
+    novedadesBajada: (email: string | null) =>
+      `An email${email ? ` to ${email}` : ''} when we add something new. Rarely and spaced out.`,
+    novedadesError: "We couldn't save the change. Try again in a few seconds.",
     cerrarSesion: 'Log out',
     cerrarSesionBajada: "Your history stays saved; you'll need to log in again to see it.",
   },
@@ -58,12 +81,17 @@ function ToggleSwitch({
   onChange,
   label,
   descripcion,
+  nota,
+  disabled = false,
   id,
 }: {
   checked: boolean
   onChange: (valor: boolean) => void
   label: string
   descripcion?: string
+  /** Aviso debajo de la descripción (permiso bloqueado, error al guardar…). */
+  nota?: React.ReactNode
+  disabled?: boolean
   id: string
 }) {
   return (
@@ -75,15 +103,21 @@ function ToggleSwitch({
         {descripcion && (
           <p className="mt-1 text-caption tracking-normal text-subtle">{descripcion}</p>
         )}
+        {nota && (
+          <p role="status" className="mt-2 text-caption tracking-normal text-muted">
+            {nota}
+          </p>
+        )}
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         aria-labelledby={id}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative h-6 w-11 shrink-0 rounded-pill transition-colors duration-150 ease-boreal',
+          'relative h-6 w-11 shrink-0 rounded-pill transition-colors duration-150 ease-boreal disabled:opacity-50',
           checked ? 'bg-accent' : 'bg-border',
         )}
       >
@@ -195,14 +229,110 @@ function SelectorDeModo() {
   )
 }
 
+/**
+ * "Avisarme cuando termine un análisis": notificación del sistema en ESTE dispositivo
+ * (ver lib/notificaciones.ts). Prendido solo si la persona lo activó y el navegador dio
+ * permiso: con el permiso revocado, el switch se ve apagado aunque esté guardado.
+ */
+function AvisoAnalisis() {
+  const t = useTextos(TEXTOS)
+  const activo = useSyncExternalStore(
+    suscribirAviso,
+    () => avisoActivado() && permisoActual() === 'granted',
+    () => false,
+  )
+  const permiso = useSyncExternalStore<EstadoPermiso | null>(suscribirAviso, permisoActual, () => null)
+  const [pidiendo, setPidiendo] = useState(false)
+
+  const cambiar = async (valor: boolean) => {
+    if (!valor) {
+      guardarAviso(false)
+      return
+    }
+    setPidiendo(true)
+    try {
+      const resultado = await pedirPermiso()
+      if (resultado === 'granted') {
+        guardarAviso(true)
+        await mostrarPrueba(t.pruebaTitulo, t.pruebaCuerpo)
+      }
+    } finally {
+      setPidiendo(false)
+    }
+  }
+
+  let nota: React.ReactNode = null
+  if (permiso === 'no-soportado') {
+    nota = esIOS() ? (
+      <>
+        {t.avisoIos}{' '}
+        <Link href="/instalar" className="text-accent-text underline-offset-4 hover:underline">
+          {t.instalarApp}
+        </Link>
+      </>
+    ) : (
+      t.avisoNoSoportado
+    )
+  } else if (permiso === 'denied') {
+    nota = t.avisoBloqueado
+  }
+
+  return (
+    <ToggleSwitch
+      id="cfg-aviso-analisis"
+      checked={activo}
+      onChange={cambiar}
+      disabled={pidiendo || permiso === 'no-soportado' || permiso === 'denied'}
+      label={t.avisoAnalisis}
+      descripcion={t.avisoAnalisisBajada}
+      nota={nota}
+    />
+  )
+}
+
+/**
+ * "Novedades del producto": por email, guardado en la cuenta (PUT /me/preferences). Las
+ * manda backend/send-news.ts. Hasta que carga el perfil se muestra como viene del
+ * servidor; el cambio se ve al instante y se deshace si el guardado falla.
+ */
+function Novedades() {
+  const t = useTextos(TEXTOS)
+  const { profile, refreshProfile } = useAuth()
+  const [local, setLocal] = useState<boolean | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState(false)
+  const activo = local ?? profile?.newsOptIn ?? false
+
+  const cambiar = async (valor: boolean) => {
+    setLocal(valor)
+    setError(false)
+    setGuardando(true)
+    try {
+      await apiFetch('/me/preferences', { method: 'PUT', body: { newsOptIn: valor } })
+      await refreshProfile()
+    } catch {
+      setLocal(!valor)
+      setError(true)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <ToggleSwitch
+      id="cfg-novedades"
+      checked={activo}
+      onChange={cambiar}
+      disabled={guardando || !profile}
+      label={t.novedades}
+      descripcion={t.novedadesBajada(profile?.email ?? null)}
+      nota={error ? t.novedadesError : null}
+    />
+  )
+}
+
 export default function ConfiguracionPage() {
   const t = useTextos(TEXTOS)
-  // Estas preferencias son solo estado local de UI, sin persistencia.
-  // El idioma y el modo de lectura sí persisten (SelectorDeIdioma, SelectorDeModo).
-  const [emailAnalisis, setEmailAnalisis] = useState(true)
-  const [novedades, setNovedades] = useState(false)
-  const [guardarHistorial, setGuardarHistorial] = useState(true)
-  const [compartirAnonimo, setCompartirAnonimo] = useState(false)
 
   return (
     <div className="mx-auto flex w-full max-w-card flex-col gap-6 px-gutter py-12 md:px-6 md:py-16">
@@ -225,43 +355,8 @@ export default function ConfiguracionPage() {
           {t.notificaciones}
         </h2>
         <div className="divide-y divide-border">
-          <ToggleSwitch
-            id="cfg-email-analisis"
-            checked={emailAnalisis}
-            onChange={setEmailAnalisis}
-            label={t.emailAnalisis}
-            descripcion={t.emailAnalisisBajada}
-          />
-          <ToggleSwitch
-            id="cfg-novedades"
-            checked={novedades}
-            onChange={setNovedades}
-            label={t.novedades}
-            descripcion={t.novedadesBajada}
-          />
-        </div>
-      </section>
-
-      <section className="panel flex flex-col gap-2">
-        <h2 className="flex items-center gap-2 font-mono text-caption uppercase text-subtle">
-          <ShieldCheck aria-hidden="true" size={14} className="text-accent-text" />
-          {t.privacidad}
-        </h2>
-        <div className="divide-y divide-border">
-          <ToggleSwitch
-            id="cfg-historial"
-            checked={guardarHistorial}
-            onChange={setGuardarHistorial}
-            label={t.historial}
-            descripcion={t.historialBajada}
-          />
-          <ToggleSwitch
-            id="cfg-anonimo"
-            checked={compartirAnonimo}
-            onChange={setCompartirAnonimo}
-            label={t.anonimo}
-            descripcion={t.anonimoBajada}
-          />
+          <AvisoAnalisis />
+          <Novedades />
         </div>
       </section>
 

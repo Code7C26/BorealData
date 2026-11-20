@@ -133,11 +133,13 @@ export default function LoginPage() {
           label={t.contrasena}
           htmlFor="password"
           extra={
-            <h2
+            // Lleva el email ya escrito, así no hay que tipearlo de nuevo en /recuperar.
+            <Link
+              href={email ? `/recuperar?email=${encodeURIComponent(email)}` : '/recuperar'}
               className="font-mono text-micro uppercase text-accent-text underline-offset-4 hover:underline"
             >
               {t.olvidaste}
-            </h2>
+            </Link>
           }
         >
           <div className="relative">
