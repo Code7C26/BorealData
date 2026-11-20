@@ -15,6 +15,7 @@ import { upsertUser } from "../db/usersRepository.js";
 import { cleanContentText, cleanInlineText, looksLikeUrl } from "../utils/contentText.js";
 import { sanitizePageUrl } from "../utils/pageUrl.js";
 import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
+import { consumirCupo, respuestaCupoAgotado } from "../plan/controlDeCupo.js";
 import { cronometro, log, mensajeDeError, resumenDeFuentes } from "../utils/logger.js";
 
 /** Mismo tope que maxInputChars de callGemini: rechazar es más honesto que recortar en silencio. */
@@ -149,6 +150,9 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
   const uid = req.user!.uid;
   const contexto = { uid, kind: contentKind, platform, language, chars: text.length };
 
+  // Se reemplaza al consumir el cupo; si algo falla después, el catch lo devuelve.
+  let devolverCupo: () => Promise<void> = async () => {};
+
   try {
     const userId = await upsertUser(req.user!.uid, req.user!.email);
 
@@ -161,9 +165,18 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
       });
     }
 
+    // Sin caché en esta ruta: cada pedido gasta Gemini, así que siempre consume cupo.
+    const cupo = await consumirCupo(uid, userId);
+    if (!cupo.permitido) {
+      log.warn("analyzeContent.cupoAgotado", { ...contexto, plan: cupo.plan, limite: cupo.limite });
+      return res.status(429).json(respuestaCupoAgotado(cupo));
+    }
+    devolverCupo = cupo.devolver;
+
     const analysis = await callGemini(title, text, { contentKind, language });
 
     if (!analysis.success) {
+      await devolverCupo();
       log.error("analyzeContent.geminiFallido", {
         ...contexto,
         detail: analysis.error,
@@ -215,6 +228,7 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
       shareable: false,
     });
   } catch (err) {
+    await devolverCupo();
     log.error("analyzeContent.error", {
       ...contexto,
       detail: mensajeDeError(err),

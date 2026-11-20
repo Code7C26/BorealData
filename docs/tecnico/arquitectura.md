@@ -28,8 +28,14 @@ backend lo verifica con Firebase Admin (`backend/src/auth/`).
 | `DELETE /analyses/:id` | Sí | Borra un análisis propio. |
 | `GET /history` | Sí | Historial del usuario. |
 | `DELETE /history` | Sí | Borra todo el historial del usuario. |
-| `GET /me`, `POST /me`, `DELETE /me` | Sí | Perfil del usuario; `DELETE` elimina la cuenta y sus análisis en una transacción. |
+| `GET /me`, `POST /me`, `DELETE /me` | Sí | Perfil del usuario (`GET` incluye el `plan` vigente, para ocultar anuncios en Premium); `DELETE` cancela la suscripción y elimina la cuenta y sus análisis en una transacción. |
 | `GET /stats` | No | Totales agregados de la plataforma. |
+| `GET /plan` | Sí | "Tu plan": plan vigente, uso del mes, precio y si quedan días de arrepentimiento. |
+| `POST /plan/suscribir` | Sí | Crea la suscripción de Mercado Pago y devuelve el `initPoint` del checkout. |
+| `POST /plan/sincronizar` | Sí | Relee la suscripción en Mercado Pago y la aplica (respaldo del webhook). |
+| `POST /plan/cancelar` | Sí | Botón de baja o de arrepentimiento (`tipo`); devuelve el código de la constancia. |
+| `POST /plan/solicitud` | No | Baja o arrepentimiento sin sesión: deja la constancia pendiente. |
+| `POST /webhooks/mercadopago` | Firma | Avisos de suscripciones de Mercado Pago (valida `x-signature`). |
 
 `POST /analyze/read` monta su propio `express.json()` con límite de 3 MB y se registra
 antes del parser global (100 kB) en `backend/src/index.ts`.
@@ -106,6 +112,60 @@ Reglas de privacidad del flujo:
 `/analyze/read`. El contador vive en memoria del proceso: con varias instancias el límite
 se multiplica, por lo que en ese escenario debe trasladarse a un almacenamiento compartido.
 
+Además de esa ráfaga por hora, cada plan tiene un **cupo** que vive en Postgres (tabla
+`uso_analisis`, `backend/src/plan/controlDeCupo.ts`): **Gratuito, 5 por día**, que se
+renueva a la medianoche; **Premium, 300 por mes** de uso justo, que se renueva el día 1.
+Los dos en hora de Buenos Aires, y cuentan lo mismo que el límite por hora (`/analyze`
+sin acierto de caché y `/analyze/content`). Los números están en
+`backend/src/plan/config.ts` (`CUPOS`); la fila de `uso_analisis` lleva la `ventana`
+(`dia` o `mes`) en la clave, porque el día 1 de un mes es a la vez un día y un mes.
+El análisis se descuenta antes de llamar a Gemini con un único
+`INSERT ... ON CONFLICT DO UPDATE ... WHERE analisis < tope` —dos pedidos simultáneos no
+pueden pasarse del tope— y se devuelve si el scraping o Gemini fallan. Al agotarse
+responde `429` con `code: "cupo_agotado"`, `plan`, `ventana`, `limite` y `renueva`; la web lo
+detecta y lleva a "Tu plan". Si la base falla, deja pasar y lo registra como error.
+
+### Plan pago (Mercado Pago)
+
+Premium es una suscripción mensual de Mercado Pago sin plan asociado (`POST /preapproval`
+con `status: "pending"`): la persona paga en el checkout de Mercado Pago y la tarjeta
+nunca pasa por el backend. La suscripción lleva el `firebase_uid` en
+`external_reference`.
+
+1. "Empezar con Premium" (landing → registro → `/configuracion/plan?suscribir=1`) llama a
+   `POST /plan/suscribir`, que guarda el `mp_preapproval_id` y devuelve el `initPoint`.
+2. Al pagar, Mercado Pago avisa a `POST /webhooks/mercadopago`. El webhook valida la
+   firma (`x-signature`, HMAC-SHA256 con `MP_WEBHOOK_SECRET`), **vuelve a pedir la
+   suscripción a la API** (nunca confía en el body) y la aplica: `authorized` → Premium
+   hasta el próximo cobro más 3 días de gracia; `paused`/`cancelled` → Gratuito. También
+   procesa `subscription_authorized_payment` (cada cobro mensual renueva `plan_hasta`).
+3. Solo se aplica si la suscripción coincide con el `mp_preapproval_id` guardado: un aviso
+   tardío de una suscripción vieja no pisa la vigente. Corre con el contexto RLS del
+   usuario del `external_reference`, sin bypass.
+4. Al volver del checkout (`back_url`), "Tu plan" llama a `POST /plan/sincronizar`, que
+   hace lo mismo que el webhook. Es lo que hace andar el flujo en local, donde el webhook
+   no llega sin un túnel público.
+
+Premium vale mientras `plan_hasta` no venció: si un cobro falla y nunca llega el aviso de
+baja, la cuenta vuelve sola a Gratuito. `DELETE /me` cancela la suscripción antes de
+borrar la cuenta.
+
+**Baja y arrepentimiento (Disposición 954/2025).** Los dos botones están en el pie de la
+landing y en `/baja`, que es pública. Con sesión, `POST /plan/cancelar` cancela la
+suscripción en Mercado Pago y baja la cuenta en el momento; el arrepentimiento (dentro de
+los 10 días desde que empezó Premium) además reintegra los cobros. Sin sesión,
+`POST /plan/solicitud` no puede probar que la cuenta es de quien pide, así que no cancela
+nada: deja una constancia `pendiente` con el email para resolverla a mano. Cada pedido
+queda en `solicitudes_plan` y su `id` es el código que se le muestra a la persona.
+
+**Modo prueba.** Con las credenciales de una cuenta de prueba vendedora en
+`MP_ACCESS_TOKEN` y el email de la compradora en `MP_TEST_PAYER_EMAIL` (Mercado Pago exige
+que `payer_email` sea quien paga), se paga con las
+[tarjetas de prueba](https://www.mercadopago.com.ar/developers/es/docs/your-integrations/test/cards)
+iniciando sesión en el checkout con la cuenta compradora. "Tu plan" muestra un aviso de
+modo prueba. Para cobrar de verdad hace falta la cuenta de una persona mayor de edad con
+CUIT y monotributo, y emitir factura C.
+
 ### Logging
 
 `backend/src/utils/logger.ts` emite una línea JSON por evento con las claves de Cloud
@@ -145,6 +205,7 @@ Scripts idempotentes en `backend/`, ejecutados con el rol dueño de las tablas:
 | `migrate-delete.ts` | Permiso DELETE y policies de borrado. |
 | `migrate-language.ts` | Columna `language` y caché por idioma. |
 | `migrate-question.ts` | Agrega `question` a los valores admitidos de `source_type`. |
+| `migrate-plan.ts` | Plan pago: `plan`, `plan_desde`, `plan_hasta` y `mp_preapproval_id` en `users`; tablas `uso_analisis` y `solicitudes_plan` con RLS. Sin correrla no hay tope por plan, "Tu plan" responde 503 y `GET /me` informa `plan: "gratuito"`. |
 | `verify-rls.ts` | Comprueba el aislamiento entre usuarios (solo lectura). |
 
 ```bash
@@ -206,4 +267,6 @@ enruta por dominio.
 Vitest en `backend/` y `apps/`. Cubren la tabla veredicto × confianza,
 `parseGeminiResponse` (con fixtures de la forma real de `groundingChunks`), la
 traducción del idioma de salida, la defensa contra SSRF (incluidas direcciones IPv4
-mapeadas en IPv6 en notación hexadecimal) y la sanitización de texto y URLs.
+mapeadas en IPv6 en notación hexadecimal), la sanitización de texto y URLs, el cupo
+por plan (5 por día en Gratuito, 300 por mes en Premium, día y mes en hora argentina, devolución si el análisis falla) y el
+webhook de Mercado Pago (firma, estados de la suscripción y avisos de cobro).

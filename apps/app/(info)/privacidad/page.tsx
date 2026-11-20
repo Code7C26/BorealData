@@ -128,8 +128,9 @@ function ContenidoEs() {
           esos datos se rige por sus propios términos, no por los nuestros.
         </p>
         <p>
-          La infraestructura también es de Google: la aplicación corre en Cloud Run, la base de
-          datos es Cloud SQL y las cuentas las maneja Firebase Authentication.
+          La aplicación y la base de datos corren en un servidor virtual privado que contrata
+          Boreal Data, y las cuentas las maneja Firebase Authentication, que también es de
+          Google.
         </p>
       </Seccion>
 
@@ -313,8 +314,8 @@ function ContenidoEn() {
           of that data is governed by its own terms, not ours.
         </p>
         <p>
-          The infrastructure is also Google&apos;s: the application runs on Cloud Run, the
-          database is Cloud SQL and accounts are handled by Firebase Authentication.
+          The application and the database run on a virtual private server rented by Boreal
+          Data, and accounts are handled by Firebase Authentication, which is also Google&apos;s.
         </p>
       </Seccion>
 

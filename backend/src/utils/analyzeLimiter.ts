@@ -9,6 +9,9 @@ import { FixedWindowRateLimiter } from "./rateLimiter.js";
 // Compartido entre /analyze y /analyze/content a propósito: las dos gastan el mismo recurso
 // caro (el paso 2 con grounding), así que comparten presupuesto por usuario. Si fueran
 // contadores separados, cada usuario podría gastar el doble.
+//
+// Esto es solo la RÁFAGA por hora. El cupo de cada plan (Gratuito por día, Premium por mes) vive en
+// Postgres, no acá: ver plan/controlDeCupo.ts.
 export const ANALYZE_RATE_LIMIT = 20;
 export const ANALYZE_RATE_WINDOW_MS = 60 * 60 * 1000;
 export const analyzeRateLimiter = new FixedWindowRateLimiter(ANALYZE_RATE_LIMIT, ANALYZE_RATE_WINDOW_MS);

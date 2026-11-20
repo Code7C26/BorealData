@@ -18,6 +18,7 @@ const TEXTOS = traducciones({
     privacidad: 'Privacidad',
     terminos: 'Términos',
     contacto: 'Contacto',
+    baja: 'Botón de baja',
     instalar: 'Instalar app',
   },
   en: {
@@ -27,6 +28,7 @@ const TEXTOS = traducciones({
     privacidad: 'Privacy',
     terminos: 'Terms',
     contacto: 'Contact',
+    baja: 'Cancellation button',
     instalar: 'Install app',
   },
 })
@@ -101,6 +103,9 @@ export default function LayoutInfo({ children }: { children: React.ReactNode }) 
             </Link>
             <Link href="/contacto" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
               {t.contacto}
+            </Link>
+            <Link href="/baja" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
+              {t.baja}
             </Link>
             <Link href="/instalar" className="font-mono text-micro uppercase text-subtle hover:text-accent-text">
               {t.instalar}

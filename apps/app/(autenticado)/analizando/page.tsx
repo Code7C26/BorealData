@@ -7,6 +7,7 @@ import { analizarContenido, analizarUrl, ApiError } from '@/lib/api'
 import { avisarAnalisisListo } from '@/lib/notificaciones'
 import { traducciones } from '@/lib/idioma'
 import { useIdioma, useTextos } from '@/lib/use-idioma'
+import { esCupoAgotado, RUTA_PLAN } from '@/lib/plan'
 import {
   guardarResultado,
   leerContenidoPendiente,
@@ -22,6 +23,9 @@ const DURACION_POR_PASO_MS = 2200
 const TICK_MS = 1000
 
 type Paso = 0 | 1 | 2 | 3
+
+/** A dónde va un análisis que choca con el cupo del plan (429 `cupo_agotado`). */
+const RUTA_TOPE = `${RUTA_PLAN}?tope=1`
 
 const TEXTOS = traducciones({
   es: {
@@ -100,6 +104,12 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
           router.replace('/login')
           return
         }
+        // Sin cupo en el mes: no es un error del análisis, es el tope del plan. "Tu plan"
+        // explica cuándo se renueva y ofrece Premium. El borrador queda para reintentar.
+        if (esCupoAgotado(err)) {
+          router.replace(RUTA_TOPE)
+          return
+        }
         // 422 = el scraper no pudo sacar contenido de la URL. No es un error del
         // producto ni un veredicto: es "sin datos suficientes", y así se muestra.
         const status = err instanceof ApiError && err.status === 422 ? 'insuficiente' : 'error'
@@ -149,6 +159,10 @@ function AnalizandoContent({ tipo, valor }: { tipo: string; valor: string }) {
         .catch((err) => {
           if (err instanceof ApiError && err.status === 401) {
             router.replace('/login')
+            return
+          }
+          if (esCupoAgotado(err)) {
+            router.replace(RUTA_TOPE)
             return
           }
           resultadoRef.current = {

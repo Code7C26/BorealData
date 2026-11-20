@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { Bell, Globe, Moon, Sun } from 'lucide-react'
+import { Bell, CreditCard, Globe, Moon, Sun } from 'lucide-react'
+import { obtenerPlan, RUTA_PLAN, type EstadoPlan, type Ventana } from '@/lib/plan'
 import { CerrarSesionBoton } from '@/components/cerrar-sesion-boton'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
@@ -47,6 +48,12 @@ const TEXTOS = traducciones({
     novedadesError: 'No pudimos guardar el cambio. Probá de nuevo en unos segundos.',
     cerrarSesion: 'Cerrar sesión',
     cerrarSesionBajada: 'Tu historial queda guardado; vas a tener que entrar de nuevo para verlo.',
+    tuPlan: 'Tu plan',
+    nombresPlan: { gratuito: 'Gratuito', premium: 'Premium' },
+    usoDelMes: (usados: number, limite: number, ventana: Ventana) =>
+      `${usados} de ${limite} análisis ${ventana === 'dia' ? 'hoy' : 'este mes'}`,
+    verPlan: 'Ver tu plan',
+    cargandoPlan: 'Cargando…',
   },
   en: {
     eyebrow: 'Preferences',
@@ -73,6 +80,12 @@ const TEXTOS = traducciones({
     novedadesError: "We couldn't save the change. Try again in a few seconds.",
     cerrarSesion: 'Log out',
     cerrarSesionBajada: "Your history stays saved; you'll need to log in again to see it.",
+    tuPlan: 'Your plan',
+    nombresPlan: { gratuito: 'Free', premium: 'Premium' },
+    usoDelMes: (usados: number, limite: number, ventana: Ventana) =>
+      `${usados} of ${limite} analyses ${ventana === 'dia' ? 'today' : 'this month'}`,
+    verPlan: 'See your plan',
+    cargandoPlan: 'Loading…',
   },
 })
 
@@ -331,6 +344,43 @@ function Novedades() {
   )
 }
 
+/** Resumen de "Tu plan": plan, uso del mes y el link a la pantalla completa. */
+function ResumenDelPlan() {
+  const t = useTextos(TEXTOS)
+  const [estado, setEstado] = useState<EstadoPlan | null>(null)
+  const [fallo, setFallo] = useState(false)
+
+  useEffect(() => {
+    obtenerPlan()
+      .then(setEstado)
+      .catch(() => setFallo(true))
+  }, [])
+
+  return (
+    <section className="panel flex flex-wrap items-center justify-between gap-4">
+      <div className="min-w-0">
+        <h2 className="flex items-center gap-2 font-mono text-caption uppercase text-subtle">
+          <CreditCard aria-hidden="true" size={14} className="text-accent-text" />
+          {t.tuPlan}
+          {estado && (
+            <span className={cn('chip ml-1', estado.plan === 'premium' ? 'text-accent-text' : 'text-subtle')}>
+              {t.nombresPlan[estado.plan]}
+            </span>
+          )}
+        </h2>
+        {!fallo && (
+          <p className="mt-2 text-body-sm text-ink">
+            {estado ? t.usoDelMes(estado.uso.usados, estado.uso.limite, estado.uso.ventana) : t.cargandoPlan}
+          </p>
+        )}
+      </div>
+      <Link href={RUTA_PLAN} className="btn-secondary">
+        {t.verPlan}
+      </Link>
+    </section>
+  )
+}
+
 export default function ConfiguracionPage() {
   const t = useTextos(TEXTOS)
 
@@ -340,6 +390,8 @@ export default function ConfiguracionPage() {
         <p className="eyebrow">{t.eyebrow}</p>
         <h1 className="font-display text-h2-fluid text-display">{t.titulo}</h1>
       </header>
+
+      <ResumenDelPlan />
 
       <section className="panel flex flex-col gap-2">
         <h2 className="font-mono text-caption uppercase text-subtle">{t.cuenta}</h2>

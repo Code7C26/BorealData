@@ -11,13 +11,15 @@ import { useAuth } from "@/lib/auth-context";
  * chequeo de auth es client-only, así que no bloquea el render inicial de
  * la página para el caso común (visitante anónimo).
  */
-export function AuthRedirect({ to }: { to: string }) {
+export function AuthRedirect({ to }: { to: string | (() => string) }) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace(to);
+      // Una función se resuelve recién acá, en el cliente: login y registro la usan para
+      // leer `?plan=premium` de la URL (ver destinoTrasEntrar en lib/plan.ts).
+      router.replace(typeof to === "function" ? to() : to);
     }
   }, [loading, user, to, router]);
 

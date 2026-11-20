@@ -148,7 +148,13 @@ function ResultView({
   const confianza = t.confianza[result.confidence];
   const pasos = result.reasoning.slice(0, MAX_PASOS);
   const pasosRestantes = result.reasoning.length - pasos.length;
-  const fuentes = result.sources.slice(0, MAX_FUENTES);
+  // Primero las que tienen un enlace real de la búsqueda (y el origen): en el panel
+  // entran solo cuatro, y tienen que ser las comprobables. Las que el modelo nombró sin
+  // respaldo quedan para el análisis completo, donde la web las muestra aparte.
+  const comprobable = (f: AnalysisResult['sources'][number]) => (f.url || f.stance === 'origen' ? 0 : 1);
+  const fuentes = [...result.sources]
+    .sort((a, b) => comprobable(a) - comprobable(b))
+    .slice(0, MAX_FUENTES);
   const fuentesRestantes = result.sources.length - fuentes.length;
 
   return (
