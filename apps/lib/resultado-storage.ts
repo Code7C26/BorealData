@@ -133,6 +133,10 @@ export function historyItemToAnalyzeResponse(item: HistoryItem): AnalyzeResponse
     reasoning: item.reasoning,
     sources: item.sources,
     toneFlags: item.toneFlags,
+    // Sin estos dos, la pantalla de un análisis guardado ofrecía "Compartir" en capturas y
+    // textos privados, y el link que copiaba le daba "No encontrado" a cualquier otra persona.
+    shareable: item.shareable,
+    isPublic: item.isPublic,
     language: item.language,
   }
 }

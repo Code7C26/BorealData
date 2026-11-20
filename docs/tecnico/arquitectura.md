@@ -10,10 +10,9 @@ diseño y particularidades conocidas de cada plataforma. La puesta en marcha est
 |---|---|---|
 | Web | `apps/` | Next.js (App Router). Landing, autenticación, análisis, historial, perfil, resultado público. |
 | Extensión | `apps/extension/` | WXT + React. Side panel que analiza la pestaña activa, capturas y selecciones. |
-| App móvil | `mobile/` | Expo + Expo Router. Análisis por enlace, texto, pregunta o captura de la galería. |
 | Backend | `backend/` | Express. Scraping, llamada a Gemini, persistencia en Postgres. |
 
-Las tres superficies comparten el backend y el proyecto de Firebase. El cliente obtiene
+Las dos superficies comparten el backend y el proyecto de Firebase. El cliente obtiene
 un ID token de Firebase Authentication y lo envía en `Authorization: Bearer <token>`; el
 backend lo verifica con Firebase Admin (`backend/src/auth/`).
 
@@ -51,7 +50,7 @@ una **confianza** de 1 a 5, como valores independientes. Reglas:
 - Una combinación fuera de tabla se degrada a `sin-datos`.
 
 La regla se aplica en `normalizeVerdict` (`backend/src/gemini/types.ts`), en `normalize`
-(`apps/lib/verdict.ts` y `mobile/src/lib/verdict.ts`) y en una CHECK constraint de la
+(`apps/lib/verdict.ts` y `apps/extension/lib/analysis.ts`) y en una CHECK constraint de la
 base. Los tres archivos de vocabulario deben mantenerse sincronizados.
 
 La respuesta incluye además `headline`, `lead`, `summary`, `reasoning`, `sources` (con
@@ -240,17 +239,6 @@ también desde la sección correspondiente de `schema.sql`.
 - `auth-bridge.content.ts` recibe la sesión desde la web.
 - `chrome.sidePanel.close()` no tiene efecto si se llama desde el propio panel; debe
   invocarse desde el background.
-
-## App móvil
-
-- `src/lib/verdict.ts`, `src/lib/api.ts` y `src/lib/idioma.ts` replican los módulos
-  homónimos de `apps/lib/`.
-- `src/theme/tokens.ts` traslada el sistema de diseño (paleta y roles semánticos).
-- `src/lib/config.ts` deduce la URL del backend a partir del host de Metro; en el
-  emulador de Android, el host se alcanza en `10.0.2.2`.
-- La preferencia de idioma se guarda en AsyncStorage.
-
-Particularidades en [mobile/README.md](../../mobile/README.md).
 
 ## Despliegue
 

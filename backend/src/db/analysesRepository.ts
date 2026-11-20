@@ -168,10 +168,17 @@ export interface AnalysisHistoryItem {
   /** De dónde salió. Las filas anteriores a la migración son 'url'. */
   sourceType: SourceType;
   /**
-   * false para contenido que armó el cliente (puede ser privado): el front no debe ofrecer
-   * "Compartir resultado", y GET /analyses/:id solo se lo sirve a su dueño.
+   * true solo para análisis de enlace. Lo usa la extensión para lo que ya armó
+   * /analyze/content; para saber si alguien sin cuenta lo puede abrir, ver `isPublic`.
    */
   shareable: boolean;
+  /**
+   * Si GET /analyses/:id se lo sirve a cualquiera con el link: siempre para los de enlace,
+   * y para el contenido del cliente (capturas, textos, preguntas) solo después de que su
+   * dueño tocó "Compartir verificación" (columna `shared_at`, ver shareAnalysisForUser).
+   * Solo lo calcula getAnalysisById(); en el resto de las lecturas queda undefined.
+   */
+  isPublic?: boolean;
   /**
    * Idioma en que escribió Gemini. El front lo usa para avisar cuando un análisis está en
    * otro idioma que la interfaz (las filas anteriores a la columna `language` son 'es').
@@ -446,6 +453,29 @@ export async function getAnalysisById(
     // Filtro EXPLÍCITO además de la policy de RLS: RLS no se aplica al dueño de la tabla ni a
     // superusuarios (típico en desarrollo local, donde DATABASE_URL usa `postgres`), y ahí el
     // link público serviría capturas privadas. Una fila que no es 'url' solo la ve su dueño.
+    //
+    // `shared_at` marca el contenido del cliente que su dueño eligió compartir. Si la columna
+    // todavía no existe (backend nuevo contra una base sin migrate-share.ts), se cae a la
+    // consulta de antes en vez de romper todos los links: un SAVEPOINT, porque un error
+    // dentro de la transacción la deja abortada.
+    await client.query("SAVEPOINT con_shared_at");
+    try {
+      const result = await client.query<AnalysisRow & { shared_at: Date | null }>(
+        `SELECT ${SELECT_COLUMNS}, shared_at
+         FROM analyses
+         WHERE id = $1
+           AND (source_type = 'url' OR shared_at IS NOT NULL OR user_id = $2::uuid)`,
+        [id, viewerUserId]
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      const item = mapAnalysisRow(row);
+      return { ...item, isPublic: item.sourceType === "url" || row.shared_at !== null };
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code !== COLUMNA_INEXISTENTE) throw err;
+      await client.query("ROLLBACK TO SAVEPOINT con_shared_at");
+    }
+
     const result = await client.query<AnalysisRow>(
       `SELECT ${SELECT_COLUMNS}
        FROM analyses
@@ -455,8 +485,45 @@ export async function getAnalysisById(
     );
 
     const row = result.rows[0];
-    return row ? mapAnalysisRow(row) : null;
+    if (!row) return null;
+    const item = mapAnalysisRow(row);
+    return { ...item, isPublic: item.sourceType === "url" };
   });
+}
+
+/** SQLSTATE de Postgres para "column does not exist". */
+const COLUMNA_INEXISTENTE = "42703";
+
+/**
+ * "Compartir verificación" sobre un análisis propio: lo deja visible para cualquiera con el
+ * link. Para los de enlace no cambia nada (ya eran públicos); para capturas, textos y
+ * preguntas es lo que los saca de privados, y solo pasa porque el dueño tocó el botón.
+ *
+ * Idempotente: `COALESCE` conserva la fecha del primer compartido. Sin bypass: la policy
+ * analyses_update_own (ver migrate-share.ts) limita el UPDATE a las filas propias, y el
+ * `user_id = $2` lo repite por si la base corre sin RLS (dueño de la tabla en local).
+ *
+ * Devuelve false si el id no existe o no es de este usuario (indistinguibles a propósito,
+ * como en el borrado). Si la base no tiene la migración, el error se propaga: la ruta lo
+ * reconoce con esMigracionDeCompartirFaltante() y responde 503.
+ */
+export async function shareAnalysisForUser(id: string, userId: string): Promise<boolean> {
+  if (!UUID_PATTERN.test(id)) return false;
+
+  return runInUserTransaction({ currentUserId: userId }, async (client) => {
+    const result = await client.query(
+      `UPDATE analyses SET shared_at = COALESCE(shared_at, now())
+        WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  });
+}
+
+/** Falta migrate-share.ts: la columna no existe o el rol de la app no tiene UPDATE. */
+export function esMigracionDeCompartirFaltante(err: unknown): boolean {
+  const code = (err as { code?: string } | null)?.code;
+  return code === COLUMNA_INEXISTENTE || code === SIN_PERMISO_DELETE;
 }
 
 /**

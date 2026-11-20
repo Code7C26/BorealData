@@ -46,7 +46,7 @@ function ContenidoEs() {
         volanta="Política de privacidad"
         titulo="Qué hacemos con tus datos"
         bajada="Sin letra chica. Abajo está, dato por dato, qué guardamos, qué no, a dónde viaja lo que analizás y cómo pedir que lo borremos."
-        fecha="8 de octubre de 2026"
+        fecha="19 de noviembre de 2026"
       />
 
       <Seccion titulo="Quiénes somos">
@@ -139,9 +139,12 @@ function ContenidoEs() {
             pero sí la nota que analizaste. Compartilo solo con quien quieras.
           </li>
           <li>
-            <strong>Las capturas y los textos no son compartibles.</strong> Un análisis que no
-            salió de un enlace público se lo servimos únicamente a tu cuenta. No hay enlace
-            para compartirlo y el botón no aparece.
+            <strong>Las capturas, los textos y las preguntas son privados hasta que los
+            compartís.</strong> Un análisis que no salió de un enlace público se lo servimos
+            únicamente a tu cuenta. Si tocás &ldquo;Compartir verificación&rdquo; en uno de
+            ellos, a partir de ese momento cualquiera con el enlace puede verlo, igual que un
+            análisis de enlace. La imagen y el texto original no se muestran (no los guardamos),
+            pero el análisis describe lo que decían: compartilo solo con quien quieras.
           </li>
           <li>
             <strong>Reutilizamos análisis de enlaces entre cuentas.</strong> Si analizás una
@@ -215,7 +218,7 @@ function ContenidoEn() {
         volanta="Privacy policy"
         titulo="What we do with your data"
         bajada="No fine print. Below is, item by item, what we store, what we don't, where what you analyze travels and how to ask us to delete it."
-        fecha="October 8, 2026"
+        fecha="November 19, 2026"
         etiquetaFecha="Last updated"
       />
 
@@ -318,9 +321,12 @@ function ContenidoEn() {
             Only share it with people you want to.
           </li>
           <li>
-            <strong>Screenshots and texts can&apos;t be shared.</strong> An analysis that
-            didn&apos;t come from a public link is only served to your account. There is no
-            link to share it and the button doesn&apos;t appear.
+            <strong>Screenshots, texts and questions stay private until you share
+            them.</strong> An analysis that didn&apos;t come from a public link is only served
+            to your account. If you tap &ldquo;Share this check&rdquo; on one of them, from
+            then on anyone with the link can see it, just like a link analysis. The original
+            image and text aren&apos;t shown (we don&apos;t store them), but the analysis
+            describes what they said: only share it with people you want to.
           </li>
           <li>
             <strong>We reuse link analyses across accounts.</strong> If you analyze an article

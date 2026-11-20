@@ -4,6 +4,7 @@ import { AuthProvider } from '@/lib/auth-context'
 import { traducciones } from '@/lib/idioma'
 import { leerIdioma } from '@/lib/idioma-servidor'
 import { IdiomaProvider } from '@/lib/use-idioma'
+import { RegistrarSW } from '@/components/registrar-sw'
 import { SIDEBAR_INIT_SCRIPT } from '@/lib/sidebar-colapso'
 import { THEME_INIT_SCRIPT } from '@/lib/theme'
 import './global.css'
@@ -51,8 +52,19 @@ const METADATA = traducciones<Metadata>({
   },
 })
 
+/**
+ * Instalación en iOS ("Compartir → Agregar a pantalla de inicio" en Safari): con
+ * `capable` abre a pantalla completa, sin la barra de Safari. El ícono sale de
+ * `app/apple-icon.png` y el resto de la PWA de `app/manifest.ts`.
+ */
+const APPLE_WEB_APP: Metadata['appleWebApp'] = {
+  capable: true,
+  title: 'AletheIA',
+  statusBarStyle: 'black',
+}
+
 export async function generateMetadata(): Promise<Metadata> {
-  return METADATA[await leerIdioma()]
+  return { ...METADATA[await leerIdioma()], appleWebApp: APPLE_WEB_APP }
 }
 
 export const viewport: Viewport = {
@@ -92,6 +104,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
         <IdiomaProvider idioma={idioma}>
           <AuthProvider>{children}</AuthProvider>
+          <RegistrarSW />
         </IdiomaProvider>
       </body>
     </html>

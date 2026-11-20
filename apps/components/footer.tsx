@@ -10,6 +10,7 @@ import { useTextos } from '@/lib/use-idioma'
 const TEXTOS = traducciones({
   es: {
     links: [
+      { href: '/instalar', label: 'Instalar app' },
       { href: '/contacto', label: 'Contacto' },
       { href: '#faq', label: 'Preguntas' },
       { href: '#boreal-data', label: 'Quiénes somos' },
@@ -24,6 +25,7 @@ const TEXTOS = traducciones({
   },
   en: {
     links: [
+      { href: '/instalar', label: 'Install app' },
       { href: '/contacto', label: 'Contact' },
       { href: '#faq', label: 'FAQ' },
       { href: '#boreal-data', label: 'About us' },

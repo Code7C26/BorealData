@@ -1,7 +1,7 @@
 # AletheIA — Sistema de Diseño (V1)
 
 Basado en los documentos de marca *"AletheIA Identidad"* y *"AletheIA Sistema"*
-(V1.0). Aplica a la web, la extensión y la app móvil.
+(V1.0). Aplica a la web y la extensión.
 
 ## 1. Identidad visual
 

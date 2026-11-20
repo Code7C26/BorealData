@@ -185,9 +185,9 @@ CREATE POLICY analyses_insert_own ON analyses
     OR user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
   );
 
--- Sin policies de UPDATE/DELETE a propósito: con RLS activado, la ausencia de policy
--- para un comando lo deniega por completo para aletheia_app — correcto, el backend
--- nunca actualiza ni borra filas de `analyses`.
+-- Sin policies de UPDATE/DELETE acá: con RLS activado, la ausencia de policy para un
+-- comando lo deniega por completo para aletheia_app. El borrado propio lo habilita
+-- migrate-delete.ts y el UPDATE de `shared_at` (compartir) la sección del final.
 
 -- ── Contenido que el scraper no puede ver ─────────────────────
 -- POST /analyze/content analiza evidencia que arma la extensión dentro de la pestaña de la
@@ -351,3 +351,31 @@ CREATE POLICY solicitudes_plan_insert ON solicitudes_plan
     user_id IS NULL
     OR user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
   );
+
+-- ── Compartir capturas, textos y preguntas ────────────────────
+-- El contenido del cliente es privado por defecto, pero su dueño puede compartirlo tocando
+-- "Compartir verificación" (POST /analyses/:id/share). `shared_at` guarda cuándo: NULL es
+-- privado. El bypass del link público pasa a alcanzar también esas filas; la caché por URL
+-- y /stats no cambian porque filtran `source_type = 'url'` en sus propias queries.
+-- Para una base que ya existe: backend/migrate-share.ts (con el dueño de las tablas).
+ALTER TABLE analyses ADD COLUMN IF NOT EXISTS shared_at timestamptz;
+
+DROP POLICY IF EXISTS analyses_select_own_or_shared ON analyses;
+CREATE POLICY analyses_select_own_or_shared ON analyses
+  FOR SELECT
+  USING (
+    user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid
+    OR (
+      current_setting('app.bypass_owner_check', true) = 'true'
+      AND (source_type = 'url' OR shared_at IS NOT NULL)
+    )
+  );
+
+-- Ya incluido en el GRANT de UPDATE de arriba; explícito para que se vea qué columna se edita.
+GRANT UPDATE (shared_at) ON analyses TO aletheia_app;
+
+DROP POLICY IF EXISTS analyses_update_own ON analyses;
+CREATE POLICY analyses_update_own ON analyses
+  FOR UPDATE
+  USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
+  WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);

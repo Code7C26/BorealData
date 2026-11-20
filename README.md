@@ -17,7 +17,7 @@
 
 AletheIA analiza noticias, publicaciones y afirmaciones y devuelve un veredicto
 fundamentado. El contenido puede ingresarse como enlace, texto, pregunta o captura de
-pantalla, desde la web, la extensión de Chrome o la app móvil.
+pantalla, desde la web (instalable como app en el celular) o la extensión de Chrome.
 
 El análisis combina la extracción del contenido (scraping, o lectura de la imagen con IA
 cuando es una captura) con Gemini y grounding vía Google Search. El resultado tiene dos
@@ -63,7 +63,7 @@ fuentes consultadas (con su postura) y el tono del contenido.
 |---|---|---|
 | Web | Next.js 16 (App Router) + React 19 + TypeScript | Tailwind CSS 4, Base UI, lucide-react. Build `standalone` para Docker |
 | Extensión | WXT 0.21 + React 19 (Manifest V3) | Side panel de Chrome |
-| App móvil | Expo SDK 58 + React Native 0.88 + Expo Router | iOS y Android |
+| App en el celular | PWA de la misma web (`/instalar`) | iOS (Safari) y Android (Chrome) |
 
 ### Backend y análisis
 
@@ -71,7 +71,7 @@ fuentes consultadas (con su postura) y el tono del contenido.
 |---|---|---|
 | API | Node.js 24 + Express 5 + TypeScript 7 | `tsx` en desarrollo, `tsc` para el build, Vitest para tests |
 | Scraping | Cheerio + Puppeteer | Cheerio primero; Puppeteer (Chromium headless) si la página necesita JavaScript |
-| IA | Gemini (`@google/genai`) | `gemini-2.5-flash` con grounding vía Google Search; el mismo modelo lee las capturas (configurable con `GEMINI_READ_MODEL`) |
+| IA | Gemini (`@google/genai`) | `gemini-3.5-flash` con grounding vía Google Search; el mismo modelo lee las capturas (configurable con `GEMINI_READ_MODEL`) |
 | Base de datos | PostgreSQL (`pg`) | Postgres 15 en Docker en producción y Postgres local en desarrollo, con Row Level Security. Cloud SQL soportado vía connector |
 | Autenticación | Firebase Authentication | Google y email/contraseña; el backend verifica el ID token con `firebase-admin` |
 
@@ -96,7 +96,6 @@ BorealData/
 │   ├── lib/              Cliente de la API, sesión, vocabulario de veredictos, idioma, tema
 │   ├── public/           Archivos estáticos
 │   └── extension/        Extensión de Chrome (paquete npm independiente)
-├── mobile/               App móvil (Expo)
 ├── backend/              API REST
 │   ├── src/auth/         Verificación del ID token (requireAuth, attachUserIfPresent)
 │   ├── src/db/           Pool de Postgres, repositorios y esquema (schema.sql)
@@ -112,10 +111,7 @@ BorealData/
 └── docker-compose.yml    Stack de producción: postgres + web + backend
 ```
 
-La app móvil vive fuera de `apps/` porque Metro y Next.js no pueden compartir el mismo
-`node_modules` ni el mismo `tsconfig`.
-
-Las tres superficies usan el mismo backend y el mismo proyecto de Firebase: una cuenta
+Las dos superficies usan el mismo backend y el mismo proyecto de Firebase: una cuenta
 sirve para todas y el historial es compartido. La extensión no tiene login propio: toma
 la sesión de la web (`apps/lib/extension-bridge.ts`).
 
@@ -186,16 +182,11 @@ La carpeta de salida se carga como extensión sin empaquetar en `chrome://extens
 Ver [apps/extension/README.md](apps/extension/README.md) y, para publicar,
 [apps/extension/PUBLICAR.md](apps/extension/PUBLICAR.md).
 
-### App móvil
+### App en el celular
 
-```bash
-cd mobile
-npm install
-cp .env.example .env.local
-npm start              # servidor de Expo; se abre con Expo Go escaneando el QR
-```
-
-Ver [mobile/README.md](mobile/README.md).
+No hay app nativa: la web es una PWA. Se instala desde `/instalar` (en Android y
+escritorio con un botón; en iPhone con Compartir → Agregar a pantalla de inicio). El
+manifest está en `apps/app/manifest.ts` y el service worker en `apps/public/sw.js`.
 
 ### Calidad
 
@@ -204,7 +195,6 @@ Ver [mobile/README.md](mobile/README.md).
 | `apps/` | `npm run lint`, `npm test`, `npx tsc --noEmit` |
 | `apps/extension/` | `npm run compile` |
 | `backend/` | `npm test`, `npm run build` |
-| `mobile/` | `npm run typecheck`, `npm run lint` |
 
 ---
 
@@ -246,7 +236,7 @@ automáticamente. Referencia completa en [`.env.example`](.env.example).
 | `CORS_ORIGIN` | Orígenes de la web, separados por coma y sin ruta |
 | `FIREBASE_PROJECT_ID` | Verificación de tokens. Sin este valor, las rutas autenticadas responden 401 |
 | `GEMINI_API_KEY` | API de Gemini |
-| `GEMINI_READ_MODEL` | Opcional. Vacía usa `gemini-2.5-flash` |
+| `GEMINI_READ_MODEL` | Opcional. Vacía usa `gemini-3.5-flash` |
 | `NEXT_PUBLIC_*` | Los mismos valores que los build args de la web |
 
 ### 3. Base de datos
@@ -270,8 +260,7 @@ curl https://aletheiainc.online/api/
 
 ## Pendiente
 
-- Compilar la app móvil con EAS y publicarla.
-- Recibir contenido compartido desde otras apps en el teléfono (intent `ACTION_SEND`).
+- Recibir contenido compartido desde otras apps en el teléfono (Web Share Target en el manifest de la PWA).
 
 ---
 
@@ -289,4 +278,4 @@ curl https://aletheiainc.online/api/
 | Integrante | Rol | Responsabilidades |
 |---|---|---|
 | Ciro Di Marsico | Backend Lead / Scrum Master | API REST, scraping, integración con Gemini, base de datos, infraestructura y despliegue |
-| Renzo Lanata | Frontend Lead | Web, extensión de Chrome, app móvil, diseño de interfaz |
+| Renzo Lanata | Frontend Lead | Web, extensión de Chrome, diseño de interfaz |
