@@ -9,8 +9,8 @@ import { useTextos } from '@/lib/use-idioma'
 import { cn } from '@/lib/utils'
 
 const TEXTOS = traducciones({
-  es: { instalar: 'Instalar app', abriendo: 'Abriendo…', comoInstalar: 'Instalar en el celular' },
-  en: { instalar: 'Install app', abriendo: 'Opening…', comoInstalar: 'Install on your phone' },
+  es: { instalar: 'Instalar app', abriendo: 'Abriendo…', comoInstalar: 'Cómo instalarla' },
+  en: { instalar: 'Install app', abriendo: 'Opening…', comoInstalar: 'How to install it' },
 })
 
 /** En qué estado de instalación está este navegador (ver lib/instalar-app.ts). */

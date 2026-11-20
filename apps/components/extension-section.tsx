@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight, Crop, KeyRound, PanelRight } from 'lucide-react'
+import { ArrowUpRight, Crop, KeyRound, Monitor, PanelRight } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
 import { LogoChrome } from '@/components/logo-chrome'
 import { ANALISIS_EJEMPLO as EJEMPLO_POR_IDIOMA } from '@/lib/ejemplo'
@@ -31,6 +31,8 @@ const TEXTOS = traducciones({
     bajadaCorta: 'Un panel al costado de la nota: veredicto y fuentes sin cambiar de pestaña.',
     insignia: 'Disponible en',
     insigniaTienda: 'Chrome Web Store',
+    soloComputadora:
+      'Se instala en la computadora, desde Chrome, Edge o Brave. Entrá a aletheiainc.online desde la compu y agregala con un clic.',
   },
   en: {
     confianza: (nivel: string) => `${nivel} confidence`,
@@ -51,6 +53,8 @@ const TEXTOS = traducciones({
     bajadaCorta: 'A panel next to the article: verdict and sources without switching tabs.',
     insignia: 'Available on the',
     insigniaTienda: 'Chrome Web Store',
+    soloComputadora:
+      'It installs on your computer, from Chrome, Edge or Brave. Open aletheiainc.online on your computer and add it with one click.',
   },
 })
 
@@ -190,7 +194,7 @@ export function ExtensionSection() {
             <span className="hidden md:inline">{t.bajada}</span>
           </p>
 
-          <ul className="mt-8 hidden flex-col gap-4 md:flex">
+          <ul className="mt-8 flex flex-col gap-4">
             {t.beneficios.map((b, i) => {
               const Icono = ICONOS_BENEFICIOS[i]
               return (
@@ -207,8 +211,20 @@ export function ExtensionSection() {
             })}
           </ul>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4 md:mt-10">
-            <a href={URL_CHROME_WEB_STORE} target="_blank" rel="noopener noreferrer" className="btn-primary">
+          {/* En el celular la extensión no se puede instalar: se cuenta qué es y dónde se
+              instala, sin un botón que llevaría a una tienda que no la deja agregar. */}
+          <p className="mt-8 flex items-start gap-3 rounded-xl border border-border bg-surface p-4 text-body-sm text-muted md:hidden">
+            <Monitor aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-accent-text" />
+            {t.soloComputadora}
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-4 md:mt-10">
+            <a
+              href={URL_CHROME_WEB_STORE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary hidden md:inline-flex"
+            >
               <LogoChrome />
               {t.agregar}
               <ArrowUpRight aria-hidden="true" size={16} />

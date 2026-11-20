@@ -1,7 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import { ArrowUpRight, X } from 'lucide-react'
+import { ArrowUpRight, Monitor, X } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
 import { LogoChrome } from '@/components/logo-chrome'
 import { URL_CHROME_WEB_STORE } from '@/lib/extension-store'
@@ -16,6 +16,7 @@ const TEXTOS = traducciones({
       'Se abre al costado de cualquier nota y la verifica sin copiar el enlace. Usa esta misma sesión: no hay que volver a entrar.',
     agregar: 'Agregar a Chrome',
     yaLaTengo: 'Ya la tengo',
+    soloComputadora: 'Se instala desde Chrome, Edge o Brave en la computadora.',
   },
   en: {
     eyebrow: 'Chrome extension',
@@ -24,6 +25,7 @@ const TEXTOS = traducciones({
       "It opens next to any article and checks it without copying the link. It uses this same session: no need to sign in again.",
     agregar: 'Add to Chrome',
     yaLaTengo: 'I already have it',
+    soloComputadora: 'It installs from Chrome, Edge or Brave on your computer.',
   },
 })
 
@@ -60,10 +62,10 @@ function ocultar() {
 /**
  * La invitación a instalar la extensión, en el dashboard.
  *
- * Solo en pantallas md+: la Chrome Web Store no instala nada en el celular, y
- * mostrarle el botón a quien no puede usarlo es ruido. "Ya la tengo" la esconde
- * en este navegador (localStorage, que puede fallar en una ventana privada: en
- * ese caso el banner simplemente vuelve a aparecer).
+ * En la computadora es instalable (botón a la Chrome Web Store). En el celular es
+ * solo informativa: la tienda no instala extensiones ahí, así que en vez del botón
+ * dice dónde se instala. "Ya la tengo" la esconde en este navegador (localStorage,
+ * que puede fallar en una ventana privada: en ese caso el banner vuelve a aparecer).
  *
  * En el servidor cuenta como oculto, así quien ya la cerró no la ve parpadear
  * en cada carga.
@@ -77,7 +79,7 @@ export function ExtensionBanner() {
   return (
     <section
       aria-labelledby="extension-banner-title"
-      className="relative hidden overflow-hidden rounded-2xl border border-border bg-surface md:block"
+      className="relative overflow-hidden rounded-2xl border border-border bg-surface"
     >
       <div
         aria-hidden="true"
@@ -94,7 +96,7 @@ export function ExtensionBanner() {
         <X aria-hidden="true" size={16} />
       </button>
 
-      <div className="relative flex items-center gap-6 p-6 pr-14">
+      <div className="relative flex flex-col gap-4 p-5 pr-12 md:flex-row md:items-center md:gap-6 md:p-6 md:pr-14">
         {/* El ícono de la app con la insignia de Chrome encima: "esto, en Chrome". */}
         <span className="relative flex size-14 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-sunk">
           <LogoMark className="size-8" />
@@ -109,8 +111,17 @@ export function ExtensionBanner() {
           <p className="max-w-texto text-body-sm text-muted">{t.bajada}</p>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <a href={URL_CHROME_WEB_STORE} target="_blank" rel="noopener noreferrer" className="btn-primary">
+        <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
+          <p className="flex items-center gap-2 text-caption tracking-normal text-subtle md:hidden">
+            <Monitor aria-hidden="true" size={14} className="shrink-0 text-accent-text" />
+            {t.soloComputadora}
+          </p>
+          <a
+            href={URL_CHROME_WEB_STORE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary hidden md:inline-flex"
+          >
             <LogoChrome />
             {t.agregar}
             <ArrowUpRight aria-hidden="true" size={16} />
