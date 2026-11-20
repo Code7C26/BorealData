@@ -9,7 +9,7 @@ import { useTextos } from '@/lib/use-idioma'
 
 const TEXTOS = traducciones({
   es: {
-    etiqueta: 'App para iPhone y Android',
+    etiqueta: 'App para celular y computadora',
     titulo: 'AletheIA en tu',
     tituloDestacado: 'pantalla de inicio',
     bajada:
@@ -28,7 +28,7 @@ const TEXTOS = traducciones({
     hora: '9:41',
   },
   en: {
-    etiqueta: 'App for iPhone and Android',
+    etiqueta: 'App for phone and computer',
     titulo: 'AletheIA on your',
     tituloDestacado: 'home screen',
     bajada:

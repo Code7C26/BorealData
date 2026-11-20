@@ -9,15 +9,17 @@ import { useTextos } from '@/lib/use-idioma'
 
 const TEXTOS = traducciones({
   es: {
-    eyebrow: 'App para el celular',
-    titulo: 'Tené AletheIA en tu pantalla de inicio',
-    bajada: 'Abrila con un toque y recibí un aviso cuando termina cada verificación. Con esta misma cuenta.',
+    eyebrow: 'App para celular y computadora',
+    titulo: 'Tené AletheIA a un toque',
+    bajada:
+      'Instalala en el celular o en la compu, abrila como cualquier app y recibí un aviso cuando termina cada verificación. Con esta misma cuenta.',
     ahoraNo: 'Ahora no',
   },
   en: {
-    eyebrow: 'Phone app',
-    titulo: 'Keep AletheIA on your home screen',
-    bajada: 'Open it with one tap and get notified when each check is done. With this same account.',
+    eyebrow: 'App for phone and computer',
+    titulo: 'Keep AletheIA one tap away',
+    bajada:
+      'Install it on your phone or computer, open it like any app and get notified when each check is done. With this same account.',
     ahoraNo: 'Not now',
   },
 })
@@ -53,9 +55,8 @@ function ocultar() {
 }
 
 /**
- * La invitación a instalar la app, en el dashboard. Es el espejo de ExtensionBanner:
- * aquel solo se ve en computadora (la Chrome Web Store no instala nada en el celular) y
- * este solo en el celular, así nunca aparecen los dos a la vez.
+ * La invitación a instalar la app, en el dashboard, al lado de ExtensionBanner. Se ve
+ * en el celular y en la computadora: la app se instala en los dos.
  *
  * No se muestra si ya se está usando como app instalada, ni después de "Ahora no"
  * (guardado en este navegador). En el servidor cuenta como oculto, así no parpadea.
@@ -70,7 +71,7 @@ export function AppBanner() {
   return (
     <section
       aria-labelledby="app-banner-title"
-      className="relative overflow-hidden rounded-2xl border border-border bg-surface md:hidden"
+      className="relative overflow-hidden rounded-2xl border border-border bg-surface"
     >
       <div
         aria-hidden="true"
@@ -87,7 +88,7 @@ export function AppBanner() {
         <X aria-hidden="true" size={16} />
       </button>
 
-      <div className="relative flex flex-col gap-4 p-5 pr-12">
+      <div className="relative flex flex-col gap-4 p-5 pr-12 md:p-6 md:pr-14">
         <div className="flex items-center gap-3">
           {/* El ícono tal como queda en la pantalla de inicio, con el aviso encima. */}
           <span className="relative flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#0B100F]">
