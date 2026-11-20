@@ -107,7 +107,7 @@ Reglas de privacidad del flujo:
 
 ### Límites de uso
 
-`backend/src/utils/analyzeLimiter.ts`: 20 análisis por hora y usuario, compartidos entre
+`backend/src/utils/analyzeLimiter.ts`: 20 análisis por hora y usuario (60 en Premium), compartidos entre
 `/analyze` (sin contar aciertos de caché) y `/analyze/content`; 60 lecturas por hora en
 `/analyze/read`. El contador vive en memoria del proceso: con varias instancias el límite
 se multiplica, por lo que en ese escenario debe trasladarse a un almacenamiento compartido.
@@ -206,6 +206,8 @@ Scripts idempotentes en `backend/`, ejecutados con el rol dueño de las tablas:
 | `migrate-language.ts` | Columna `language` y caché por idioma. |
 | `migrate-question.ts` | Agrega `question` a los valores admitidos de `source_type`. |
 | `migrate-plan.ts` | Plan pago: `plan`, `plan_desde`, `plan_hasta` y `mp_preapproval_id` en `users`; tablas `uso_analisis` y `solicitudes_plan` con RLS. Sin correrla no hay tope por plan, "Tu plan" responde 503 y `GET /me` informa `plan: "gratuito"`. |
+| `migrate-plan.sql` | Lo mismo que `migrate-plan.ts` en SQL puro, para el servidor (sin Node): `docker exec -i <id> psql -U postgres -d aletheia < migrate-plan.sql`. Deja las tablas nuevas con el mismo dueño que `users`. |
+| `dar-premium.ts` | No es una migración: da o saca Premium a mano a cuentas del equipo (expo, demos), sin Mercado Pago. Corre `migrate-plan.ts` si falta. |
 | `verify-rls.ts` | Comprueba el aislamiento entre usuarios (solo lectura). |
 
 ```bash
