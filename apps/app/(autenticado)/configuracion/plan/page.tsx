@@ -10,6 +10,7 @@ import { TAG_IDIOMA, traducciones, type Idioma } from '@/lib/idioma'
 import {
   iniciarCheckout,
   obtenerPlan,
+  PAGOS_PREMIUM_ABIERTOS,
   RUTA_PLAN,
   sincronizarPlan,
   type EstadoPlan,
@@ -49,6 +50,8 @@ const TEXTOS = traducciones({
     pasarme: 'Pasarme a Premium',
     redirigiendo: 'Te llevamos a Mercado Pago…',
     pagosDeshabilitados: 'Los pagos todavía no están habilitados.',
+    proximamente: 'Próximamente',
+    premiumProximamente: 'Premium va a estar disponible muy pronto.',
     pagoSeguro: 'Pagás en Mercado Pago: tus datos de tarjeta nunca pasan por AletheIA.',
     modoPrueba:
       'Modo prueba de Mercado Pago: no se cobra plata real. Entrá al checkout con la cuenta compradora de prueba y pagá con una tarjeta de prueba.',
@@ -89,6 +92,8 @@ const TEXTOS = traducciones({
     pasarme: 'Upgrade to Premium',
     redirigiendo: 'Taking you to Mercado Pago…',
     pagosDeshabilitados: 'Payments are not enabled yet.',
+    proximamente: 'Coming soon',
+    premiumProximamente: 'Premium will be available very soon.',
     pagoSeguro: 'You pay on Mercado Pago: your card details never go through AletheIA.',
     modoPrueba:
       'Mercado Pago test mode: no real money is charged. Log in to the checkout with the test buyer account and pay with a test card.',
@@ -173,7 +178,7 @@ function TuPlan({ volverDeMp, suscribir, tope }: { volverDeMp: boolean; suscribi
         } else {
           const actual = await obtenerPlan()
           setEstado(actual)
-          if (suscribir && actual.plan !== 'premium' && actual.pagos.habilitados) {
+          if (suscribir && actual.plan !== 'premium' && actual.pagos.habilitados && PAGOS_PREMIUM_ABIERTOS) {
             window.location.assign(await iniciarCheckout())
             return
           }
@@ -205,7 +210,7 @@ function TuPlan({ volverDeMp, suscribir, tope }: { volverDeMp: boolean; suscribi
         <h1 className="font-display text-h2-fluid text-display">{t.titulo}</h1>
       </header>
 
-      {estado?.pagos.modoPrueba && (
+      {PAGOS_PREMIUM_ABIERTOS && estado?.pagos.modoPrueba && (
         <p className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-sunk px-4 py-3 text-caption tracking-normal text-muted">
           <FlaskConical aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-accent-text" />
           {t.modoPrueba}
@@ -336,12 +341,16 @@ function TuPlan({ volverDeMp, suscribir, tope }: { volverDeMp: boolean; suscribi
             type="button"
             className="btn-primary w-full md:w-auto md:self-start"
             onClick={irAlCheckout}
-            disabled={!estado.pagos.habilitados || ocupado !== null}
+            disabled={!PAGOS_PREMIUM_ABIERTOS || !estado.pagos.habilitados || ocupado !== null}
           >
-            {ocupado === 'redirigiendo' ? t.redirigiendo : t.pasarme}
+            {!PAGOS_PREMIUM_ABIERTOS ? t.proximamente : ocupado === 'redirigiendo' ? t.redirigiendo : t.pasarme}
           </button>
           <p className="text-caption tracking-normal text-subtle">
-            {estado.pagos.habilitados ? t.pagoSeguro : t.pagosDeshabilitados}
+            {!PAGOS_PREMIUM_ABIERTOS
+              ? t.premiumProximamente
+              : estado.pagos.habilitados
+                ? t.pagoSeguro
+                : t.pagosDeshabilitados}
           </p>
         </section>
       )}

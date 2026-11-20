@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/firebase', () => ({ auth: { currentUser: null } }))
 
 const { ApiError } = await import('@/lib/api')
-const { destinoTrasEntrar, esCupoAgotado, RUTA_CHECKOUT } = await import('@/lib/plan')
+const { destinoTrasEntrar, esCupoAgotado, PAGOS_PREMIUM_ABIERTOS, RUTA_CHECKOUT } = await import('@/lib/plan')
 
 describe('destino después de entrar', () => {
-  it('con ?plan=premium sigue al checkout', () => {
-    expect(destinoTrasEntrar('?plan=premium')).toBe(RUTA_CHECKOUT)
+  it('con ?plan=premium sigue al checkout, solo si los pagos están abiertos', () => {
+    expect(destinoTrasEntrar('?plan=premium')).toBe(PAGOS_PREMIUM_ABIERTOS ? RUTA_CHECKOUT : '/dashboard')
   })
 
   it('sin plan, al dashboard de siempre', () => {
