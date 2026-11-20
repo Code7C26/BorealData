@@ -1,5 +1,6 @@
 import { AuthRedirect } from '@/components/auth-redirect'
 import { AnalisisDemo } from '@/components/analisis-demo'
+import { AppSection } from '@/components/app-section'
 import { CieloEstrellado } from '@/components/cielo-estrellado'
 import { CtaFinal } from '@/components/cta-final'
 import { ExtensionSection } from '@/components/extension-section'
@@ -28,14 +29,16 @@ export default function Page() {
             3. Tres pilares — por qué AletheIA, escaneable en tres líneas.
             4. El resultado de verdad — la pieza, no una ilustración de ella.
             5. Extensión — lo que lo diferencia de un chat (capturas, sin cambiar de pestaña).
-            6. Planes — comparar y elegir.
-            7. Confianza y dudas — quiénes somos y preguntas.
-            8. CTA final. */}
+            6. App — la misma AletheIA en el celular, instalable sin tiendas.
+            7. Planes — comparar y elegir.
+            8. Confianza y dudas — quiénes somos y preguntas.
+            9. CTA final. */}
         <Hero />
         <StatsBar />
         <Pilares />
         <AnalisisDemo />
         <ExtensionSection />
+        <AppSection />
         <Planes />
         <QuienesSomos />
         <Faq />
