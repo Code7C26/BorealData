@@ -24,7 +24,12 @@ import {
  * problema del contador no puede tumbar el producto, pero tiene que verse en los logs.
  */
 export type ResultadoCupo =
-  | { permitido: true; devolver: () => Promise<void> }
+  | {
+      permitido: true;
+      /** El plan vigente: decide la ráfaga por hora (utils/analyzeLimiter.ts). */
+      plan: Plan;
+      devolver: () => Promise<void>;
+    }
   | {
       permitido: false;
       plan: Plan;
@@ -59,7 +64,7 @@ export function crearControlDeCupo(deps: DependenciasCupo) {
     // la base caída.
     if (!userId) {
       log.error("cupo.sinUsuario", { uid: firebaseUid });
-      return { permitido: true, devolver: SIN_COSTO };
+      return { permitido: true, plan: "gratuito", devolver: SIN_COSTO };
     }
 
     const ahora = deps.ahora?.() ?? new Date();
@@ -88,6 +93,7 @@ export function crearControlDeCupo(deps: DependenciasCupo) {
 
       return {
         permitido: true,
+        plan,
         devolver: async () => {
           try {
             await deps.restarUso(userId, ventana, periodo);
@@ -98,7 +104,7 @@ export function crearControlDeCupo(deps: DependenciasCupo) {
       };
     } catch (err) {
       log.error("cupo.errorDb", { uid: firebaseUid, detail: mensajeDeError(err) });
-      return { permitido: true, devolver: SIN_COSTO };
+      return { permitido: true, plan: "gratuito", devolver: SIN_COSTO };
     }
   };
 }

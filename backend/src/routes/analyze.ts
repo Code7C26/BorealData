@@ -13,7 +13,7 @@ import { requireAuth } from "../auth/verifyAuth.js";
 import { assertSafeAnalyzeUrl } from "../utils/validateUrl.js";
 import { stripControlChars } from "../utils/sanitize.js";
 import { INVALID_LANGUAGE_ERROR, parseLanguage } from "../gemini/types.js";
-import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
+import { consumirRafaga, mensajeDeRafaga } from "../utils/analyzeLimiter.js";
 import { consumirCupo, respuestaCupoAgotado } from "../plan/controlDeCupo.js";
 import { cronometro, log, mensajeDeError, resumenDeFuentes } from "../utils/logger.js";
 
@@ -54,7 +54,7 @@ const router = Router();
  * Flujo: requireAuth (login obligatorio, corta con 401 si falta o el token es
  * inválido/expiró) -> upsertUser() para resolver el id interno del usuario -> caché por
  * URL exacta (ver getAnalysisForUserByUrl/getLatestAnalysisByUrl más abajo) -> si no hubo
- * cache hit, rate limit por uid (ver analyzeRateLimiter, corta con 429 si ya gastó su
+ * cache hit, rate limit por uid y plan (ver consumirRafaga, corta con 429 si ya gastó su
  * cupo de análisis nuevos en la última hora) -> cupo del plan, por día o por mes
  * (consumirCupo: 429 con `code: "cupo_agotado"`, y se devuelve si el análisis falla) -> scrapeUrl() ->
  * analyzeContent() -> guarda
@@ -130,20 +130,21 @@ router.post("/analyze", requireAuth, async (req: Request, res: Response) => {
       }
     }
 
-    const rateCheck = analyzeRateLimiter.consume(req.user!.uid);
-    if (!rateCheck.allowed) {
-      res.set("Retry-After", String(rateCheck.retryAfterSeconds));
-      log.warn("analyze.rateLimit", { uid, url, retryAfterS: rateCheck.retryAfterSeconds });
-      return res.status(429).json({
-        error: `Alcanzaste el límite de ${ANALYZE_RATE_LIMIT} análisis nuevos por hora. Probá de nuevo en unos minutos.`,
-      });
-    }
-
     // Recién acá, sin acierto de caché: lo que se sirve de la caché no gasta Gemini.
+    // Primero el cupo del plan (que además dice qué plan tiene), después la ráfaga por
+    // hora de ese plan; si la ráfaga corta, el análisis vuelve al cupo.
     const cupo = await consumirCupo(uid, userId);
     if (!cupo.permitido) {
       log.warn("analyze.cupoAgotado", { uid, url, plan: cupo.plan, limite: cupo.limite });
       return res.status(429).json(respuestaCupoAgotado(cupo));
+    }
+
+    const rafaga = consumirRafaga(uid, cupo.plan);
+    if (!rafaga.allowed) {
+      await cupo.devolver();
+      res.set("Retry-After", String(rafaga.retryAfterSeconds));
+      log.warn("analyze.rateLimit", { uid, url, plan: cupo.plan, retryAfterS: rafaga.retryAfterSeconds });
+      return res.status(429).json({ error: mensajeDeRafaga(rafaga.limite) });
     }
     devolverCupo = cupo.devolver;
 

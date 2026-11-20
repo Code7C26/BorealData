@@ -14,7 +14,7 @@ import { saveAnalysis } from "../db/analysesRepository.js";
 import { upsertUser } from "../db/usersRepository.js";
 import { cleanContentText, cleanInlineText, looksLikeUrl } from "../utils/contentText.js";
 import { sanitizePageUrl } from "../utils/pageUrl.js";
-import { analyzeRateLimiter, ANALYZE_RATE_LIMIT } from "../utils/analyzeLimiter.js";
+import { consumirRafaga, mensajeDeRafaga } from "../utils/analyzeLimiter.js";
 import { consumirCupo, respuestaCupoAgotado } from "../plan/controlDeCupo.js";
 import { cronometro, log, mensajeDeError, resumenDeFuentes } from "../utils/logger.js";
 
@@ -156,20 +156,20 @@ router.post("/analyze/content", requireAuth, async (req: Request, res: Response)
   try {
     const userId = await upsertUser(req.user!.uid, req.user!.email);
 
-    const rate = analyzeRateLimiter.consume(req.user!.uid);
-    if (!rate.allowed) {
-      res.set("Retry-After", String(rate.retryAfterSeconds));
-      log.warn("analyzeContent.rateLimit", { ...contexto, retryAfterS: rate.retryAfterSeconds });
-      return res.status(429).json({
-        error: `Alcanzaste el límite de ${ANALYZE_RATE_LIMIT} análisis nuevos por hora. Probá de nuevo en unos minutos.`,
-      });
-    }
-
     // Sin caché en esta ruta: cada pedido gasta Gemini, así que siempre consume cupo.
+    // Primero el cupo del plan, después la ráfaga por hora de ese plan (ver /analyze).
     const cupo = await consumirCupo(uid, userId);
     if (!cupo.permitido) {
       log.warn("analyzeContent.cupoAgotado", { ...contexto, plan: cupo.plan, limite: cupo.limite });
       return res.status(429).json(respuestaCupoAgotado(cupo));
+    }
+
+    const rafaga = consumirRafaga(uid, cupo.plan);
+    if (!rafaga.allowed) {
+      await cupo.devolver();
+      res.set("Retry-After", String(rafaga.retryAfterSeconds));
+      log.warn("analyzeContent.rateLimit", { ...contexto, plan: cupo.plan, retryAfterS: rafaga.retryAfterSeconds });
+      return res.status(429).json({ error: mensajeDeRafaga(rafaga.limite) });
     }
     devolverCupo = cupo.devolver;
 
