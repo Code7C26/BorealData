@@ -22,7 +22,7 @@ export interface Cupo {
  */
 export const CUPOS: Record<IdPlan, Cupo> = {
   gratuito: { limite: 5, ventana: 'dia' },
-  premium: { limite: 300, ventana: 'mes' },
+  premium: { limite: 150, ventana: 'mes' },
 }
 
 /** Precio de Premium por mes, en pesos. Espejo de PRECIO_PREMIUM_ARS del backend. */
