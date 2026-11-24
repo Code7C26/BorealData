@@ -21,8 +21,8 @@ export interface Cupo {
  * (backend/src/plan/config.ts).
  */
 export const CUPOS: Record<IdPlan, Cupo> = {
-  gratuito: { limite: 5, ventana: 'dia' },
-  premium: { limite: 300, ventana: 'mes' },
+  gratuito: { limite: 3, ventana: 'dia' },
+  premium: { limite: 150, ventana: 'mes' },
 }
 
 /** Precio de Premium por mes, en pesos. Espejo de PRECIO_PREMIUM_ARS del backend. */

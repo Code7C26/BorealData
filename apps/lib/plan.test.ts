@@ -19,12 +19,12 @@ describe('destino después de entrar', () => {
 
 describe('cupo agotado', () => {
   it('reconoce el 429 del cupo del plan', () => {
-    const err = new ApiError(429, 'Usaste los 5 análisis gratis de hoy.', {
+    const err = new ApiError(429, 'Usaste los 3 análisis gratis de hoy.', {
       code: 'cupo_agotado',
       plan: 'gratuito',
       ventana: 'dia',
-      usados: 5,
-      limite: 5,
+      usados: 3,
+      limite: 3,
       renueva: '2026-11-20',
     })
     expect(esCupoAgotado(err)).toBe(true)
