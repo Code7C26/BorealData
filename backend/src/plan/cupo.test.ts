@@ -13,8 +13,8 @@ const AHORA = new Date("2026-11-19T15:00:00Z"); // 12:00 en Buenos Aires
 const DIA = 24 * 60 * 60 * 1000;
 
 describe("cupos por plan", () => {
-  it("Gratuito: 5 por día; Premium: uso justo por mes", () => {
-    expect(CUPOS.gratuito).toEqual({ limite: 5, ventana: "dia" });
+  it("Gratuito: 3 por día; Premium: uso justo por mes", () => {
+    expect(CUPOS.gratuito).toEqual({ limite: 3, ventana: "dia" });
     expect(CUPOS.premium.ventana).toBe("mes");
   });
 });
@@ -77,8 +77,8 @@ describe("botón de arrepentimiento", () => {
 
 describe("mensaje de cupo agotado", () => {
   it("al gratuito le dice que se renueva mañana y cuánto da Premium", () => {
-    const mensaje = mensajeDeCupoAgotado("gratuito", 5, "2026-11-20");
-    expect(mensaje).toContain("5 análisis gratis de hoy");
+    const mensaje = mensajeDeCupoAgotado("gratuito", 3, "2026-11-20");
+    expect(mensaje).toContain("3 análisis gratis de hoy");
     expect(mensaje).toContain("mañana");
     expect(mensaje).toContain(String(CUPOS.premium.limite));
   });
@@ -115,7 +115,7 @@ function baseFalsa(plan: "gratuito" | "premium" = "gratuito") {
 }
 
 describe("control de cupo", () => {
-  it("deja pasar 5 análisis gratis en el día y corta el sexto con 429 cupo_agotado", async () => {
+  it("deja pasar los análisis gratis del día y corta el siguiente con 429 cupo_agotado", async () => {
     const { deps } = baseFalsa("gratuito");
     const consumir = crearControlDeCupo(deps);
 
@@ -128,7 +128,7 @@ describe("control de cupo", () => {
 
     const cuerpo = respuestaCupoAgotado(corte);
     expect(cuerpo.code).toBe("cupo_agotado");
-    expect(cuerpo.limite).toBe(5);
+    expect(cuerpo.limite).toBe(CUPOS.gratuito.limite);
     expect(cuerpo.ventana).toBe("dia");
     expect(cuerpo.renueva).toBe("2026-11-20");
   });
@@ -138,7 +138,7 @@ describe("control de cupo", () => {
     let ahora = AHORA;
     deps.ahora = () => ahora;
     const consumir = crearControlDeCupo(deps);
-    for (let i = 0; i < 5; i++) await consumir("uid", "user-1");
+    for (let i = 0; i < CUPOS.gratuito.limite; i++) await consumir("uid", "user-1");
     expect((await consumir("uid", "user-1")).permitido).toBe(false);
 
     ahora = new Date(AHORA.getTime() + DIA);

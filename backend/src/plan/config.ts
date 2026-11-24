@@ -4,8 +4,9 @@
  * Gemini 3 cobra cada búsqueda con grounding, así que cada análisis nuevo tiene costo
  * real: el cupo gratis tiene que ser chico y "ilimitado" no se sostiene.
  *
- *   Gratuito  5 por DÍA (decisión de Renzo, 19-nov-2026): alcanza para chequear lo que
- *             llega en el día y se renueva cada medianoche, en vez de agotarse a mitad de mes.
+ *   Gratuito  3 por DÍA (Renzo, 24-nov-2026; antes 5): alcanza para chequear lo que llega
+ *             en el día y se renueva cada medianoche. Con 5 por día el gratis sumaba ~150 por
+ *             mes, lo mismo que Premium, y Premium no daba más análisis.
  *   Premium   150 por MES de uso justo: alto para una persona pero acotado en plata. Un
  *             tope diario alto dejaría a un usuario intensivo costar más de lo que paga.
  *
@@ -20,7 +21,7 @@
 export type Ventana = "dia" | "mes";
 
 export const CUPOS = {
-  gratuito: { limite: 5, ventana: "dia" },
+  gratuito: { limite: 3, ventana: "dia" },
   premium: { limite: 150, ventana: "mes" },
 } as const satisfies Record<string, { limite: number; ventana: Ventana }>;
 

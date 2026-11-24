@@ -113,7 +113,7 @@ Reglas de privacidad del flujo:
 se multiplica, por lo que en ese escenario debe trasladarse a un almacenamiento compartido.
 
 Además de esa ráfaga por hora, cada plan tiene un **cupo** que vive en Postgres (tabla
-`uso_analisis`, `backend/src/plan/controlDeCupo.ts`): **Gratuito, 5 por día**, que se
+`uso_analisis`, `backend/src/plan/controlDeCupo.ts`): **Gratuito, 3 por día**, que se
 renueva a la medianoche; **Premium, 150 por mes** de uso justo, que se renueva el día 1.
 Los dos en hora de Buenos Aires, y cuentan lo mismo que el límite por hora (`/analyze`
 sin acierto de caché y `/analyze/content`). Los números están en
@@ -270,5 +270,5 @@ Vitest en `backend/` y `apps/`. Cubren la tabla veredicto × confianza,
 `parseGeminiResponse` (con fixtures de la forma real de `groundingChunks`), la
 traducción del idioma de salida, la defensa contra SSRF (incluidas direcciones IPv4
 mapeadas en IPv6 en notación hexadecimal), la sanitización de texto y URLs, el cupo
-por plan (5 por día en Gratuito, 150 por mes en Premium, día y mes en hora argentina, devolución si el análisis falla) y el
+por plan (3 por día en Gratuito, 150 por mes en Premium, día y mes en hora argentina, devolución si el análisis falla) y el
 webhook de Mercado Pago (firma, estados de la suscripción y avisos de cobro).
