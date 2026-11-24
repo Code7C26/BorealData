@@ -48,10 +48,15 @@ fuentes consultadas (con su postura) y el tono del contenido.
 - **Extensión de Chrome** (publicada en la Chrome Web Store): side panel que analiza la
   página activa, menú contextual sobre imágenes o texto y captura de redes sociales
   (Facebook, Instagram, X, WhatsApp Web, TikTok). Usa la sesión iniciada en la web.
-- **App móvil:** verificación por enlace, texto, pregunta o captura, historial y perfil.
-  Aún no publicada en las tiendas.
-- **Backend:** caché por URL e idioma, rate limit por usuario, defensa contra SSRF,
-  sanitización y Row Level Security.
+- **App en el celular:** la misma web se instala como PWA desde `/instalar` (iOS y
+  Android), con las mismas funciones. No hay app nativa: la versión con Expo se descartó.
+- **Planes:** Gratuito (3 análisis por día) y Premium (150 por mes, sin anuncios) con
+  suscripción de Mercado Pago, botón de baja y de arrepentimiento. Los pagos funcionan en
+  modo prueba; en la web Premium figura como "Próximamente".
+- **Cuenta:** recuperación de contraseña con código por email y novedades por email
+  opcionales.
+- **Backend:** caché por URL e idioma, cupo por plan, rate limit por usuario, defensa
+  contra SSRF, sanitización y Row Level Security.
 
 ---
 
@@ -100,11 +105,22 @@ BorealData/
 │   ├── src/auth/         Verificación del ID token (requireAuth, attachUserIfPresent)
 │   ├── src/db/           Pool de Postgres, repositorios y esquema (schema.sql)
 │   ├── src/gemini/       Prompt, llamada a Gemini, lectura de capturas y parseo
+│   ├── src/mail/         Envío de mails (código de recuperación y novedades)
+│   ├── src/mercadopago/  Cliente de suscripciones de Mercado Pago
+│   ├── src/plan/         Cupos y precios de los planes (config.ts)
 │   ├── src/routes/       Endpoints
 │   ├── src/scraper/      Extracción de contenido
 │   ├── src/utils/        Validación de URLs (SSRF), sanitización, rate limit, logging
 │   └── migrate*.ts       Migraciones de base de datos
-├── docs/                 Documentación técnica, de producto y de negocio (índice en docs/README.md)
+├── docs/                 Documentación (índice en docs/README.md)
+│   ├── negocio/          FODA, competencia, validación, viabilidad comercial
+│   ├── producto/         Brainstorm, funciones principales, MVP
+│   ├── tecnico/          Arquitectura y stack
+│   ├── pruebas/          Informe de pruebas y bugs resueltos
+│   ├── seguimiento/      Retoma post-pasantía, reportes y mejoras post-feria
+│   ├── difusion/         Flyer, folleto y spot
+│   ├── pitch/            Guiones del pitch
+│   └── documento-final.pdf
 ├── design/               Sistema de diseño (DESIGN_SYSTEM.md)
 ├── assets/               Recursos gráficos de la marca
 ├── Dockerfile            Imagen de la web
@@ -137,6 +153,12 @@ reenviar la request al backend.
 | `POST` | `/auth/password-reset/request` | Manda un código de 6 dígitos al email. Sin autenticación, con rate limit |
 | `POST` | `/auth/password-reset/confirm` | Cambia la contraseña con el código. Sin autenticación |
 | `GET` | `/stats` | Totales globales de la plataforma. Sin autenticación |
+| `GET` | `/plan` | Plan vigente, uso del día (Gratuito) o del mes (Premium) y precio |
+| `POST` | `/plan/suscribir` | Crea la suscripción mensual en Mercado Pago y devuelve el link de pago |
+| `POST` | `/plan/sincronizar` | Vuelve a leer la suscripción en Mercado Pago al regresar del checkout |
+| `POST` | `/plan/cancelar` | Botón de baja y de arrepentimiento |
+| `POST` | `/plan/solicitud` | Baja o arrepentimiento sin sesión (página pública `/baja`) |
+| `POST` | `/webhooks/mercadopago` | Avisos de Mercado Pago sobre la suscripción. Sin autenticación; firmado con `MP_WEBHOOK_SECRET` |
 
 ---
 
@@ -243,6 +265,10 @@ automáticamente. Referencia completa en [`.env.example`](.env.example).
 | `GEMINI_READ_MODEL` | Opcional. Vacía usa `gemini-3.5-flash` |
 | `FIREBASE_ADMIN_CREDENTIALS` | Credenciales de administrador de Firebase en base64 (ver `.env.example`). Sin ellas, "me olvidé la contraseña" no está disponible |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Envío de mails: código de recuperación y novedades |
+| `MP_ACCESS_TOKEN` | Access token de Mercado Pago para las suscripciones de Premium. En modo prueba, el de la cuenta vendedora de prueba |
+| `MP_TEST_PAYER_EMAIL` | Solo en modo prueba: email de la cuenta compradora de prueba. En producción, vacía |
+| `MP_WEBHOOK_SECRET` | Clave del webhook; la URL a cargar en Mercado Pago es `https://aletheiainc.online/api/webhooks/mercadopago` |
+| `WEB_URL` | A dónde vuelve la persona después de pagar |
 | `NEXT_PUBLIC_*` | Los mismos valores que los build args de la web |
 
 ### 3. Base de datos
@@ -255,7 +281,8 @@ docker exec -i $(docker ps -qf name=aletheia_postgres) psql -U <usuario> -d <bas
 
 En una base que ya existe, los cambios posteriores se aplican con las migraciones
 `backend/migrate-*.ts`, con el usuario dueño de las tablas (`migrate-share.ts` para
-compartir capturas y textos, `migrate-news.ts` para las novedades por email).
+compartir capturas y textos, `migrate-news.ts` para las novedades por email,
+`migrate-plan.ts` para los planes y el cupo).
 
 ### Novedades por email
 
@@ -279,24 +306,48 @@ curl https://aletheiainc.online/api/
 
 ---
 
-## Pendiente
+## Estado del proyecto
+
+| Pieza | Estado |
+|---|---|
+| Web y PWA | ✅ En producción en [aletheiainc.online](https://aletheiainc.online) |
+| Extensión de Chrome | ✅ Publicada en la Chrome Web Store |
+| Backend | ✅ En producción (`aletheiainc.online/api`) |
+| Plan Premium | 🟡 Funciona de punta a punta en modo prueba de Mercado Pago; el pago está cerrado en la web (`PAGOS_PREMIUM_ABIERTOS` en `apps/lib/plan.ts`) |
+| Tests | ✅ Vitest: 124 casos en el backend y 22 en la web |
+
+### Pendiente
 
 - Recibir contenido compartido desde otras apps en el teléfono (Web Share Target en el manifest de la PWA).
+- Abrir los pagos de Premium cuando haya facturación (hoy se muestra como "Próximamente").
 
 ---
 
 ## Documentación
 
-- [CONTEXTO.md](CONTEXTO.md): contexto del proyecto, estado actual, decisiones de producto y pendientes.
-- [docs/README.md](docs/README.md): índice de la documentación.
-- [docs/tecnico/arquitectura.md](docs/tecnico/arquitectura.md): arquitectura, contrato del análisis y decisiones técnicas.
-- [design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md): sistema de diseño V1.
+| Documento | Contenido |
+|---|---|
+| [CONTEXTO.md](CONTEXTO.md) | Contexto del proyecto, estado actual, decisiones de producto y pendientes |
+| [docs/README.md](docs/README.md) | Índice de toda la documentación |
+| [docs/documento-final.pdf](docs/documento-final.pdf) | Documento final del proyecto |
+| [docs/manual-de-usuario.pdf](docs/manual-de-usuario.pdf) | Manual de usuario de la web y la extensión |
+| [docs/tecnico/arquitectura.md](docs/tecnico/arquitectura.md) | Arquitectura, contrato del análisis y decisiones técnicas |
+| [docs/pruebas/informe-de-pruebas.md](docs/pruebas/informe-de-pruebas.md) | Estrategia de testeo, bugs encontrados y cómo se resolvieron |
+| [docs/seguimiento/mejoras-post-feria.md](docs/seguimiento/mejoras-post-feria.md) | Mejoras aplicadas después de la feria |
+| [design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md) | Sistema de diseño V1 |
+
+### Enlaces importantes
+
+- Producto: [aletheiainc.online](https://aletheiainc.online)
+- Extensión: [Chrome Web Store](https://chromewebstore.google.com/detail/djnafnjbmkdkmigadknjhbckdhklhoeh)
+- Pitch: [docs/pitch/](docs/pitch/)
+- Material de difusión (flyer, folleto, spot): [docs/difusion/](docs/difusion/)
 
 ---
 
 ## Equipo
 
-| Integrante | Rol | Responsabilidades |
-|---|---|---|
-| Ciro Di Marsico | Backend Lead / Scrum Master | API REST, scraping, integración con Gemini, base de datos, infraestructura y despliegue |
-| Renzo Lanata | Frontend Lead | Web, extensión de Chrome, diseño de interfaz |
+| Integrante | Rol | GitHub | Responsabilidades |
+|---|---|---|---|
+| Ciro Di Marsico | Backend Lead / Scrum Master | [@CiroDiMarsico](https://github.com/CiroDiMarsico) | API REST, scraping, integración con Gemini, base de datos, infraestructura y despliegue |
+| Renzo Lanata | Frontend Lead | [@renlanatalln](https://github.com/renlanatalln) | Web, extensión de Chrome, diseño de interfaz |
