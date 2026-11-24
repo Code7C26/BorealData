@@ -5,7 +5,7 @@ producto y pendientes. El detalle técnico está en
 [docs/tecnico/arquitectura.md](docs/tecnico/arquitectura.md) y la puesta en marcha, en el
 [README](README.md).
 
-**Última actualización:** 5 de noviembre de 2026.
+**Última actualización:** 24 de noviembre de 2026.
 
 ---
 
@@ -36,7 +36,9 @@ producto y pendientes. El detalle técnico está en
 | Backend | En producción detrás de Traefik (`aletheiainc.online/api`). Gemini con grounding, scraping con extracción del cuerpo de la nota, caché por URL e idioma, rate limit y Row Level Security. |
 | App en el celular | PWA: la misma web se instala desde `/instalar`. La app nativa con Expo se descartó. |
 | Base de datos | Postgres 15 en el stack de Docker Swarm. |
-| Tests | Vitest: 84 en el backend y 13 en la web. |
+| Plan Premium | Gratuito: 3 análisis por día. Premium: 150 por mes, sin anuncios, con suscripción de Mercado Pago, baja y arrepentimiento. Funciona en modo prueba; en la web figura como "Próximamente" (`PAGOS_PREMIUM_ABIERTOS`). |
+| Cuenta | Recuperación de contraseña con código por email y novedades por email opcionales. |
+| Tests | Vitest: 124 casos en el backend y 22 en la web. |
 
 ---
 
@@ -49,7 +51,7 @@ Resumen; la versión detallada está en el [README](README.md#stack-tecnológico
 | Web | Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 |
 | Extensión | WXT + Manifest V3 + React (side panel) |
 | Backend | Node.js 24 + Express 5 + TypeScript 7 |
-| IA | Gemini 2.5 Flash con grounding vía Google Search |
+| IA | Gemini 3.5 Flash con grounding vía Google Search |
 | Datos | PostgreSQL con Row Level Security |
 | Autenticación | Firebase Authentication |
 | Infraestructura | VPS con Docker Swarm, Portainer, Traefik y Let's Encrypt |
@@ -92,6 +94,15 @@ Plex. La identidad privilegia el impacto (glows, gradientes, movimiento) sobre l
 sutileza, y el fondo se anima siempre, incluso con "reducir movimiento" activado.
 Detalle en [design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md).
 
+### Planes y cupo
+
+Cada análisis nuevo tiene un costo real (tokens de Gemini y búsquedas con grounding),
+por eso no hay plan ilimitado. Gratuito: 3 análisis por día. Premium: 150 por mes, sin
+anuncios, a $6.999 por mes. El tope de Premium se bajó de 300 a 150 el 23 de noviembre
+tras medir el costo real por análisis. Los números viven en un solo lugar,
+`backend/src/plan/config.ts`, con espejo en `apps/lib/plan.ts`. El detalle de costos
+está en [docs/negocio/viabilidad-comercial.md](docs/negocio/viabilidad-comercial.md).
+
 ---
 
 ## 5. Competencia
@@ -106,7 +117,7 @@ Detalle en [design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md).
 | Google Fact Check Explorer | Gratuito | Solo busca afirmaciones ya verificadas |
 
 Diferenciadores: enfoque en Latinoamérica y en castellano, IA como núcleo del producto,
-análisis transparente y gratuito para el usuario final.
+análisis transparente y un plan gratuito para el usuario final.
 
 ---
 
@@ -136,11 +147,15 @@ El índice completo está en [docs/README.md](docs/README.md).
 
 | Documento | Contenido |
 |---|---|
+| `docs/documento-final.pdf` | Documento final del proyecto |
 | `docs/manual-de-usuario.pdf` | Manual de la web y la extensión |
 | `docs/negocio/viabilidad-comercial.md` | Costos, precios y viabilidad comercial |
 | `docs/negocio/analisis-de-competencia.pdf` | Comparativa de competidores |
 | `docs/producto/mvp.pdf` | Definición del MVP |
 | `docs/tecnico/arquitectura.md` | Arquitectura y decisiones técnicas |
+| `docs/pruebas/informe-de-pruebas.md` | Estrategia de testeo, bugs y soluciones |
+| `docs/seguimiento/` | Retoma post-pasantía, reportes mensuales y mejoras post-feria |
+| `docs/pitch/`, `docs/difusion/` | Guiones del pitch, flyer, folleto y spot |
 | `design/DESIGN_SYSTEM.md` | Sistema de diseño V1 |
 
 ---
@@ -151,6 +166,9 @@ El índice completo está en [docs/README.md](docs/README.md).
   textos y preguntas; sin ella el botón responde "No pudimos compartirlo") y confirmar que
   `migrate-question.ts` está aplicada en la base del servidor. Sin ella, los análisis de tipo pregunta se muestran pero no se
   guardan en el historial.
+- **Plan Premium en producción:** correr `migrate-plan.ts`, cargar las variables `MP_*` y
+  `WEB_URL` y configurar el webhook en Mercado Pago. Para cobrar de verdad hace falta
+  facturar (monotributo); hasta entonces `PAGOS_PREMIUM_ABIERTOS` queda en `false`.
 - **PWA:** recibir contenido compartido desde otras apps del teléfono (Web Share Target).
 - **Rate limit:** el contador vive en memoria; si el backend pasa a varias instancias,
   debe trasladarse a Postgres.
